@@ -1,0 +1,2282 @@
+{
+  "REST": [
+    {
+      "item_code": "REST-001",
+      "item_name": "Veg Burger",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-002",
+      "item_name": "Chicken Burger",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-003",
+      "item_name": "Cheese Pizza",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-004",
+      "item_name": "Veg Pizza",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-005",
+      "item_name": "French Fries",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-006",
+      "item_name": "Garlic Bread",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-007",
+      "item_name": "Pasta Alfredo",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-008",
+      "item_name": "Pasta Arrabiata",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-009",
+      "item_name": "Veg Sandwich",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-010",
+      "item_name": "Club Sandwich",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-011",
+      "item_name": "Chicken Wrap",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-012",
+      "item_name": "Veg Wrap",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-013",
+      "item_name": "Cold Coffee",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-014",
+      "item_name": "Hot Coffee",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-015",
+      "item_name": "Tea",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-016",
+      "item_name": "Fresh Lime Soda",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-017",
+      "item_name": "Chocolate Shake",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-018",
+      "item_name": "Vanilla Shake",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-019",
+      "item_name": "Ice Cream Scoop",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-020",
+      "item_name": "Brownie",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-021",
+      "item_name": "Margarita Pizza",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-022",
+      "item_name": "Cheese Sandwich",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-023",
+      "item_name": "Grilled Sandwich",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-024",
+      "item_name": "Cappuccino",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "REST-025",
+      "item_name": "Espresso",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    }
+  ],
+  "RETAIL": [
+    {
+      "item_code": "RET-001",
+      "item_name": "Toothpaste",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-002",
+      "item_name": "Toothbrush",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-003",
+      "item_name": "Bath Soap",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-004",
+      "item_name": "Shampoo",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-005",
+      "item_name": "Hair Oil",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-006",
+      "item_name": "Hand Wash",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-007",
+      "item_name": "Dish Wash Liquid",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-008",
+      "item_name": "Laundry Detergent",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-009",
+      "item_name": "Paper Towels",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-010",
+      "item_name": "Tissues",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-011",
+      "item_name": "Mineral Water Bottle",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-012",
+      "item_name": "Soft Drink Can",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-013",
+      "item_name": "Biscuits Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-014",
+      "item_name": "Chips Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-015",
+      "item_name": "Chocolate Bar",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "RET-016",
+      "item_name": "Sugar 1kg",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "RET-017",
+      "item_name": "Rice 1kg",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "RET-018",
+      "item_name": "Wheat Flour 1kg",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "RET-019",
+      "item_name": "Cooking Oil 1L",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "RET-020",
+      "item_name": "Salt 1kg",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "RET-021",
+      "item_name": "Jam 500g",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "RET-022",
+      "item_name": "Honey 500g",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "RET-023",
+      "item_name": "Peanut Butter 500g",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "RET-024",
+      "item_name": "Tea Pack 250g",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "RET-025",
+      "item_name": "Coffee Powder 250g",
+      "item_group": "Products",
+      "uom": "Kg"
+    }
+  ],
+  "GROCERY": [
+    {
+      "item_code": "GROC-001",
+      "item_name": "Fresh Tomatoes",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-002",
+      "item_name": "Fresh Onions",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-003",
+      "item_name": "Fresh Potatoes",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-004",
+      "item_name": "Fresh Carrots",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-005",
+      "item_name": "Fresh Cabbage",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-006",
+      "item_name": "Fresh Spinach",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-007",
+      "item_name": "Fresh Bananas",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-008",
+      "item_name": "Fresh Apples",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-009",
+      "item_name": "Fresh Oranges",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-010",
+      "item_name": "Fresh Mangoes",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-011",
+      "item_name": "Milk 1L",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "GROC-012",
+      "item_name": "Yogurt 500g",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-013",
+      "item_name": "Cheese 250g",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-014",
+      "item_name": "Butter 250g",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-015",
+      "item_name": "Eggs Dozen",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "GROC-016",
+      "item_name": "Chicken 1kg",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-017",
+      "item_name": "Beef 1kg",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-018",
+      "item_name": "Fish 1kg",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-019",
+      "item_name": "Bread Loaf",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "GROC-020",
+      "item_name": "Buns Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "GROC-021",
+      "item_name": "Cereal Box",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "GROC-022",
+      "item_name": "Oats 500g",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "GROC-023",
+      "item_name": "Pasta Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "GROC-024",
+      "item_name": "Noodles Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "GROC-025",
+      "item_name": "Canned Beans",
+      "item_group": "Products",
+      "uom": "Nos"
+    }
+  ],
+  "PHARMACY": [
+    {
+      "item_code": "PHA-001",
+      "item_name": "Paracetamol Tablet",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-002",
+      "item_name": "Ibuprofen Tablet",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-003",
+      "item_name": "Cough Syrup",
+      "item_group": "Consumable",
+      "uom": "ml"
+    },
+    {
+      "item_code": "PHA-004",
+      "item_name": "Vitamin C Tablets",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-005",
+      "item_name": "Multivitamin Capsules",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-006",
+      "item_name": "Antacid Syrup",
+      "item_group": "Consumable",
+      "uom": "ml"
+    },
+    {
+      "item_code": "PHA-007",
+      "item_name": "ORS Sachet",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-008",
+      "item_name": "Antiseptic Liquid",
+      "item_group": "Consumable",
+      "uom": "ml"
+    },
+    {
+      "item_code": "PHA-009",
+      "item_name": "Hand Sanitizer",
+      "item_group": "Consumable",
+      "uom": "ml"
+    },
+    {
+      "item_code": "PHA-010",
+      "item_name": "Face Mask",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-011",
+      "item_name": "Digital Thermometer",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-012",
+      "item_name": "Blood Pressure Monitor",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-013",
+      "item_name": "Glucometer Strips",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-014",
+      "item_name": "Pain Relief Spray",
+      "item_group": "Consumable",
+      "uom": "ml"
+    },
+    {
+      "item_code": "PHA-015",
+      "item_name": "Bandage Roll",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-016",
+      "item_name": "Cotton Pack",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-017",
+      "item_name": "Antibiotic Ointment",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-018",
+      "item_name": "Eye Drops",
+      "item_group": "Consumable",
+      "uom": "ml"
+    },
+    {
+      "item_code": "PHA-019",
+      "item_name": "Nasal Spray",
+      "item_group": "Consumable",
+      "uom": "ml"
+    },
+    {
+      "item_code": "PHA-020",
+      "item_name": "Protein Powder",
+      "item_group": "Consumable",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "PHA-021",
+      "item_name": "Calcium Tablets",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-022",
+      "item_name": "Omega 3 Capsules",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-023",
+      "item_name": "Vitamin D Tablets",
+      "item_group": "Consumable",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "PHA-024",
+      "item_name": "Glucose Powder",
+      "item_group": "Consumable",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "PHA-025",
+      "item_name": "Herbal Tea",
+      "item_group": "Consumable",
+      "uom": "Kg"
+    }
+  ],
+  "FASHION": [
+    {
+      "item_code": "FASH-001",
+      "item_name": "Men's T-Shirt",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-002",
+      "item_name": "Women's T-Shirt",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-003",
+      "item_name": "Men's Jeans",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-004",
+      "item_name": "Women's Jeans",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-005",
+      "item_name": "Men's Shirt",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-006",
+      "item_name": "Women's Blouse",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-007",
+      "item_name": "Men's Shorts",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-008",
+      "item_name": "Women's Shorts",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-009",
+      "item_name": "Men's Jacket",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-010",
+      "item_name": "Women's Jacket",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-011",
+      "item_name": "Men's Sneakers",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-012",
+      "item_name": "Women's Sneakers",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-013",
+      "item_name": "Men's Dress Shoes",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-014",
+      "item_name": "Women's Heels",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-015",
+      "item_name": "Men's Belt",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-016",
+      "item_name": "Women's Handbag",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-017",
+      "item_name": "Men's Watch",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-018",
+      "item_name": "Women's Watch",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-019",
+      "item_name": "Men's Sunglasses",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-020",
+      "item_name": "Women's Sunglasses",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-021",
+      "item_name": "Men's Cap",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-022",
+      "item_name": "Women's Scarf",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-023",
+      "item_name": "Men's Socks Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-024",
+      "item_name": "Women's Socks Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FASH-025",
+      "item_name": "Unisex Backpack",
+      "item_group": "Products",
+      "uom": "Nos"
+    }
+  ],
+  "ELECTRONICS": [
+    {
+      "item_code": "ELEC-001",
+      "item_name": "Smartphone",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-002",
+      "item_name": "Tablet",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-003",
+      "item_name": "Laptop",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-004",
+      "item_name": "Desktop Computer",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-005",
+      "item_name": "Wireless Mouse",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-006",
+      "item_name": "Keyboard",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-007",
+      "item_name": "USB Flash Drive 32GB",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-008",
+      "item_name": "USB Flash Drive 64GB",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-009",
+      "item_name": "External Hard Drive 1TB",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-010",
+      "item_name": "HDMI Cable",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-011",
+      "item_name": "USB Cable",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-012",
+      "item_name": "Phone Charger",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-013",
+      "item_name": "Power Bank 10000mAh",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-014",
+      "item_name": "Bluetooth Speaker",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-015",
+      "item_name": "Wireless Earbuds",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-016",
+      "item_name": "Wired Headphones",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-017",
+      "item_name": "Webcam",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-018",
+      "item_name": "Microphone",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-019",
+      "item_name": "Router",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-020",
+      "item_name": "Smart TV 32 inch",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-021",
+      "item_name": "Smart TV 43 inch",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-022",
+      "item_name": "Smart Watch",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-023",
+      "item_name": "Fitness Tracker",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-024",
+      "item_name": "Camera",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ELEC-025",
+      "item_name": "Memory Card 64GB",
+      "item_group": "Products",
+      "uom": "Nos"
+    }
+  ],
+  "SALON": [
+    {
+      "item_code": "SALON-001",
+      "item_name": "Haircut Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-002",
+      "item_name": "Hair Color Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-003",
+      "item_name": "Hair Wash Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-004",
+      "item_name": "Hair Styling Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-005",
+      "item_name": "Hair Treatment Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-006",
+      "item_name": "Facial Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-007",
+      "item_name": "Manicure Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-008",
+      "item_name": "Pedicure Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-009",
+      "item_name": "Waxing Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-010",
+      "item_name": "Threading Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-011",
+      "item_name": "Shampoo Bottle",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-012",
+      "item_name": "Conditioner Bottle",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-013",
+      "item_name": "Hair Serum",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-014",
+      "item_name": "Hair Oil",
+      "item_group": "Products",
+      "uom": "ml"
+    },
+    {
+      "item_code": "SALON-015",
+      "item_name": "Hair Mask",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-016",
+      "item_name": "Face Cleanser",
+      "item_group": "Products",
+      "uom": "ml"
+    },
+    {
+      "item_code": "SALON-017",
+      "item_name": "Face Moisturizer",
+      "item_group": "Products",
+      "uom": "ml"
+    },
+    {
+      "item_code": "SALON-018",
+      "item_name": "Face Serum",
+      "item_group": "Products",
+      "uom": "ml"
+    },
+    {
+      "item_code": "SALON-019",
+      "item_name": "Nail Polish",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-020",
+      "item_name": "Nail Polish Remover",
+      "item_group": "Products",
+      "uom": "ml"
+    },
+    {
+      "item_code": "SALON-021",
+      "item_name": "Lipstick",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-022",
+      "item_name": "Foundation",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-023",
+      "item_name": "Mascara",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-024",
+      "item_name": "Eyeliner",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SALON-025",
+      "item_name": "Perfume",
+      "item_group": "Products",
+      "uom": "ml"
+    }
+  ],
+  "AUTO": [
+    {
+      "item_code": "AUTO-001",
+      "item_name": "Engine Oil 5L",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "AUTO-002",
+      "item_name": "Brake Fluid",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "AUTO-003",
+      "item_name": "Coolant",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "AUTO-004",
+      "item_name": "Windshield Washer Fluid",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "AUTO-005",
+      "item_name": "Air Filter",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-006",
+      "item_name": "Oil Filter",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-007",
+      "item_name": "Fuel Filter",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-008",
+      "item_name": "Spark Plug",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-009",
+      "item_name": "Battery",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-010",
+      "item_name": "Tire",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-011",
+      "item_name": "Windshield Wipers",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-012",
+      "item_name": "Car Seat Cover",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-013",
+      "item_name": "Car Floor Mat",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-014",
+      "item_name": "Car Phone Mount",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-015",
+      "item_name": "Car Charger",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-016",
+      "item_name": "Car Air Freshener",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-017",
+      "item_name": "Steering Wheel Cover",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-018",
+      "item_name": "Car Cover",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-019",
+      "item_name": "Jump Starter",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-020",
+      "item_name": "Tire Pressure Gauge",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-021",
+      "item_name": "Oil Change Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-022",
+      "item_name": "Tire Rotation Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-023",
+      "item_name": "Brake Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-024",
+      "item_name": "AC Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "AUTO-025",
+      "item_name": "Car Wash Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    }
+  ],
+  "FUEL": [
+    {
+      "item_code": "FUEL-001",
+      "item_name": "Petrol Regular",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "FUEL-002",
+      "item_name": "Petrol Premium",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "FUEL-003",
+      "item_name": "Diesel",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "FUEL-004",
+      "item_name": "LPG Gas",
+      "item_group": "Products",
+      "uom": "Kg"
+    },
+    {
+      "item_code": "FUEL-005",
+      "item_name": "Engine Oil 1L",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "FUEL-006",
+      "item_name": "Engine Oil 5L",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "FUEL-007",
+      "item_name": "Brake Fluid",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "FUEL-008",
+      "item_name": "Coolant",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "FUEL-009",
+      "item_name": "Windshield Washer Fluid",
+      "item_group": "Products",
+      "uom": "L"
+    },
+    {
+      "item_code": "FUEL-010",
+      "item_name": "Tire Air Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-011",
+      "item_name": "Car Wash Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-012",
+      "item_name": "Water Bottle 500ml",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-013",
+      "item_name": "Water Bottle 1L",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-014",
+      "item_name": "Soft Drink Can",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-015",
+      "item_name": "Energy Drink",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-016",
+      "item_name": "Chips Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-017",
+      "item_name": "Chocolate Bar",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-018",
+      "item_name": "Cigarettes Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-019",
+      "item_name": "Lighter",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-020",
+      "item_name": "Car Air Freshener",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-021",
+      "item_name": "Tire Pressure Gauge",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-022",
+      "item_name": "Windshield Wipers",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-023",
+      "item_name": "Car Phone Charger",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-024",
+      "item_name": "USB Cable",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FUEL-025",
+      "item_name": "Phone Mount",
+      "item_group": "Products",
+      "uom": "Nos"
+    }
+  ],
+  "HOTEL": [
+    {
+      "item_code": "HOTEL-001",
+      "item_name": "Room Service Breakfast",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-002",
+      "item_name": "Room Service Lunch",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-003",
+      "item_name": "Room Service Dinner",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-004",
+      "item_name": "Room Service Snacks",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-005",
+      "item_name": "Room Service Beverages",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-006",
+      "item_name": "Laundry Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-007",
+      "item_name": "Dry Cleaning Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-008",
+      "item_name": "Spa Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-009",
+      "item_name": "Gym Access",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-010",
+      "item_name": "WiFi Access",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-011",
+      "item_name": "Minibar Water",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-012",
+      "item_name": "Minibar Soft Drink",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-013",
+      "item_name": "Minibar Snacks",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-014",
+      "item_name": "Minibar Alcohol",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-015",
+      "item_name": "Toiletries Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-016",
+      "item_name": "Towels",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-017",
+      "item_name": "Room Key Card",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-018",
+      "item_name": "Newspaper",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-019",
+      "item_name": "Parking Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-020",
+      "item_name": "Late Checkout Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-021",
+      "item_name": "Extra Bed",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-022",
+      "item_name": "Extra Pillow",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-023",
+      "item_name": "Extra Blanket",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-024",
+      "item_name": "Room Upgrade",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "HOTEL-025",
+      "item_name": "Concierge Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    }
+  ],
+  "BOOKSTORE": [
+    {
+      "item_code": "BOOK-001",
+      "item_name": "Novel",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-002",
+      "item_name": "Textbook",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-003",
+      "item_name": "Notebook A4",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-004",
+      "item_name": "Notebook A5",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-005",
+      "item_name": "Pen Blue",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-006",
+      "item_name": "Pen Black",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-007",
+      "item_name": "Pen Red",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-008",
+      "item_name": "Pencil",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-009",
+      "item_name": "Eraser",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-010",
+      "item_name": "Sharpener",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-011",
+      "item_name": "Ruler 30cm",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-012",
+      "item_name": "Geometry Box",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-013",
+      "item_name": "Calculator",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-014",
+      "item_name": "Stapler",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-015",
+      "item_name": "Staples Box",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-016",
+      "item_name": "File Folder",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-017",
+      "item_name": "Binder",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-018",
+      "item_name": "Highlighter",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-019",
+      "item_name": "Marker",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-020",
+      "item_name": "Glue Stick",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-021",
+      "item_name": "Scissors",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-022",
+      "item_name": "Paper A4 Ream",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-023",
+      "item_name": "Envelope Pack",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-024",
+      "item_name": "Sticky Notes",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "BOOK-025",
+      "item_name": "Clipboard",
+      "item_group": "Products",
+      "uom": "Nos"
+    }
+  ],
+  "SPORTS": [
+    {
+      "item_code": "SPORT-001",
+      "item_name": "Football",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-002",
+      "item_name": "Basketball",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-003",
+      "item_name": "Tennis Ball",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-004",
+      "item_name": "Cricket Bat",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-005",
+      "item_name": "Cricket Ball",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-006",
+      "item_name": "Badminton Racket",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-007",
+      "item_name": "Shuttlecock",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-008",
+      "item_name": "Yoga Mat",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-009",
+      "item_name": "Dumbbells 5kg",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-010",
+      "item_name": "Dumbbells 10kg",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-011",
+      "item_name": "Resistance Bands",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-012",
+      "item_name": "Jump Rope",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-013",
+      "item_name": "Running Shoes",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-014",
+      "item_name": "Sports T-Shirt",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-015",
+      "item_name": "Sports Shorts",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-016",
+      "item_name": "Water Bottle",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-017",
+      "item_name": "Gym Bag",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-018",
+      "item_name": "Towel",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-019",
+      "item_name": "Fitness Tracker",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-020",
+      "item_name": "Protein Shaker",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-021",
+      "item_name": "Gym Membership",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-022",
+      "item_name": "Personal Training Session",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-023",
+      "item_name": "Yoga Class",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-024",
+      "item_name": "Swimming Pool Access",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "SPORT-025",
+      "item_name": "Court Booking",
+      "item_group": "Services",
+      "uom": "Nos"
+    }
+  ],
+  "JEWELRY": [
+    {
+      "item_code": "JEWEL-001",
+      "item_name": "Gold Ring",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-002",
+      "item_name": "Silver Ring",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-003",
+      "item_name": "Gold Necklace",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-004",
+      "item_name": "Silver Necklace",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-005",
+      "item_name": "Gold Earrings",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-006",
+      "item_name": "Silver Earrings",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-007",
+      "item_name": "Gold Bracelet",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-008",
+      "item_name": "Silver Bracelet",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-009",
+      "item_name": "Gold Chain",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-010",
+      "item_name": "Silver Chain",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-011",
+      "item_name": "Diamond Ring",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-012",
+      "item_name": "Diamond Necklace",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-013",
+      "item_name": "Diamond Earrings",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-014",
+      "item_name": "Pearl Necklace",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-015",
+      "item_name": "Pearl Earrings",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-016",
+      "item_name": "Watch Men's",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-017",
+      "item_name": "Watch Women's",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-018",
+      "item_name": "Bangle Set",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-019",
+      "item_name": "Anklet",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-020",
+      "item_name": "Nose Pin",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-021",
+      "item_name": "Pendant",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-022",
+      "item_name": "Brooch",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-023",
+      "item_name": "Hairpin Set",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-024",
+      "item_name": "Jewelry Box",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "JEWEL-025",
+      "item_name": "Jewelry Cleaning Kit",
+      "item_group": "Products",
+      "uom": "Nos"
+    }
+  ],
+  "FURNITURE": [
+    {
+      "item_code": "FURN-001",
+      "item_name": "Sofa 3 Seater",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-002",
+      "item_name": "Sofa 2 Seater",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-003",
+      "item_name": "Dining Table",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-004",
+      "item_name": "Dining Chairs Set",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-005",
+      "item_name": "Coffee Table",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-006",
+      "item_name": "Bed Frame Queen",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-007",
+      "item_name": "Bed Frame King",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-008",
+      "item_name": "Wardrobe",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-009",
+      "item_name": "Dresser",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-010",
+      "item_name": "Bookshelf",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-011",
+      "item_name": "TV Stand",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-012",
+      "item_name": "Study Desk",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-013",
+      "item_name": "Office Chair",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-014",
+      "item_name": "Recliner Chair",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-015",
+      "item_name": "Side Table",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-016",
+      "item_name": "Curtains",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-017",
+      "item_name": "Cushions Set",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-018",
+      "item_name": "Rug",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-019",
+      "item_name": "Wall Clock",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-020",
+      "item_name": "Table Lamp",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-021",
+      "item_name": "Floor Lamp",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-022",
+      "item_name": "Mirror",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-023",
+      "item_name": "Photo Frame",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-024",
+      "item_name": "Vase",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "FURN-025",
+      "item_name": "Decorative Plant",
+      "item_group": "Products",
+      "uom": "Nos"
+    }
+  ],
+  "ONLINE": [
+    {
+      "item_code": "ONLINE-001",
+      "item_name": "Shipping Fee Standard",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-002",
+      "item_name": "Shipping Fee Express",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-003",
+      "item_name": "Shipping Fee Overnight",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-004",
+      "item_name": "Gift Wrapping Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-005",
+      "item_name": "Gift Card",
+      "item_group": "Products",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-006",
+      "item_name": "Return Processing Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-007",
+      "item_name": "Restocking Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-008",
+      "item_name": "Subscription Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-009",
+      "item_name": "Membership Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-010",
+      "item_name": "Digital Product Download",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-011",
+      "item_name": "Online Course Access",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-012",
+      "item_name": "Software License",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-013",
+      "item_name": "E-book",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-014",
+      "item_name": "Digital Music",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-015",
+      "item_name": "Digital Movie",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-016",
+      "item_name": "Virtual Consultation",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-017",
+      "item_name": "Online Support Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-018",
+      "item_name": "Platform Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-019",
+      "item_name": "Transaction Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-020",
+      "item_name": "Payment Processing Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-021",
+      "item_name": "Insurance Fee",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-022",
+      "item_name": "Warranty Extension",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-023",
+      "item_name": "Installation Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-024",
+      "item_name": "Setup Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    },
+    {
+      "item_code": "ONLINE-025",
+      "item_name": "Maintenance Service",
+      "item_group": "Services",
+      "uom": "Nos"
+    }
+  ]
+}

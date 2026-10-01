@@ -1,0 +1,284 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2024-01-01 00:00:00",
+ "doctype": "DocType",
+ "document_type": "Transaction",
+ "engine": "InnoDB",
+ "field_order": [
+  "transaction_info_section",
+  "company",
+  "transaction_type",
+  "status",
+  "column_break_1",
+  "phone_number",
+  "amount",
+  "reference_number",
+  "mpesa_identifiers_section",
+  "merchant_request_id",
+  "checkout_request_id",
+  "conversation_id",
+  "mpesa_receipt_number",
+  "daraja_response_section",
+  "result_code",
+  "result_description",
+  "payloads_section",
+  "request_payload",
+  "response_payload",
+  "callback_payload",
+  "erp_integration_section",
+  "payment_entry",
+  "invoice_type",
+  "invoice",
+  "error_message",
+  "timestamps_section",
+  "created_at",
+  "completed_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "transaction_info_section",
+   "fieldtype": "Section Break",
+   "label": "Transaction Information"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "transaction_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Transaction Type",
+   "options": "STK Push\nB2C\nB2B",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nSuccess\nFailed\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Phone Number",
+   "description": "MSISDN format: 254712345678"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reference_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Reference Number",
+   "description": "Internal reference (e.g., invoice number)"
+  },
+  {
+   "fieldname": "mpesa_identifiers_section",
+   "fieldtype": "Section Break",
+   "label": "MPESA Identifiers"
+  },
+  {
+   "fieldname": "merchant_request_id",
+   "fieldtype": "Data",
+   "label": "Merchant Request ID",
+   "description": "STK Push MerchantRequestID (STK only)"
+  },
+  {
+   "fieldname": "checkout_request_id",
+   "fieldtype": "Data",
+   "label": "Checkout Request ID",
+   "description": "STK Push CheckoutRequestID (STK only, used for idempotency)",
+   "unique": 1
+  },
+  {
+   "fieldname": "conversation_id",
+   "fieldtype": "Data",
+   "label": "Conversation ID",
+   "description": "B2C/B2B ConversationID",
+   "unique": 1
+  },
+  {
+   "fieldname": "mpesa_receipt_number",
+   "fieldtype": "Data",
+   "label": "MPESA Receipt Number",
+   "description": "MPESA receipt number (on success)"
+  },
+  {
+   "fieldname": "daraja_response_section",
+   "fieldtype": "Section Break",
+   "label": "Daraja Response"
+  },
+  {
+   "fieldname": "result_code",
+   "fieldtype": "Int",
+   "label": "Result Code",
+   "description": "Daraja result code (0 = Success)"
+  },
+  {
+   "fieldname": "result_description",
+   "fieldtype": "Small Text",
+   "label": "Result Description",
+   "description": "Daraja result description"
+  },
+  {
+   "fieldname": "payloads_section",
+   "fieldtype": "Section Break",
+   "label": "Request/Response Payloads",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "request_payload",
+   "fieldtype": "JSON",
+   "label": "Request Payload",
+   "description": "Complete request sent to Daraja API"
+  },
+  {
+   "fieldname": "response_payload",
+   "fieldtype": "JSON",
+   "label": "Response Payload",
+   "description": "Initial response from Daraja API"
+  },
+  {
+   "fieldname": "callback_payload",
+   "fieldtype": "JSON",
+   "label": "Callback Payload",
+   "description": "Complete callback data from Daraja"
+  },
+  {
+   "fieldname": "erp_integration_section",
+   "fieldtype": "Section Break",
+   "label": "ERP Integration"
+  },
+  {
+   "fieldname": "payment_entry",
+   "fieldtype": "Link",
+   "label": "Payment Entry",
+   "options": "Payment Entry",
+   "description": "Linked payment entry (if created)"
+  },
+  {
+   "fieldname": "invoice_type",
+   "fieldtype": "Select",
+   "label": "Invoice Type",
+   "options": "\nSales Invoice\nPOS Invoice",
+   "description": "Type of invoice linked to this transaction"
+  },
+  {
+   "fieldname": "invoice",
+   "fieldtype": "Dynamic Link",
+   "label": "Invoice",
+   "options": "invoice_type",
+   "description": "Related invoice"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Text",
+   "label": "Error Message",
+   "description": "Error details if transaction failed"
+  },
+  {
+   "fieldname": "timestamps_section",
+   "fieldtype": "Section Break",
+   "label": "Timestamps"
+  },
+  {
+   "default": "Now",
+   "fieldname": "created_at",
+   "fieldtype": "Datetime",
+   "label": "Created At",
+   "read_only": 1,
+   "description": "Transaction initiation time"
+  },
+  {
+   "fieldname": "completed_at",
+   "fieldtype": "Datetime",
+   "label": "Completed At",
+   "read_only": 1,
+   "description": "Transaction completion time"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "link_doctype": "Payment Entry",
+   "link_fieldname": "payment_entry"
+  },
+  {
+   "link_doctype": "Sales Invoice",
+   "link_fieldname": "invoice"
+  },
+  {
+   "link_doctype": "POS Invoice",
+   "link_fieldname": "invoice"
+  }
+ ],
+ "modified": "2024-01-01 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Techsavanna POS",
+ "name": "MPESA Transaction Log",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 0,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "created_at",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "reference_number"
+}
+

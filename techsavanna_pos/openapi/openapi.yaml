@@ -1,0 +1,64 @@
+openapi: 3.0.3
+info:
+  title: TechSavanna POS ERPNext API
+  version: 1.0.0
+
+paths:
+  /purchase/grn:
+    post:
+      summary: Create Goods Received Note (GRN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GRNRequest"
+      responses:
+        "200":
+          description: Normalized POS response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/POSResponse"
+
+components:
+  schemas:
+    GRNRequest:
+      type: object
+      required: [lpo_no, warehouse, items]
+      properties:
+        lpo_no:
+          type: string
+        warehouse:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [item_code, qty]
+            properties:
+              item_code:
+                type: string
+              qty:
+                type: number
+
+    POSResponse:
+      type: object
+      properties:
+        message:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [success, error]
+            code:
+              type: string
+              example: INVALID_WAREHOUSE
+            lpo_no:
+              type: string
+            grn_no:
+              type: string
+            message:
+              type: string
+            data:
+              type: object

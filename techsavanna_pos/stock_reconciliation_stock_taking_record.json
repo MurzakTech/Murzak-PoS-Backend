@@ -1,0 +1,166 @@
+{
+ "actions": [],
+ "creation": "2025-01-20 10:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Other",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "item_name",
+  "warehouse",
+  "column_break_1",
+  "sales_person_qty",
+  "sales_person_comment",
+  "sales_person_name",
+  "sales_person_date",
+  "section_break_2",
+  "stock_controller_qty",
+  "stock_controller_comment",
+  "stock_controller_name",
+  "stock_controller_date",
+  "section_break_3",
+  "stock_manager_qty",
+  "stock_manager_comment",
+  "stock_manager_name",
+  "stock_manager_date",
+  "section_break_4",
+  "final_qty",
+  "final_comment"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Sales Person Stock Take"
+  },
+  {
+   "fieldname": "sales_person_qty",
+   "fieldtype": "Float",
+   "label": "Quantity Counted"
+  },
+  {
+   "fieldname": "sales_person_comment",
+   "fieldtype": "Small Text",
+   "label": "Comment"
+  },
+  {
+   "fieldname": "sales_person_name",
+   "fieldtype": "Link",
+   "label": "Counted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_person_date",
+   "fieldtype": "Datetime",
+   "label": "Counted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break",
+   "label": "Stock Controller Stock Take"
+  },
+  {
+   "fieldname": "stock_controller_qty",
+   "fieldtype": "Float",
+   "label": "Quantity Counted"
+  },
+  {
+   "fieldname": "stock_controller_comment",
+   "fieldtype": "Small Text",
+   "label": "Comment"
+  },
+  {
+   "fieldname": "stock_controller_name",
+   "fieldtype": "Link",
+   "label": "Counted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_controller_date",
+   "fieldtype": "Datetime",
+   "label": "Counted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break",
+   "label": "Stock Manager Stock Take"
+  },
+  {
+   "fieldname": "stock_manager_qty",
+   "fieldtype": "Float",
+   "label": "Quantity Counted"
+  },
+  {
+   "fieldname": "stock_manager_comment",
+   "fieldtype": "Small Text",
+   "label": "Comment"
+  },
+  {
+   "fieldname": "stock_manager_name",
+   "fieldtype": "Link",
+   "label": "Counted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_manager_date",
+   "fieldtype": "Datetime",
+   "label": "Counted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "final_qty",
+   "fieldtype": "Float",
+   "label": "Final Quantity (for reconciliation)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "final_comment",
+   "fieldtype": "Small Text",
+   "label": "Final Comment",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-20 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock",
+ "name": "Stock Reconciliation Stock Taking Record",
+ "owner": "Administrator",
+ "permissions": [],
+ "track_changes": 1
+}
+

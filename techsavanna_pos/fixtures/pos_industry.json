@@ -1,0 +1,163 @@
+[
+ {
+  "doctype": "POS Industry",
+  "name": "REST",
+  "industry_code": "REST",
+  "industry_name": "Restaurant & Food Service",
+  "description": "Full-service restaurants, cafes, bars, food trucks, and other food service establishments",
+  "serving_location": "Physical restaurant, cafe, or food service location",
+  "is_active": 1,
+  "sort_order": 1
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "RETAIL",
+  "industry_code": "RETAIL",
+  "industry_name": "Retail Store",
+  "description": "General retail stores selling various consumer products including clothing, electronics, home goods, and general merchandise",
+  "serving_location": "Physical retail store location",
+  "is_active": 1,
+  "sort_order": 2
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "GROCERY",
+  "industry_code": "GROCERY",
+  "industry_name": "Grocery & Supermarket",
+  "description": "Grocery stores, supermarkets, convenience stores, and markets selling food and household items",
+  "serving_location": "Physical grocery store or supermarket",
+  "is_active": 1,
+  "sort_order": 3
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "PHARMACY",
+  "industry_code": "PHARMACY",
+  "industry_name": "Pharmacy & Health",
+  "description": "Pharmacies, drug stores, health and wellness stores selling medications and health products",
+  "serving_location": "Physical pharmacy or health store location",
+  "is_active": 1,
+  "sort_order": 4
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "FASHION",
+  "industry_code": "FASHION",
+  "industry_name": "Fashion & Apparel",
+  "description": "Clothing stores, boutiques, shoe stores, and fashion retail outlets",
+  "serving_location": "Physical fashion store or boutique",
+  "is_active": 1,
+  "sort_order": 5
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "ELECTRONICS",
+  "industry_code": "ELECTRONICS",
+  "industry_name": "Electronics & Technology",
+  "description": "Electronics stores, computer shops, mobile phone retailers, and technology stores",
+  "serving_location": "Physical electronics store or online",
+  "is_active": 1,
+  "sort_order": 6
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "SALON",
+  "industry_code": "SALON",
+  "industry_name": "Beauty & Salon",
+  "description": "Hair salons, beauty parlors, barbershops, spa, and beauty service providers",
+  "serving_location": "Physical salon or beauty parlor",
+  "is_active": 1,
+  "sort_order": 7
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "AUTO",
+  "industry_code": "AUTO",
+  "industry_name": "Automotive",
+  "description": "Auto parts stores, car accessories shops, and automotive service providers",
+  "serving_location": "Physical automotive store or service center",
+  "is_active": 1,
+  "sort_order": 8
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "FUEL",
+  "industry_code": "FUEL",
+  "industry_name": "Fuel Station",
+  "description": "Gas stations, fuel pumps, and service stations selling fuel and related products",
+  "serving_location": "Physical fuel station location",
+  "is_active": 1,
+  "sort_order": 9
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "HOTEL",
+  "industry_code": "HOTEL",
+  "industry_name": "Hotel & Hospitality",
+  "description": "Hotels, lodges, guest houses, and hospitality establishments with POS systems",
+  "serving_location": "Physical hotel or hospitality location",
+  "is_active": 1,
+  "sort_order": 10
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "BOOKSTORE",
+  "industry_code": "BOOKSTORE",
+  "industry_name": "Bookstore & Stationery",
+  "description": "Bookstores, stationery shops, and stores selling books, office supplies, and educational materials",
+  "serving_location": "Physical bookstore or stationery shop",
+  "is_active": 1,
+  "sort_order": 11
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "SPORTS",
+  "industry_code": "SPORTS",
+  "industry_name": "Sports & Recreation",
+  "description": "Sports equipment stores, fitness centers, and recreational equipment retailers",
+  "serving_location": "Physical sports store or fitness center",
+  "is_active": 1,
+  "sort_order": 12
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "JEWELRY",
+  "industry_code": "JEWELRY",
+  "industry_name": "Jewelry & Accessories",
+  "description": "Jewelry stores, watch shops, and stores selling precious metals and accessories",
+  "serving_location": "Physical jewelry store",
+  "is_active": 1,
+  "sort_order": 13
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "FURNITURE",
+  "industry_code": "FURNITURE",
+  "industry_name": "Furniture & Home Decor",
+  "description": "Furniture stores, home decor shops, and stores selling furniture and home furnishings",
+  "serving_location": "Physical furniture store or showroom",
+  "is_active": 1,
+  "sort_order": 14
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "ONLINE",
+  "industry_code": "ONLINE",
+  "industry_name": "E-commerce & Online Retail",
+  "description": "Online retailers, e-commerce platforms, and businesses primarily selling online",
+  "serving_location": "Online platform",
+  "is_active": 1,
+  "sort_order": 15
+ },
+ {
+  "doctype": "POS Industry",
+  "name": "OTHER",
+  "industry_code": "OTHER",
+  "industry_name": "Other",
+  "description": "Other types of businesses not covered in the above categories",
+  "serving_location": "Varies",
+  "is_active": 1,
+  "sort_order": 99
+ }
+]
+

@@ -1,0 +1,10 @@
+[pre_model_sync]
+# Patches added in this section will be executed before doctypes are migrated
+# Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
+
+[post_model_sync]
+# Patches added in this section will be executed after doctypes are migrated
+techsavanna_pos.patches.set_update_stock_on_pos_profiles
+techsavanna_pos.patches.setup_stock_reconciliation_workflow
+techsavanna_pos.patches.setup_stock_reconciliation_item_custom_fields
+techsavanna_pos.patches.reconcile_stock_reconciliation_workflow_states

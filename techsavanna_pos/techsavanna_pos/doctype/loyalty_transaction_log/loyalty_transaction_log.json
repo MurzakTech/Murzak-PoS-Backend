@@ -1,0 +1,95 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:LTL-{MM}-{YY}-{#####}",
+ "creation": "2025-12-23 22:28:32.007401",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "points_earned",
+  "points_redeemed",
+  "column_break_bqof",
+  "purchase_amount",
+  "transaction_type",
+  "column_break_kayo",
+  "reference_document",
+  "date"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "points_earned",
+   "fieldtype": "Int",
+   "label": "Points Earned"
+  },
+  {
+   "fieldname": "points_redeemed",
+   "fieldtype": "Int",
+   "label": "Points Redeemed"
+  },
+  {
+   "fieldname": "column_break_bqof",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_amount",
+   "fieldtype": "Float",
+   "label": "Purchase Amount"
+  },
+  {
+   "fieldname": "transaction_type",
+   "fieldtype": "Select",
+   "label": "Transaction Type",
+   "options": "\nEarn\nRedeem"
+  },
+  {
+   "fieldname": "column_break_kayo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reference_document",
+   "fieldtype": "Link",
+   "label": "Reference Document",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-23 22:33:43.239218",
+ "modified_by": "Administrator",
+ "module": "Techsavanna POS",
+ "name": "Loyalty Transaction Log",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
