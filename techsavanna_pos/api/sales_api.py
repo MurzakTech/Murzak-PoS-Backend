@@ -88,24 +88,27 @@ def _check_pos_opening_entry_has_invoices(start_date, end_date, pos_profile, use
     # Invoice type from POS Settings (older ERPNext has no such setting: POS Invoice)
     invoice_doctype = _get_pos_settings_invoice_type() or "POS Invoice"
     
-    # Check Sales Invoice
+    # Check Sales Invoice. "is_created_using_pos" and "pos_closing_entry" exist on Sales
+    # Invoice only in newer ERPNext; querying them on ERPNext 15 fails with
+    # (1054, "Unknown column ..."), which made cancelling a shift fail and made an old
+    # open shift look as if it had sales. Only use the columns this database has.
     SalesInvoice = DocType("Sales Invoice")
-    sales_inv_query = (
-        frappe.qb.from_(SalesInvoice)
-        .select(fn.Count(SalesInvoice.name).as_("count"))
-        .where(
-            (SalesInvoice.owner == user)
-            & (SalesInvoice.docstatus == 1)
-            & (SalesInvoice.is_pos == 1)
-            & (SalesInvoice.pos_profile == pos_profile)
-            & (
-                (fn.Timestamp(SalesInvoice.posting_date, SalesInvoice.posting_time) >= start_date)
-                & (fn.Timestamp(SalesInvoice.posting_date, SalesInvoice.posting_time) <= end_date)
-            )
-            & (SalesInvoice.is_created_using_pos == 1)
-            & (fn.IfNull(SalesInvoice.pos_closing_entry, "").eq(""))
-        )
+    conditions = (
+        (SalesInvoice.owner == user)
+        & (SalesInvoice.docstatus == 1)
+        & (SalesInvoice.is_pos == 1)
+        & (SalesInvoice.pos_profile == pos_profile)
+        & (fn.Timestamp(SalesInvoice.posting_date, SalesInvoice.posting_time) >= start_date)
+        & (fn.Timestamp(SalesInvoice.posting_date, SalesInvoice.posting_time) <= end_date)
     )
+    if frappe.db.has_column("Sales Invoice", "is_created_using_pos"):
+        conditions = conditions & (SalesInvoice.is_created_using_pos == 1)
+    if frappe.db.has_column("Sales Invoice", "pos_closing_entry"):
+        conditions = conditions & (fn.IfNull(SalesInvoice.pos_closing_entry, "").eq(""))
+    if frappe.db.has_column("Sales Invoice", "is_consolidated"):
+        # Invoices made when an earlier shift was closed are not this shift's sales
+        conditions = conditions & (SalesInvoice.is_consolidated == 0)
+    sales_inv_query = frappe.qb.from_(SalesInvoice).select(fn.Count(SalesInvoice.name).as_("count")).where(conditions)
     
     sales_count = sales_inv_query.run(as_dict=True)
     if sales_count and sales_count[0].get("count", 0) > 0:
@@ -2903,24 +2906,22 @@ def close_pos_opening_entry(
             },
         }
     except frappe.ValidationError as e:
-        frappe.log_error(
-            f"Validation error closing POS Opening Entry {pos_opening_entry}: {str(e)}",
-            "Close POS Opening Entry Validation Error",
-        )
-        return {
-            "success": False,
-            "message": f"Validation error: {str(e)}",
-            "error_type": "validation_error",
-        }
+        return {**_shift_error("close", pos_opening_entry, e), "error_type": "validation_error"}
     except Exception as e:
-        frappe.log_error(
-            f"Error closing POS Opening Entry {pos_opening_entry}: {str(e)}",
-            "Close POS Opening Entry Error",
-        )
-        return {
-            "success": False,
-            "message": f"Error closing POS Opening Entry: {str(e)}",
-        }
+        return _shift_error("close", pos_opening_entry, e)
+
+
+def _shift_error(action: str, name: str, e: Exception) -> Dict:
+    """A failed close or cancel: save the full details to the Error Log and give the
+    cashier a message that is never empty (some exceptions carry no text at all)."""
+    frappe.log_error(title=f"POS shift {action} failed: {name}", message=frappe.get_traceback())
+    detail = str(e).strip()
+    if not detail:
+        detail = _(
+            "The server stopped with {0} and gave no reason. The full details are in the Error Log "
+            "under \"POS shift {1} failed: {2}\"."
+        ).format(type(e).__name__, action, name)
+    return {"success": False, "message": detail}
 
 
 @frappe.whitelist()
@@ -2993,24 +2994,9 @@ def cancel_pos_opening_entry(name: str, reason: Optional[str] = None) -> Dict:
             },
         }
     except frappe.ValidationError as e:
-        frappe.log_error(
-            f"Validation error cancelling POS Opening Entry {name}: {str(e)}",
-            "Cancel POS Opening Entry Validation Error",
-        )
-        return {
-            "success": False,
-            "message": f"Validation error: {str(e)}",
-            "error_type": "validation_error",
-        }
+        return {**_shift_error("cancel", name, e), "error_type": "validation_error"}
     except Exception as e:
-        frappe.log_error(
-            f"Error cancelling POS Opening Entry {name}: {str(e)}",
-            "Cancel POS Opening Entry Error",
-        )
-        return {
-            "success": False,
-            "message": f"Error cancelling POS Opening Entry: {str(e)}",
-        }
+        return _shift_error("cancel", name, e)
 
 
 @frappe.whitelist()
