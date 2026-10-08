@@ -16,7 +16,13 @@ app_license = "mit"
 #
 # Added locally 2026-09-05. This belongs upstream in
 # Shavia-bit/savanna_pos_tech -- a local edit here is lost on the next pull.
-required_apps = ["erpnext", "kenya_compliance"]
+# Written as "org/app" on purpose. Frappe's installer runs every entry through
+# parse_app_name() BEFORE checking whether the app is already installed, and a
+# bare name triggers a live GitHub lookup that only searches the frappe/ and
+# erpnext/ orgs. kenya_compliance lives under navariltd, so the bare form made
+# `bench --site <new site> install-app techsavanna_pos` fail on every fresh
+# site with InvalidRemoteException. With an org given, no network call is made.
+required_apps = ["frappe/erpnext", "navariltd/kenya_compliance"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [

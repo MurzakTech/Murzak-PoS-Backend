@@ -682,6 +682,10 @@ def get_current_user() -> Dict:
     
     company_info = None
     default_warehouse = None
+    # Only assigned inside `if company:` below, but always returned — so a
+    # user with no company yet (every new owner, before onboarding) got
+    # UnboundLocalError and a 500 instead of their profile.
+    pos_profile = None
     
     if company:
         # Get company details
