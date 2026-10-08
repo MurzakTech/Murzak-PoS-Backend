@@ -91,6 +91,12 @@ class POSInvoice(ERPNextPOSInvoice):
             update_coupon_code_count(self.coupon_code, "used")
         self.clear_unallocated_mode_of_payments()
 
-        if self.is_return and self.invoice_type_in_pos == "Sales Invoice":
+        # Newer ERPNext only: "invoice_type_in_pos" and this method do not exist on ERPNext 15,
+        # where reading the field would stop every return (refund) sale with an AttributeError
+        if (
+            self.is_return
+            and getattr(self, "invoice_type_in_pos", None) == "Sales Invoice"
+            and hasattr(self, "create_and_add_consolidated_sales_invoice")
+        ):
             self.create_and_add_consolidated_sales_invoice()
 
