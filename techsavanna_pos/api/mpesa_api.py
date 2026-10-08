@@ -24,6 +24,7 @@ from techsavanna_pos.api.mpesa_client import (
 	process_b2c_payment,
 	query_stk_status,
 	register_c2b_urls,
+	stk_amount,
 )
 from techsavanna_pos.api.mpesa_client import (
 	test_connection as daraja_test_connection,
@@ -94,6 +95,63 @@ def _transaction_dict(log) -> dict:
 	}
 
 
+PROMPT_LOCK_SECONDS = 45
+
+
+def _acquire_lock(key: str) -> bool:
+	"""Short Redis lock (SET NX). Returns False when someone else holds it."""
+	cache = frappe.cache()
+	return bool(cache.set(cache.make_key(key), 1, nx=True, ex=PROMPT_LOCK_SECONDS))
+
+
+def _earlier_prompt(company: str, reference: str, charge: int, invoice_name: str | None) -> dict | None:
+	"""
+	The answer for a payment that already has a prompt: the earlier success, or the prompt
+	still waiting on the customer's phone. None when a new prompt may be sent.
+	"""
+	rows = frappe.get_all(
+		"MPESA Transaction Log",
+		filters={
+			"company": company,
+			"transaction_type": "STK Push",
+			"reference_number": reference,
+			"status": ["in", [STATUS_PENDING, STATUS_SUCCESS]],
+		},
+		fields=["name", "status", "invoice", "amount"],
+		order_by="creation desc",
+	)
+	for row in rows:
+		status = row.status
+		if status == STATUS_PENDING:
+			# It may have finished or expired since the till last asked
+			status = check_payment_status(transaction_id=row.name)["transaction"]["status"]
+
+		if status == STATUS_PENDING:
+			log = frappe.get_doc("MPESA Transaction Log", row.name)
+			return {
+				"success": True,
+				"reused": True,
+				"message": _(
+					"A prompt is already waiting on {0}. Ask the customer to complete it, or wait "
+					"about a minute for it to expire before sending another."
+				).format(log.phone_number),
+				"transaction": _transaction_dict(log),
+			}
+
+		unused = not row.invoice or row.invoice == invoice_name
+		if status == STATUS_SUCCESS and unused and flt(row.amount) + 1 >= charge:
+			log = frappe.get_doc("MPESA Transaction Log", row.name)
+			return {
+				"success": True,
+				"reused": True,
+				"message": _("This payment was already received ({0}).").format(
+					log.mpesa_receipt_number or log.name
+				),
+				"transaction": _transaction_dict(log),
+			}
+	return None
+
+
 # ============================================================================
 # Payments at the till
 # ============================================================================
@@ -140,18 +198,34 @@ def initiate_stk_push_payment(
 		if invoice_company != company:
 			frappe.throw(_("This invoice belongs to another business."), frappe.PermissionError)
 
+	# Only one prompt at a time per payment: a second click or a retry must never send a
+	# second prompt the customer could also approve.
+	lock_key = f"techsavanna_pos:stk_lock:{company}:{reference}"
+	if not _acquire_lock(lock_key):
+		return {
+			"success": False,
+			"error_code": "MPESA_PROMPT_IN_PROGRESS",
+			"message": _("A prompt for this payment is already being sent. Wait a moment."),
+		}
 	try:
-		result = initiate_stk_push(
-			company=company,
-			phone_number=phone_number,
-			amount=flt(amount),
-			reference=reference,
-			description=description,
-		)
-	except Exception as e:
-		if not isinstance(e, MpesaClientError):
-			frappe.log_error(frappe.get_traceback(), "MPESA STK Push Error")
-		return _error_response(e)
+		earlier = _earlier_prompt(company, reference, stk_amount(amount), invoice_name)
+		if earlier:
+			return earlier
+
+		try:
+			result = initiate_stk_push(
+				company=company,
+				phone_number=phone_number,
+				amount=flt(amount),
+				reference=reference,
+				description=description,
+			)
+		except Exception as e:
+			if not isinstance(e, MpesaClientError):
+				frappe.log_error(frappe.get_traceback(), "MPESA STK Push Error")
+			return _error_response(e)
+	finally:
+		frappe.cache().delete_value(lock_key)
 
 	if invoice_type and invoice_name:
 		frappe.db.set_value(

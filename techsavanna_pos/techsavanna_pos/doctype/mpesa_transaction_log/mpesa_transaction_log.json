@@ -138,7 +138,8 @@
    "fieldname": "mpesa_receipt_number",
    "fieldtype": "Data",
    "label": "MPESA Receipt Number",
-   "description": "MPESA receipt number (on success)"
+   "description": "MPESA receipt number (on success)",
+   "unique": 1
   },
   {
    "fieldname": "daraja_response_section",
@@ -249,7 +250,7 @@
    "link_fieldname": "invoice"
   }
  ],
- "modified": "2026-10-08 12:00:00.000000",
+ "modified": "2026-10-08 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "Techsavanna POS",
  "name": "MPESA Transaction Log",

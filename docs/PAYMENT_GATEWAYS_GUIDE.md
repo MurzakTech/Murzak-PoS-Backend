@@ -23,8 +23,11 @@ changes and no server access are needed.
    If the server sits behind a proxy with a different public address, add
    `"payment_callback_base_url": "https://public.address"` instead. The settings screen shows a yellow
    warning when the address cannot be reached by payment providers.
-3. Deploy the app and run `bench --site <site> migrate`. This adds the new fields and the two new record
-   types (POS Gateway Settings, POS Gateway Transaction).
+3. Deploy the app and run `bench --site <site> migrate`. Migration adds a unique index on the M-Pesa
+   receipt number; it would only fail if the log already held two records with the same receipt, which the
+   earlier (non-working) version could not create.
+   This also adds the new fields and the two new record types (POS Gateway Settings, POS Gateway
+   Transaction).
 
 ## 3. Onboarding a client: M-Pesa
 
@@ -106,7 +109,18 @@ Amounts sent to M-Pesa are rounded **up** to whole shillings, because M-Pesa doe
   another sale. The payment is then linked to the sale.
 * **Callbacks are verified.** Each callback URL carries the business's secret token. Pesapal and PayPal results
   are always re-checked directly with the provider instead of trusting the incoming call.
-* **Safe to repeat.** A callback delivered twice changes nothing the second time.
+* **Safe to repeat (idempotent).** Repeated messages and retries never double-count money:
+  * A callback delivered twice changes nothing the second time.
+  * **One live prompt per payment line.** Pressing "Send prompt" again, or retrying, returns the prompt
+    already waiting on the customer's phone (or the payment already received) instead of sending a second
+    prompt the customer could also approve. A prompt that expired or failed can be resent.
+  * **One record per M-Pesa receipt.** The database refuses a second record with the same receipt number.
+    When Safaricom reports a prompt payment also as a direct till payment, the two are merged.
+  * **A payment is locked while a sale saves.** Two tills cannot use the same payment at the same instant;
+    the second is refused once the first is saved.
+  * **A retried sale returns the original.** If the till's connection drops after a sale is saved, pressing
+    Complete sale again shows the receipt of the sale already recorded instead of creating a second one
+    (remembered for 24 hours).
 * **Full audit trail.** Every request and response is kept in *MPESA Transaction Log* and *POS Gateway
   Transaction* (passwords are masked).
 

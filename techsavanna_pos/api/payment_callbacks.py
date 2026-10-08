@@ -15,7 +15,12 @@ from frappe import _
 from frappe.utils import flt, getdate, now, nowdate
 
 from techsavanna_pos.api.mpesa_client import status_for_result_code
-from techsavanna_pos.api.mpesa_constants import STATUS_PENDING, STATUS_SUCCESS, get_result_message
+from techsavanna_pos.api.mpesa_constants import (
+	STATUS_CANCELLED,
+	STATUS_PENDING,
+	STATUS_SUCCESS,
+	get_result_message,
+)
 from techsavanna_pos.api.payment_gateway_common import read_request_json
 
 
@@ -83,7 +88,7 @@ def process_stk_callback(log_name: str, callback: dict, payload: dict | None = N
 	log.result_description = callback.get("ResultDesc") or get_result_message(result_code)
 	log.status = status_for_result_code(result_code)
 	if receipt:
-		log.mpesa_receipt_number = receipt
+		_take_receipt(log, str(receipt).strip().upper())
 	if meta.get("Amount") is not None and log.status == STATUS_SUCCESS:
 		paid = flt(meta.get("Amount"))
 		if paid and abs(paid - flt(log.amount)) > 0.009:
@@ -95,6 +100,38 @@ def process_stk_callback(log_name: str, callback: dict, payload: dict | None = N
 
 	if log.status == STATUS_SUCCESS:
 		settle_invoice_if_needed(log)
+
+
+def _take_receipt(log, receipt: str) -> None:
+	"""
+	Give the receipt number to this prompt's record, keeping one record per M-Pesa payment.
+
+	Safaricom can also report a prompt payment as a direct till payment (C2B). An unused C2B
+	record of the same receipt is the same money, so it is removed. If that money was already
+	used on a sale, this record is marked as used by that sale so it cannot pay a second time.
+	"""
+	twin = frappe.db.get_value(
+		"MPESA Transaction Log",
+		{"mpesa_receipt_number": receipt, "name": ["!=", log.name]},
+		["name", "transaction_type", "invoice_type", "invoice"],
+		as_dict=True,
+	)
+	if twin and twin.transaction_type == "C2B" and not twin.invoice:
+		frappe.delete_doc("MPESA Transaction Log", twin.name, ignore_permissions=True, force=True)
+		twin = None
+
+	if not twin:
+		log.mpesa_receipt_number = receipt
+		return
+
+	log.error_message = _("Same M-Pesa payment as {0} ({1})").format(twin.name, receipt)
+	if twin.invoice:
+		log.invoice_type = twin.invoice_type
+		log.invoice = twin.invoice
+	else:
+		# Already recorded elsewhere and still unused: that record stands for the money
+		log.status = STATUS_CANCELLED
+		log.result_description = log.error_message
 
 
 def settle_invoice_if_needed(log) -> None:
@@ -168,7 +205,8 @@ def daraja_c2b_confirmation(t: str | None = None, **kwargs):
 	receipt = (payload.get("TransID") or "").strip().upper()
 	if not receipt:
 		return _accept_daraja()
-	if frappe.db.exists("MPESA Transaction Log", {"company": company, "mpesa_receipt_number": receipt}):
+	# One record per M-Pesa payment, whichever report (prompt result or this one) came first
+	if frappe.db.exists("MPESA Transaction Log", {"mpesa_receipt_number": receipt}):
 		return _accept_daraja()
 
 	msisdn = str(payload.get("MSISDN") or "")
@@ -193,7 +231,12 @@ def daraja_c2b_confirmation(t: str | None = None, **kwargs):
 	log.callback_payload = json.dumps(payload)
 	log.created_at = now()
 	log.completed_at = now()
-	log.insert(ignore_permissions=True)
+	try:
+		log.insert(ignore_permissions=True)
+	except (frappe.UniqueValidationError, frappe.DuplicateEntryError):
+		# The same notice arrived twice at the same moment; the other copy was saved
+		frappe.db.rollback()
+		return _accept_daraja()
 	frappe.db.commit()
 	return _accept_daraja()
 

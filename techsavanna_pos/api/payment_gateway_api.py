@@ -616,6 +616,60 @@ def _check_claim(record_company, company, status, invoice, paid, amount, label) 
 		)
 
 
+SALE_MEMORY_SECONDS = 24 * 60 * 60
+
+
+def _sale_key(company: str, client_reference: str) -> str:
+	return f"techsavanna_pos:sale_ref:{company}:{client_reference}"
+
+
+def find_recorded_sale(company: str | None, client_reference: str | None) -> tuple[str, str] | None:
+	"""
+	(doctype, name) of the invoice already created for this till sale, if any.
+
+	The till sends the same client_reference when it retries a sale whose reply was lost, so
+	the retry gets the original invoice back instead of creating a second one.
+	"""
+	if not company or not client_reference:
+		return None
+	remembered = frappe.cache().get_value(_sale_key(company, client_reference))
+	if not remembered or "::" not in remembered:
+		return None
+	doctype, name = remembered.split("::", 1)
+	docstatus = frappe.db.get_value(doctype, name, "docstatus")
+	if docstatus is None or int(docstatus) == 2:
+		return None  # deleted or cancelled: treat as a new sale
+	return doctype, name
+
+
+def remember_sale(company: str | None, client_reference: str | None, doctype: str, name: str) -> None:
+	if company and client_reference:
+		frappe.cache().set_value(
+			_sale_key(company, client_reference), f"{doctype}::{name}", expires_in_sec=SALE_MEMORY_SECONDS
+		)
+
+
+def lock_gateway_payments(claims: list[tuple[str, str]]) -> None:
+	"""
+	Lock the claimed payment records and check again that they are still free.
+
+	Call this right before the invoice is saved. The row locks last until the request's
+	transaction ends, so a second sale trying to use the same payment at the same moment
+	waits here, then finds it used and is refused. Nothing between this call and
+	mark_gateway_payments_used may commit, or the locks are released early.
+	"""
+	# Always lock in the same order so two sales can never wait on each other
+	for doctype, name in sorted(claims):
+		row = frappe.db.get_value(doctype, name, ["status", "invoice"], as_dict=True, for_update=True)
+		if not row or row.status != "Success":
+			frappe.throw(_("Payment {0} has not gone through.").format(name), frappe.ValidationError)
+		if row.invoice:
+			frappe.throw(
+				_("Payment {0} is already used on sale {1}.").format(name, row.invoice),
+				frappe.ValidationError,
+			)
+
+
 def mark_gateway_payments_used(claims: list[tuple[str, str]], invoice_type: str, invoice: str) -> None:
 	for doctype, name in claims:
 		frappe.db.set_value(doctype, name, {"invoice_type": invoice_type, "invoice": invoice})

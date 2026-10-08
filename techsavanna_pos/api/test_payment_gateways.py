@@ -470,5 +470,249 @@ class TestSaleValidation(unittest.TestCase):
 		self.assertEqual(rows[0]["reference_no"], "PSP1")
 
 
+class TestOnePromptPerPayment(unittest.TestCase):
+	"""Fix 1: a second click or a retry never sends a second prompt the customer could approve."""
+
+	def setUp(self):
+		frappe.cache().delete_value("techsavanna_pos:stk_lock:Shop A:POS1-0")
+
+	def _send(self, earlier_rows, statuses=None, docs=None, lock_free=True):
+		from techsavanna_pos.api import mpesa_api
+
+		statuses = statuses or {}
+		docs = docs or {}
+		if not lock_free:
+			frappe.cache().set("techsavanna_pos:stk_lock:Shop A:POS1-0", 1, nx=True)
+		with (
+			patch.object(mpesa_api, "resolve_company", return_value="Shop A"),
+			patch.object(frappe, "get_all", return_value=earlier_rows),
+			patch.object(
+				mpesa_api,
+				"check_payment_status",
+				side_effect=lambda transaction_id: {"transaction": {"status": statuses[transaction_id]}},
+			),
+			patch.object(frappe, "get_doc", side_effect=lambda doctype, name: docs[name]),
+			patch.object(
+				mpesa_api,
+				"initiate_stk_push",
+				return_value={"transaction_id": "NEW", "amount": 100, "checkout_request_id": "ws_CO_NEW"},
+			) as push,
+		):
+			result = mpesa_api.initiate_stk_push_payment(
+				company="Shop A", phone_number="0712345678", amount=100, reference="POS1-0"
+			)
+		return result, push
+
+	def _log(self, name, **fields):
+		base = dict(name=name, transaction_type="STK Push", phone_number="254712345678", amount=100)
+		base.update(fields)
+		return FakeDoc(**base)
+
+	def test_first_prompt_is_sent_and_the_lock_released(self):
+		result, push = self._send([])
+		push.assert_called_once()
+		self.assertEqual(result["transaction"]["transaction_id"], "NEW")
+		self.assertIsNone(frappe.cache().get_value("techsavanna_pos:stk_lock:Shop A:POS1-0"))
+
+	def test_waiting_prompt_is_returned_instead_of_a_new_one(self):
+		rows = [frappe._dict(name="OLD", status="Pending", invoice=None, amount=100)]
+		result, push = self._send(rows, {"OLD": "Pending"}, {"OLD": self._log("OLD", status="Pending")})
+		push.assert_not_called()
+		self.assertTrue(result["reused"])
+		self.assertEqual(result["transaction"]["transaction_id"], "OLD")
+
+	def test_earlier_success_is_returned(self):
+		rows = [frappe._dict(name="OLD", status="Success", invoice=None, amount=100)]
+		log = self._log("OLD", status="Success", mpesa_receipt_number="RCT1")
+		result, push = self._send(rows, docs={"OLD": log})
+		push.assert_not_called()
+		self.assertEqual(result["transaction"]["mpesa_receipt_number"], "RCT1")
+
+	def test_expired_prompt_allows_a_new_one(self):
+		rows = [frappe._dict(name="OLD", status="Pending", invoice=None, amount=100)]
+		_result, push = self._send(rows, {"OLD": "Failed"})
+		push.assert_called_once()
+
+	def test_success_already_used_on_another_sale_allows_a_new_prompt(self):
+		rows = [frappe._dict(name="OLD", status="Success", invoice="POS-0009", amount=100)]
+		_result, push = self._send(rows)
+		push.assert_called_once()
+
+	def test_simultaneous_second_click_is_refused(self):
+		result, push = self._send([], lock_free=False)
+		push.assert_not_called()
+		self.assertFalse(result["success"])
+		self.assertEqual(result["error_code"], "MPESA_PROMPT_IN_PROGRESS")
+
+
+class TestOneRecordPerReceipt(unittest.TestCase):
+	"""Fix 2: the same M-Pesa payment is recorded once, even when Safaricom reports it twice."""
+
+	def _take(self, twin):
+		log = FakeDoc(name="STK-1", status="Success")
+		with (
+			patch.object(frappe.db, "get_value", return_value=twin),
+			patch.object(frappe, "delete_doc") as delete,
+		):
+			payment_callbacks._take_receipt(log, "RCT1")
+		return log, delete
+
+	def test_receipt_is_recorded(self):
+		log, delete = self._take(None)
+		self.assertEqual(log.mpesa_receipt_number, "RCT1")
+		delete.assert_not_called()
+
+	def test_unused_direct_payment_twin_is_merged(self):
+		twin = frappe._dict(name="C2B-1", transaction_type="C2B", invoice=None, invoice_type=None)
+		log, delete = self._take(twin)
+		delete.assert_called_once_with("MPESA Transaction Log", "C2B-1", ignore_permissions=True, force=True)
+		self.assertEqual(log.mpesa_receipt_number, "RCT1")
+
+	def test_twin_already_used_marks_this_record_used(self):
+		twin = frappe._dict(
+			name="C2B-1", transaction_type="C2B", invoice="POS-0003", invoice_type="POS Invoice"
+		)
+		log, delete = self._take(twin)
+		delete.assert_not_called()
+		self.assertEqual(log.invoice, "POS-0003")
+		self.assertIsNone(log.mpesa_receipt_number)
+
+	def _confirm(self, exists, insert_error=None):
+		log = FakeDoc()
+		if insert_error:
+			log.insert = MagicMock(side_effect=insert_error)
+		request = MagicMock()
+		request.get_data.return_value = json.dumps(
+			{"TransID": "rct1", "TransAmount": "100", "MSISDN": "254712345678"}
+		)
+		with (
+			patch.object(frappe, "request", request),
+			patch.object(frappe, "response", frappe._dict()),
+			patch.object(payment_callbacks, "_company_for_mpesa_token", return_value=("Shop A", "MPS-1")),
+			patch.object(frappe.db, "exists", return_value=exists) as exists_check,
+			patch.object(frappe, "new_doc", return_value=log) as new_doc,
+			patch.object(frappe.db, "commit"),
+			patch.object(frappe.db, "rollback") as rollback,
+		):
+			payment_callbacks.daraja_c2b_confirmation(t="tok")
+			reply = dict(frappe.response)
+		return reply, new_doc, rollback, exists_check
+
+	def test_direct_payment_already_known_is_not_recorded_again(self):
+		reply, new_doc, _rollback, exists_check = self._confirm(exists="STK-1")
+		new_doc.assert_not_called()
+		self.assertEqual(reply["ResultCode"], 0)
+		# Looked up across the whole log, not only this company's direct payments
+		self.assertEqual(exists_check.call_args.args[1], {"mpesa_receipt_number": "RCT1"})
+
+	def test_two_copies_arriving_together_save_once(self):
+		reply, _new_doc, rollback, _exists = self._confirm(
+			exists=None, insert_error=frappe.UniqueValidationError("dup")
+		)
+		rollback.assert_called_once()
+		self.assertEqual(reply["ResultCode"], 0)
+
+
+class TestPaymentLockedWhileSaleSaves(unittest.TestCase):
+	"""Fix 3: two sales cannot both use one payment, even at the same instant."""
+
+	def _lock(self, rows):
+		calls = []
+
+		def get_value(doctype, name, fields, as_dict=False, for_update=False):
+			calls.append((doctype, name, for_update))
+			return rows.get(name)
+
+		with patch.object(frappe.db, "get_value", side_effect=get_value):
+			payment_gateway_api.lock_gateway_payments(
+				[("POS Gateway Transaction", "PGT-2"), ("MPESA Transaction Log", "LOG-1")]
+			)
+		return calls
+
+	def test_free_payments_are_locked_in_a_fixed_order(self):
+		ok = frappe._dict(status="Success", invoice=None)
+		calls = self._lock({"PGT-2": ok, "LOG-1": ok})
+		self.assertEqual(
+			calls, [("MPESA Transaction Log", "LOG-1", True), ("POS Gateway Transaction", "PGT-2", True)]
+		)
+
+	def test_payment_taken_by_another_sale_meanwhile_is_refused(self):
+		with self.assertRaises(frappe.ValidationError):
+			self._lock(
+				{
+					"LOG-1": frappe._dict(status="Success", invoice="POS-0001"),
+					"PGT-2": frappe._dict(status="Success", invoice=None),
+				}
+			)
+
+	def test_payment_no_longer_successful_is_refused(self):
+		with self.assertRaises(frappe.ValidationError):
+			self._lock({"LOG-1": frappe._dict(status="Cancelled", invoice=None)})
+
+
+class TestRetriedSaleReturnsTheOriginal(unittest.TestCase):
+	"""Fix 4: a sale retried after a lost reply gets the invoice already created."""
+
+	def setUp(self):
+		frappe.cache().delete_value("techsavanna_pos:sale_ref:Shop A:POS1")
+
+	def test_remembered_sale_is_found(self):
+		payment_gateway_api.remember_sale("Shop A", "POS1", "POS Invoice", "POS-0001")
+		with patch.object(frappe.db, "get_value", return_value=1):
+			self.assertEqual(
+				payment_gateway_api.find_recorded_sale("Shop A", "POS1"), ("POS Invoice", "POS-0001")
+			)
+
+	def test_cancelled_or_missing_sale_counts_as_new(self):
+		payment_gateway_api.remember_sale("Shop A", "POS1", "POS Invoice", "POS-0001")
+		for docstatus in (2, None):
+			with patch.object(frappe.db, "get_value", return_value=docstatus):
+				self.assertIsNone(payment_gateway_api.find_recorded_sale("Shop A", "POS1"))
+
+	def test_no_reference_means_no_lookup(self):
+		self.assertIsNone(payment_gateway_api.find_recorded_sale("Shop A", None))
+
+	def test_other_business_cannot_see_the_sale(self):
+		payment_gateway_api.remember_sale("Shop A", "POS1", "POS Invoice", "POS-0001")
+		with patch.object(frappe.db, "get_value", return_value=1):
+			self.assertIsNone(payment_gateway_api.find_recorded_sale("Shop B", "POS1"))
+
+	def test_losing_the_race_returns_the_winning_sale(self):
+		from techsavanna_pos.api import sales_api
+
+		payment_gateway_api.remember_sale("Shop A", "POS1", "POS Invoice", "POS-0001")
+		invoice = FakeDoc(
+			name="POS-0001",
+			customer="Walk-in",
+			company="Shop A",
+			posting_date="2026-10-08",
+			grand_total=100,
+			docstatus=1,
+		)
+		with (
+			patch.object(
+				payment_gateway_api, "lock_gateway_payments", side_effect=frappe.ValidationError("used")
+			),
+			patch.object(frappe.db, "get_value", return_value=1),
+			patch.object(frappe, "get_doc", return_value=invoice),
+		):
+			result = sales_api._lock_gateway_payments_or_recorded(
+				[("MPESA Transaction Log", "LOG-1")], "Shop A", "POS1"
+			)
+		self.assertTrue(result["duplicate"])
+		self.assertEqual(result["data"]["name"], "POS-0001")
+
+	def test_refusal_without_an_earlier_sale_stands(self):
+		from techsavanna_pos.api import sales_api
+
+		with patch.object(
+			payment_gateway_api, "lock_gateway_payments", side_effect=frappe.ValidationError("used")
+		):
+			with self.assertRaises(frappe.ValidationError):
+				sales_api._lock_gateway_payments_or_recorded(
+					[("MPESA Transaction Log", "LOG-1")], "Shop A", "POS9"
+				)
+
+
 if __name__ == "__main__":
 	unittest.main()
