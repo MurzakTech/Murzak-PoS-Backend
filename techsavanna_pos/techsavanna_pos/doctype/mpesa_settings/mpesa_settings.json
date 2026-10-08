@@ -15,6 +15,7 @@
   "column_break_1",
   "shortcode",
   "shortcode_type",
+  "till_number",
   "credentials_section",
   "consumer_key",
   "consumer_secret",
@@ -22,6 +23,7 @@
   "column_break_2",
   "initiator_name",
   "initiator_password",
+  "security_credential",
   "callback_urls_section",
   "stk_callback_url",
   "b2c_result_url",
@@ -38,6 +40,10 @@
   "auto_confirm_payments",
   "payment_timeout",
   "test_phone_number",
+  "allow_manual_code",
+  "enable_c2b",
+  "c2b_registered_on",
+  "callback_token",
   "token_management_section",
   "access_token",
   "token_expiry",
@@ -96,6 +102,13 @@
    "reqd": 1
   },
   {
+   "fieldname": "till_number",
+   "fieldtype": "Data",
+   "label": "Till Number",
+   "depends_on": "eval:doc.shortcode_type=='BuyGoods'",
+   "description": "For Buy Goods: the till customers pay into. The Business Shortcode above is then the store (head office) number. Leave empty if they are the same."
+  },
+  {
    "fieldname": "credentials_section",
    "fieldtype": "Section Break",
    "label": "Daraja Credentials"
@@ -135,6 +148,13 @@
    "description": "Required for B2C and B2B payments"
   },
   {
+   "fieldname": "security_credential",
+   "fieldtype": "Password",
+   "label": "Security Credential",
+   "length": 1024,
+   "description": "Only for B2C/B2B payouts. Generate it on the Daraja portal from the initiator password."
+  },
+  {
    "fieldname": "callback_urls_section",
    "fieldtype": "Section Break",
    "label": "Callback URLs"
@@ -143,19 +163,19 @@
    "fieldname": "stk_callback_url",
    "fieldtype": "Data",
    "label": "STK Callback URL",
-   "description": "URL for STK Push callbacks (must be HTTPS)"
+   "description": "Leave empty: the POS builds this address automatically from the site URL."
   },
   {
    "fieldname": "b2c_result_url",
    "fieldtype": "Data",
    "label": "B2C Result URL",
-   "description": "URL for B2C result callbacks (must be HTTPS)"
+   "description": "Leave empty to use the automatic address."
   },
   {
    "fieldname": "b2c_timeout_url",
    "fieldtype": "Data",
    "label": "B2C Timeout URL",
-   "description": "URL for B2C timeout callbacks (must be HTTPS)"
+   "description": "Leave empty to use the automatic address."
   },
   {
    "fieldname": "column_break_3",
@@ -165,13 +185,13 @@
    "fieldname": "b2b_result_url",
    "fieldtype": "Data",
    "label": "B2B Result URL",
-   "description": "URL for B2B result callbacks (must be HTTPS)"
+   "description": "Leave empty to use the automatic address."
   },
   {
    "fieldname": "b2b_timeout_url",
    "fieldtype": "Data",
    "label": "B2B Timeout URL",
-   "description": "URL for B2B timeout callbacks (must be HTTPS)"
+   "description": "Leave empty to use the automatic address."
   },
   {
    "fieldname": "configuration_section",
@@ -228,6 +248,34 @@
    "description": "Test phone number for sandbox testing (format: 254712345678)"
   },
   {
+   "default": "1",
+   "fieldname": "allow_manual_code",
+   "fieldtype": "Check",
+   "label": "Allow Cashier To Enter M-Pesa Code",
+   "description": "When the phone prompt fails, the cashier can record the code from the customer's M-Pesa message."
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_c2b",
+   "fieldtype": "Check",
+   "label": "Receive Direct Till Payments",
+   "description": "Show payments customers make straight to the till or paybill so the cashier can match them by code."
+  },
+  {
+   "fieldname": "c2b_registered_on",
+   "fieldtype": "Datetime",
+   "label": "Direct Payments Registered On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "callback_token",
+   "fieldtype": "Data",
+   "label": "Callback Token",
+   "read_only": 1,
+   "hidden": 1,
+   "no_copy": 1
+  },
+  {
    "fieldname": "token_management_section",
    "fieldtype": "Section Break",
    "label": "Token Management",
@@ -259,7 +307,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-01-01 00:00:00",
+ "modified": "2026-10-08 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Techsavanna POS",
  "name": "MPESA Settings",
@@ -303,4 +351,3 @@
  "states": [],
  "title_field": "company"
 }
-

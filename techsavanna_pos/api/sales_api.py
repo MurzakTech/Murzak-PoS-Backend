@@ -657,6 +657,12 @@ def _build_invoice_items(items: List[Dict], company: str) -> List[Dict]:
     return built_items
 
 
+def _payment_row_has_reference(doctype: str) -> bool:
+    """Sales Invoice Payment has reference_no on current ERPNext; older versions may not."""
+    child = frappe.get_meta(doctype).get_field("payments")
+    return bool(child and frappe.get_meta(child.options).has_field("reference_no"))
+
+
 def _create_invoice_document(
     doctype: str,
     customer: str,
@@ -721,15 +727,16 @@ def _create_invoice_document(
                     _("mode_of_payment is required for all payment rows"),
                     frappe.ValidationError,
                 )
-            doc.append(
-                "payments",
-                {
-                    "mode_of_payment": mode_of_payment,
-                    "amount": flt(p.get("amount", 0)),
-                    "base_amount": flt(p.get("base_amount", p.get("amount", 0))),
-                    "account": p.get("account"),
-                },
-            )
+            payment_row = {
+                "mode_of_payment": mode_of_payment,
+                "amount": flt(p.get("amount", 0)),
+                "base_amount": flt(p.get("base_amount", p.get("amount", 0))),
+                "account": p.get("account"),
+            }
+            # M-Pesa code, gateway confirmation or bank transfer reference, when the row has one
+            if p.get("reference_no") and _payment_row_has_reference(doctype):
+                payment_row["reference_no"] = str(p["reference_no"])[:140]
+            doc.append("payments", payment_row)
 
     return doc
 
@@ -785,6 +792,15 @@ def create_sales_invoice(
             else:
                 parsed_payments = payments  # type: ignore[assignment]
 
+        # Gateway payments (M-Pesa, Pesapal, PayPal) must be real, successful and unused
+        from techsavanna_pos.api.payment_gateway_api import (
+            mark_gateway_payments_used,
+            validate_gateway_payments,
+        )
+
+        company = company or _get_default_company()
+        gateway_claims = validate_gateway_payments(parsed_payments, company) if company else []
+
         si = _create_invoice_document(
             doctype="Sales Invoice",
             customer=customer,
@@ -827,6 +843,8 @@ def create_sales_invoice(
 
         if not do_not_submit:
             si.submit()
+
+        mark_gateway_payments_used(gateway_claims, "Sales Invoice", si.name)
 
         return {
             "success": True,
@@ -928,6 +946,14 @@ def create_pos_invoice(
 
         receivable_account = _resolve_receivable_account(customer, company, throw_if_missing=True)
 
+        # Gateway payments (M-Pesa, Pesapal, PayPal) must be real, successful and unused
+        from techsavanna_pos.api.payment_gateway_api import (
+            mark_gateway_payments_used,
+            validate_gateway_payments,
+        )
+
+        gateway_claims = validate_gateway_payments(parsed_payments, company)
+
         # Ensure every payment row has an account; allow opt-in mapping to receivables
         # Determine invoice type with company override; default to POS Invoice when not set
         invoice_type = _get_invoice_type(company)
@@ -1024,7 +1050,9 @@ def create_pos_invoice(
                 # Reload document from database to ensure we have the latest state
                 si = frappe.get_doc("Sales Invoice", si.name)
                 si.submit()
-            
+
+            mark_gateway_payments_used(gateway_claims, "Sales Invoice", si.name)
+
             return {
                 "success": True,
                 "message": _("POS Invoice created successfully (as Sales Invoice)"),
@@ -1092,6 +1120,8 @@ def create_pos_invoice(
             # This ensures the overridden POS Invoice class is properly used
             pi = frappe.get_doc("POS Invoice", pi.name)
             pi.submit()
+
+        mark_gateway_payments_used(gateway_claims, "POS Invoice", pi.name)
 
         return {
             "success": True,

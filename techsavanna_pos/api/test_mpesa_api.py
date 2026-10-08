@@ -162,7 +162,7 @@ class TestMpesaAPI(FrappeTestCase):
 	
 	def test_stk_callback_idempotency(self):
 		"""Test STK callback idempotency"""
-		from techsavanna_pos.api.mpesa_api import stk_callback
+		from techsavanna_pos.api.payment_callbacks import process_stk_callback
 		
 		# Create test transaction
 		transaction = frappe.new_doc("MPESA Transaction Log")
@@ -194,15 +194,14 @@ class TestMpesaAPI(FrappeTestCase):
 			}
 		}
 		
-		# Mock request
-		with patch('frappe.request') as mock_request:
-			mock_request.get_json.return_value = callback_data
-			mock_request.is_json = True
-			
-			result = stk_callback()
-			
-			# Should return success (idempotent)
-			self.assertEqual(result["ResultCode"], 0)
+		# Delivering the callback twice records the receipt once and changes nothing else
+		callback = callback_data["Body"]["stkCallback"]
+		process_stk_callback(transaction.name, callback, callback_data)
+		process_stk_callback(transaction.name, callback, callback_data)
+
+		transaction.reload()
+		self.assertEqual(transaction.status, "Success")
+		self.assertEqual(transaction.mpesa_receipt_number, "RCT123456")
 	
 	def tearDown(self):
 		"""Clean up test data"""

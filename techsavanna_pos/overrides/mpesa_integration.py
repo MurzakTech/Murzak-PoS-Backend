@@ -63,6 +63,7 @@ def add_mpesa_to_pos_profile(pos_profile: str, company: str) -> None:
                 "default": 0,
                 "allow_in_returns": 1
             })
+            pos_profile_doc.flags.ignore_gateway_hook = True
             pos_profile_doc.save(ignore_permissions=True)
             frappe.db.commit()
             
@@ -107,8 +108,11 @@ def initiate_mpesa_payment_from_invoice(
     except frappe.DoesNotExistError:
         frappe.throw(_("Invoice {0} not found").format(invoice_name), frappe.ValidationError)
     
-    # Get company
+    # Get company, refusing invoices of other businesses
     company = invoice.company
+    from techsavanna_pos.api.payment_gateway_common import ensure_record_company, normalize_kenyan_phone
+
+    ensure_record_company(company)
     
     # Get phone number
     if not phone_number:
@@ -130,17 +134,15 @@ def initiate_mpesa_payment_from_invoice(
                 frappe.ValidationError
             )
     
-    # Validate phone number format
-    if not phone_number.startswith("254") or len(phone_number) != 12 or not phone_number[3:].isdigit():
-        frappe.throw(
-            _("Invalid phone number format. Use MSISDN format: 254712345678"),
-            frappe.ValidationError
-        )
-    
+    phone_number = normalize_kenyan_phone(phone_number)
+
+    if invoice.docstatus != 1:
+        frappe.throw(_("Submit the invoice before collecting payment for it"), frappe.ValidationError)
+
     # Get amount (outstanding amount or grand total)
-    amount = invoice.outstanding_amount or invoice.grand_total
-    
-    if amount <= 0:
+    amount = invoice.outstanding_amount
+
+    if not amount or amount <= 0:
         frappe.throw(_("Invoice has no outstanding amount"), frappe.ValidationError)
     
     # Generate reference
@@ -160,7 +162,9 @@ def initiate_mpesa_payment_from_invoice(
         reference=reference,
         description=description,
         invoice_type=invoice_type,
-        invoice_name=invoice_name
+        invoice_name=invoice_name,
+        # Record the money against the invoice when the customer pays
+        settle_invoice=1 if invoice_type == "Sales Invoice" else 0,
     )
     
     return result
@@ -170,9 +174,14 @@ def on_pos_profile_update(doc: Document, method: str = None) -> None:
     """
     Hook: When POS Profile is updated, ensure MPESA is in payment methods
     """
+    if doc.flags.ignore_gateway_hook:
+        return
     try:
         if doc.company:
             add_mpesa_to_pos_profile(doc.name, doc.company)
+            from techsavanna_pos.api.payment_gateway_api import add_gateway_modes_to_pos_profile
+
+            add_gateway_modes_to_pos_profile(doc.name, doc.company)
     except Exception as e:
         frappe.log_error(
             f"Error in on_pos_profile_update hook: {str(e)}",

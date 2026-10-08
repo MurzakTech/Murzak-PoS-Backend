@@ -50,7 +50,21 @@ class TestMpesaTransactionLog(FrappeTestCase):
 			transaction.validate()
 	
 	def test_validate_stk_identifiers(self):
-		"""Test STK Push requires checkout_request_id"""
+		"""A successful STK Push requires checkout_request_id"""
+		transaction = frappe.new_doc("MPESA Transaction Log")
+		transaction.company = "_Test Company"
+		transaction.transaction_type = "STK Push"
+		transaction.phone_number = "254712345678"
+		transaction.amount = 100.00
+		transaction.reference_number = "TEST-001"
+		transaction.status = "Success"
+		# Missing checkout_request_id
+
+		with self.assertRaises(frappe.ValidationError):
+			transaction.validate()
+
+	def test_pending_stk_without_identifiers_is_allowed(self):
+		"""The log is written before Safaricom answers, so a pending record has no ids yet"""
 		transaction = frappe.new_doc("MPESA Transaction Log")
 		transaction.company = "_Test Company"
 		transaction.transaction_type = "STK Push"
@@ -58,10 +72,8 @@ class TestMpesaTransactionLog(FrappeTestCase):
 		transaction.amount = 100.00
 		transaction.reference_number = "TEST-001"
 		transaction.status = "Pending"
-		# Missing checkout_request_id
-		
-		with self.assertRaises(frappe.ValidationError):
-			transaction.validate()
+
+		transaction.validate()
 	
 	def test_validate_b2c_identifiers(self):
 		"""Test B2C requires conversation_id"""
@@ -71,7 +83,7 @@ class TestMpesaTransactionLog(FrappeTestCase):
 		transaction.phone_number = "254712345678"
 		transaction.amount = 100.00
 		transaction.reference_number = "TEST-001"
-		transaction.status = "Pending"
+		transaction.status = "Success"
 		# Missing conversation_id
 		
 		with self.assertRaises(frappe.ValidationError):
