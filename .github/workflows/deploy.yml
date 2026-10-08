@@ -2,6 +2,12 @@ name: Deploy Backend
 on:
   push:
     branches: [main]
+
+# Never run two deploys at the same time: the second waits for the first
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -11,10 +17,37 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 20m
           script: |
+            # Stop at the first failing command, so a failed deploy shows red instead of green
+            set -e
+
             cd ~/frappe-bench/apps/techsavanna_pos
-            git pull origin main
+
+            # The server must be on main with no edits of its own; otherwise refuse and say why
+            branch="$(git rev-parse --abbrev-ref HEAD)"
+            if [ "$branch" != "main" ]; then
+              echo "::error::Server is on branch '$branch', not main. Run 'git checkout main' on the server, then re-run this deploy."
+              exit 1
+            fi
+            if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+              echo "::error::Server has uncommitted edits in techsavanna_pos. Commit or discard them on the server, then re-run this deploy."
+              git status --short --untracked-files=no
+              exit 1
+            fi
+
+            # Move forward to exactly what is on GitHub, never merge or rewrite
+            git fetch origin main
+            if ! git merge --ff-only origin/main; then
+              echo "::error::Server's main has commits that are not on GitHub. Push or remove them on the server, then re-run this deploy."
+              git log --oneline origin/main..HEAD
+              exit 1
+            fi
+            echo "Deploying $(git log --oneline -1)"
+
             cd ~/frappe-bench
             bench --site api.pos.murzaktech.tech migrate
             bench build --app techsavanna_pos
             bench restart
+
+            echo "Deployed techsavanna_pos $(git -C apps/techsavanna_pos rev-parse --short HEAD) to api.pos.murzaktech.tech"
