@@ -13,6 +13,9 @@ import frappe
 from frappe import _
 from frappe.utils import flt, nowdate, getdate, add_days, add_months, get_first_day, get_last_day
 from frappe.query_builder import DocType, functions as fn
+from pypika.terms import Case
+
+from techsavanna_pos.api.profit_calc import summarize_profit
 
 
 def _get_default_company() -> Optional[str]:
@@ -113,6 +116,7 @@ def get_dashboard_metrics(
         stats.update(_get_purchase_stats(filters, warehouse_filter, company))
         stats.update(_get_financial_stats(filters, company))
         stats.update(_get_additional_metrics(filters, warehouse_filter, company))
+        stats.update(_get_profit_stats(filters, warehouse_filter, stats.get("totalExpense", 0.0)))
         
         # Get time series data
         sales_last_30_days = _get_daily_sales_data(filters, warehouse_filter, company)
@@ -406,8 +410,6 @@ def _get_financial_stats(filters: Dict, company: str) -> Dict:
     """Get financial statistics (outstanding invoices, expenses)."""
     SalesInvoice = DocType("Sales Invoice")
     PurchaseInvoice = DocType("Purchase Invoice")
-    JournalEntry = DocType("Journal Entry")
-    JournalEntryAccount = DocType("Journal Entry Account")
     
     # Outstanding Sales Invoices
     outstanding_query = (
@@ -436,33 +438,8 @@ def _get_financial_stats(filters: Dict, company: str) -> Dict:
     )
     invoices_due_count = int(count_result[0].get("count")) if count_result and count_result[0].get("count") else 0
     
-    # Total Expenses (from Journal Entries - expense accounts)
-    # This is a simplified calculation - you may want to refine this
-    expense_query = (
-        frappe.qb.from_(JournalEntry)
-        .join(JournalEntryAccount)
-        .on(JournalEntry.name == JournalEntryAccount.parent)
-        .where(JournalEntry.docstatus == 1)
-        .where(JournalEntryAccount.account_type == "Expense")
-    )
-    
-    if filters.get("company"):
-        expense_query = expense_query.where(JournalEntry.company == filters["company"])
-    if filters.get("posting_date"):
-        if isinstance(filters["posting_date"], list) and filters["posting_date"][0] == "between":
-            expense_query = expense_query.where(
-                JournalEntry.posting_date.between(
-                    filters["posting_date"][1][0],
-                    filters["posting_date"][1][1]
-                )
-            )
-    
-    expense_result = (
-        expense_query
-        .select(fn.Sum(JournalEntryAccount.debit - JournalEntryAccount.credit).as_("total"))
-        .run(as_dict=True)
-    )
-    total_expense = flt(expense_result[0].get("total")) if expense_result and expense_result[0].get("total") else 0.0
+    # Operating expenses from the general ledger (see _get_operating_expenses)
+    total_expense = _get_operating_expenses(filters, company)
     
     return {
         "invoicesDue": invoices_due,
@@ -472,9 +449,8 @@ def _get_financial_stats(filters: Dict, company: str) -> Dict:
 
 
 def _get_additional_metrics(filters: Dict, warehouse_filter: Dict, company: str) -> Dict:
-    """Get additional metrics like profit margin and average transaction."""
+    """Get additional metrics such as the average transaction value."""
     SalesInvoice = DocType("Sales Invoice")
-    SalesInvoiceItem = DocType("Sales Invoice Item")
     
     # Base query
     base_query = (
@@ -504,53 +480,140 @@ def _get_additional_metrics(filters: Dict, warehouse_filter: Dict, company: str)
     )
     average_transaction = flt(avg_result[0].get("avg")) if avg_result and avg_result[0].get("avg") else 0.0
     
-    # Profit Margin Calculation (simplified - based on net sales vs cost)
-    # This is a basic calculation - you may need to refine based on your cost calculation method
-    net_sales_result = (
-        base_query
-        .select(fn.Sum(SalesInvoice.base_net_total).as_("total"))
-        .run(as_dict=True)
-    )
-    net_sales = flt(net_sales_result[0].get("total")) if net_sales_result and net_sales_result[0].get("total") else 0.0
-    
-    # Get total cost from items (if available)
-    cost_query = (
-        frappe.qb.from_(SalesInvoice)
-        .join(SalesInvoiceItem)
-        .on(SalesInvoice.name == SalesInvoiceItem.parent)
-        .where(SalesInvoice.docstatus == 1)
-        .where(SalesInvoice.is_return == 0)
-    )
-    
-    if filters.get("company"):
-        cost_query = cost_query.where(SalesInvoice.company == filters["company"])
-    if filters.get("owner"):
-        cost_query = cost_query.where(SalesInvoice.owner == filters["owner"])
-    if warehouse_filter.get("warehouse"):
-        cost_query = cost_query.where(SalesInvoiceItem.warehouse == warehouse_filter["warehouse"])
-    if filters.get("posting_date"):
-        if isinstance(filters["posting_date"], list) and filters["posting_date"][0] == "between":
-            cost_query = cost_query.where(
-                SalesInvoice.posting_date.between(
-                    filters["posting_date"][1][0],
-                    filters["posting_date"][1][1]
-                )
-            )
-    
-    # Calculate profit margin (simplified - using valuation rate if available)
-    # Note: This is a simplified calculation. You may need to adjust based on your costing method
-    profit_margin = 0.0
-    if net_sales > 0:
-        # This is a placeholder - adjust based on your actual cost calculation
-        # You might need to get actual cost from Stock Ledger Entry or Item Valuation
-        estimated_cost = net_sales * 0.7  # Placeholder - 70% cost assumption
-        profit = net_sales - estimated_cost
-        profit_margin = (profit / net_sales) * 100 if net_sales > 0 else 0.0
-    
+    # profitMargin comes from _get_profit_stats, which uses real costs
     return {
-        "profitMargin": round(profit_margin, 2),
         "averageTransaction": round(average_transaction, 2),
     }
+
+
+def _apply_date_filter(query, field, filters: Dict):
+    """Apply the posting_date filter built by _build_base_filters, in any of its three forms."""
+    date_filter = filters.get("posting_date")
+    if not date_filter:
+        return query
+    if isinstance(date_filter, list):
+        op, value = date_filter[0], date_filter[1]
+        if op == "between":
+            return query.where(field.between(value[0], value[1]))
+        if op == ">=":
+            return query.where(field >= value)
+        if op == "<=":
+            return query.where(field <= value)
+        return query
+    return query.where(field >= date_filter)
+
+
+# Expense account types that are not operating expenses: the cost of stock sold is
+# worked out separately (counting it here too would subtract it twice), and the rest
+# are stock valuation and rounding entries.
+NON_OPERATING_EXPENSE_TYPES = (
+    "Cost of Goods Sold",
+    "Stock Adjustment",
+    "Expenses Included In Valuation",
+    "Expenses Included In Asset Valuation",
+    "Round Off",
+)
+
+
+def _get_operating_expenses(filters: Dict, company: Optional[str]) -> float:
+    """Operating expenses for the period: everything booked to expense accounts in the
+    general ledger (journal entries, supplier bills for rent or power, payments and so
+    on), except the cost of stock sold and stock valuation entries.
+
+    The previous version filtered Journal Entry Account.account_type == "Expense",
+    a value ERPNext never uses ("Expense Account", "Direct Expense" and so on are), so
+    expenses always came back as 0. Expenses are company-wide: they are not split by
+    store or staff member.
+    """
+    GLEntry = DocType("GL Entry")
+    Account = DocType("Account")
+
+    excluded_accounts = []
+    if company:
+        excluded_accounts = [
+            a for a in frappe.get_cached_value("Company", company, ["default_expense_account", "stock_adjustment_account"]) or [] if a
+        ]
+
+    query = (
+        frappe.qb.from_(GLEntry)
+        .join(Account)
+        .on(Account.name == GLEntry.account)
+        .where(GLEntry.is_cancelled == 0)
+        .where(Account.root_type == "Expense")
+        .where((Account.account_type.isnull()) | (Account.account_type.notin(NON_OPERATING_EXPENSE_TYPES)))
+    )
+    if company:
+        query = query.where(GLEntry.company == company)
+    if excluded_accounts:
+        query = query.where(GLEntry.account.notin(excluded_accounts))
+    query = _apply_date_filter(query, GLEntry.posting_date, filters)
+
+    result = query.select(fn.Sum(GLEntry.debit - GLEntry.credit).as_("total")).run(as_dict=True)
+    return flt(result[0].get("total")) if result and result[0].get("total") else 0.0
+
+
+def _get_profit_stats(filters: Dict, warehouse_filter: Dict, operating_expenses: float) -> Dict:
+    """Real profit for the dashboard, replacing the old fixed 70% cost assumption.
+
+    Sales and cost come from the same submitted Sales Invoice lines (returns included,
+    which reduce both), filtered by company, staff, store and period like the rest of
+    the dashboard. The arithmetic and its rules are in profit_calc.summarize_profit.
+    """
+    SalesInvoice = DocType("Sales Invoice")
+    SalesInvoiceItem = DocType("Sales Invoice Item")
+    Item = DocType("Item")
+
+    query = (
+        frappe.qb.from_(SalesInvoiceItem)
+        .join(SalesInvoice)
+        .on((SalesInvoice.name == SalesInvoiceItem.parent) & (SalesInvoiceItem.parenttype == "Sales Invoice"))
+        .left_join(Item)
+        .on(Item.name == SalesInvoiceItem.item_code)
+        .where(SalesInvoice.docstatus == 1)
+    )
+    if filters.get("company"):
+        query = query.where(SalesInvoice.company == filters["company"])
+    if filters.get("owner"):
+        query = query.where(SalesInvoice.owner == filters["owner"])
+    if warehouse_filter.get("warehouse"):
+        query = query.where(SalesInvoiceItem.warehouse == warehouse_filter["warehouse"])
+    query = _apply_date_filter(query, SalesInvoice.posting_date, filters)
+
+    rows = (
+        query.select(
+            SalesInvoiceItem.item_code,
+            SalesInvoiceItem.warehouse,
+            fn.Max(Item.is_stock_item).as_("is_stock_item"),
+            fn.Sum(SalesInvoiceItem.base_net_amount).as_("net_amount"),
+            fn.Sum(SalesInvoiceItem.stock_qty * SalesInvoiceItem.incoming_rate).as_("recorded_cost"),
+            fn.Sum(
+                Case().when(fn.Coalesce(SalesInvoiceItem.incoming_rate, 0) == 0, SalesInvoiceItem.stock_qty).else_(0)
+            ).as_("uncosted_qty"),
+        )
+        .groupby(SalesInvoiceItem.item_code, SalesInvoiceItem.warehouse)
+        .run(as_dict=True)
+    )
+
+    # Where no cost was recorded, use the current valuation: the store's first, then the item's
+    needs_rate = [r for r in rows if r.get("is_stock_item") and flt(r.get("uncosted_qty"))]
+    if needs_rate:
+        item_codes = list({r["item_code"] for r in needs_rate})
+        bin_rates = {
+            (b.item_code, b.warehouse): flt(b.valuation_rate)
+            for b in frappe.get_all(
+                "Bin",
+                filters={"item_code": ["in", item_codes]},
+                fields=["item_code", "warehouse", "valuation_rate"],
+            )
+        }
+        item_rates = {
+            i.name: flt(i.valuation_rate)
+            for i in frappe.get_all("Item", filters={"name": ["in", item_codes]}, fields=["name", "valuation_rate"])
+        }
+        for r in needs_rate:
+            r["fallback_rate"] = bin_rates.get((r["item_code"], r["warehouse"])) or item_rates.get(r["item_code"]) or 0.0
+
+    return summarize_profit(rows, operating_expenses)
 
 
 def _get_daily_sales_data(filters: Dict, warehouse_filter: Dict, company: str) -> List[Dict]:
