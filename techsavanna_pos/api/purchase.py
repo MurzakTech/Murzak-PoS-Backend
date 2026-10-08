@@ -99,7 +99,7 @@ def update_po_status_if_last_delivery(po_name):
 
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_purchase_order():
     """
     Create Purchase Order (Draft)
@@ -1292,7 +1292,7 @@ def get_grn_list(
 
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_purchase_invoice(reference_type, reference_name):
     """
     Creates a Purchase Invoice from a Purchase Order or Purchase Receipt.
@@ -2240,7 +2240,7 @@ def update_purchase_invoice(
         )
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_delivery_note_from_po(purchase_order_name):
     """
     Creates a Delivery Note from a Purchase Order
@@ -2297,7 +2297,7 @@ def create_delivery_note_from_po(purchase_order_name):
         }
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def pay_purchase_invoice(
     invoice_no: str,
     paid_amount: float = None,

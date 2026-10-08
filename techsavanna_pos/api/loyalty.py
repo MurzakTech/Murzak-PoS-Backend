@@ -904,7 +904,7 @@ def redeem_points(customer_id, points_to_redeem, company=None, reference_documen
         }
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_customer_loyalty_details(customer_id, company=None, invoice_amount=None):
     """
     Get customer's loyalty points details for redemption.
@@ -1036,7 +1036,7 @@ def get_customer_loyalty_details(customer_id, company=None, invoice_amount=None)
         }
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def calculate_loyalty_redemption(customer_id, points_to_redeem, invoice_amount=None, company=None):
     """
     Calculate loyalty points redemption amount and validate redemption.

@@ -294,7 +294,7 @@ def create_pos_delivery_note():
 
 
 # @frappe.whitelist(allow_guest=True, methods=["POST"])
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_stock_receipt():
     """
      Creates a Stock Entry of type 'Material Receipt'.
@@ -1893,7 +1893,7 @@ def cancel_stock_transfer_request():
         return error_response(f"Failed to cancel request: {str(e)}", 500)
     
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_stock_entry_old(
     stock_entry_type: str,
     items: Union[str, List[Dict]],
@@ -2042,7 +2042,7 @@ def create_stock_entry_old(
 # //////////////////////////////////////////REPORTS/////////////////////////////////////////
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def inventory_summary_report():
     """
     Returns an inventory summary report.
@@ -2067,7 +2067,7 @@ def inventory_summary_report():
     }
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def inventory_movement_report(start_date: str, end_date: str):
     """
     Returns a movement report based on the start and end date.
@@ -2091,7 +2091,7 @@ def inventory_movement_report(start_date: str, end_date: str):
         "data": data
     }
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def inventory_value_report():
     """
     Returns the total inventory value by warehouse.
@@ -2115,7 +2115,7 @@ def inventory_value_report():
 
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def stock_aging_report():
     """
     Returns a stock aging report based on the stock's age.
@@ -2157,7 +2157,7 @@ def stock_aging_report():
     }
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def create_stock_entry(
     stock_entry_type: str,
     items: Union[str, List[Dict]],
@@ -2339,7 +2339,7 @@ def check_user_permissions():
     
 
 
-@frappe.whitelist(allow_guest=True, methods=["POST"])  
+@frappe.whitelist(methods=["POST"])
 def confirm_receive_transfer(stock_entry_name):
     """
     Exposes the stock transfer process as an API.
