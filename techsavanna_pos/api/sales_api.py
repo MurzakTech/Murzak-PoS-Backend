@@ -29,6 +29,31 @@ def _get_default_company() -> Optional[str]:
     return company
 
 
+def _pos_settings_has_invoice_type() -> bool:
+    """POS Settings only has an invoice_type field in newer ERPNext releases.
+
+    Reading a field that does not exist makes Frappe queue "Field invoice_type does
+    not exist on POS Settings" for the user before it raises, so even when the
+    exception is caught the message still reaches the screen. Checking first avoids it.
+    """
+    return bool(frappe.get_meta("POS Settings").has_field("invoice_type"))
+
+
+def _get_pos_settings_invoice_type() -> Optional[str]:
+    """The global POS Settings invoice type, or None when this ERPNext has no such setting."""
+    if not _pos_settings_has_invoice_type():
+        return None
+    return frappe.db.get_single_value("POS Settings", "invoice_type")
+
+
+def _set_pos_settings_invoice_type(invoice_type: str) -> bool:
+    """Set the global POS Settings invoice type. Returns False when this ERPNext has no such setting."""
+    if not _pos_settings_has_invoice_type():
+        return False
+    frappe.db.set_single_value("POS Settings", "invoice_type", invoice_type)
+    return True
+
+
 def _get_invoice_type(company: Optional[str] = None) -> str:
     """
     Resolve invoice type with a company override stored in defaults.
@@ -40,17 +65,8 @@ def _get_invoice_type(company: Optional[str] = None) -> str:
         if override:
             return override
 
-    # Try to get invoice_type from POS Settings, handle case where field doesn't exist
-    try:
-        invoice_type = frappe.db.get_single_value("POS Settings", "invoice_type")
-        if invoice_type:
-            return invoice_type
-    except (frappe.exceptions.ValidationError, AttributeError, KeyError):
-        # Field doesn't exist on POS Settings, use default
-        pass
-
-    # Default to POS Invoice if field doesn't exist or is not set
-    return "POS Invoice"
+    # Then the global POS Settings value, on ERPNext versions that have it
+    return _get_pos_settings_invoice_type() or "POS Invoice"
 
 
 def _check_pos_opening_entry_has_invoices(start_date, end_date, pos_profile, user) -> bool:
@@ -69,11 +85,8 @@ def _check_pos_opening_entry_has_invoices(start_date, end_date, pos_profile, use
     """
     from frappe.query_builder import DocType, functions as fn
     
-    # Get invoice type from POS Settings
-    try:
-        invoice_doctype = frappe.db.get_single_value("POS Settings", "invoice_type")
-    except:
-        invoice_doctype = "POS Invoice"
+    # Invoice type from POS Settings (older ERPNext has no such setting: POS Invoice)
+    invoice_doctype = _get_pos_settings_invoice_type() or "POS Invoice"
     
     # Check Sales Invoice
     SalesInvoice = DocType("Sales Invoice")
@@ -124,7 +137,43 @@ def _check_pos_opening_entry_has_invoices(start_date, end_date, pos_profile, use
     return False
 
 
-def _get_or_create_pos_opening_entry(pos_profile: str, company: str, user: str = None) -> str:
+def _parse_opening_balances(balance_details) -> List[Dict]:
+    """Opening amounts as sent by the till (a list, or the same list as JSON text).
+
+    Previously create_pos_opening_entry accepted these but never used them, so every
+    shift started at 0 whatever cash the cashier counted into the drawer.
+    """
+    import json
+
+    if not balance_details:
+        return []
+    if isinstance(balance_details, str):
+        try:
+            balance_details = json.loads(balance_details)
+        except ValueError:
+            frappe.throw(_("Opening amounts could not be read. Please try again."), frappe.ValidationError)
+    if not isinstance(balance_details, list):
+        return []
+
+    rows = []
+    for row in balance_details:
+        if not isinstance(row, dict) or not row.get("mode_of_payment"):
+            continue
+        if not frappe.db.exists("Mode of Payment", row["mode_of_payment"]):
+            frappe.throw(
+                _("Payment method {0} does not exist.").format(frappe.bold(row["mode_of_payment"])),
+                frappe.ValidationError,
+            )
+        amount = flt(row.get("opening_amount"))
+        if amount < 0:
+            frappe.throw(_("Opening amounts cannot be negative."), frappe.ValidationError)
+        rows.append({"mode_of_payment": row["mode_of_payment"], "opening_amount": amount})
+    return rows
+
+
+def _get_or_create_pos_opening_entry(
+    pos_profile: str, company: str, user: str = None, balance_details: Optional[List[Dict]] = None
+) -> str:
     """
     Get an existing open POS Opening Entry for the POS Profile, or create one if none exists.
     Handles outdated opening entries by canceling them if they have no invoices.
@@ -133,6 +182,9 @@ def _get_or_create_pos_opening_entry(pos_profile: str, company: str, user: str =
         pos_profile: POS Profile name
         company: Company name
         user: User name (defaults to current user)
+        balance_details: Opening amounts counted by the cashier, as
+            [{"mode_of_payment": "Cash", "opening_amount": 5000}, ...]. Used for a new
+            entry; when omitted every method of the POS Profile starts at 0.
         
     Returns:
         POS Opening Entry name
@@ -240,16 +292,17 @@ def _get_or_create_pos_opening_entry(pos_profile: str, company: str, user: str =
                     title=_("Cannot Handle Outdated POS Opening Entry")
                 )
     
-    # No opening entry exists, create one with zero balances
+    # No opening entry exists: create one with the amounts the cashier counted,
+    # or zero balances for the POS Profile's payment methods
     pos_profile_doc = frappe.get_doc("POS Profile", pos_profile)
-    
-    # Get payment methods from POS Profile
-    balance_details = []
-    for payment in pos_profile_doc.payments:
-        balance_details.append({
-            "mode_of_payment": payment.mode_of_payment,
-            "opening_amount": 0.0
-        })
+
+    balance_details = _parse_opening_balances(balance_details)
+    if not balance_details:
+        for payment in pos_profile_doc.payments:
+            balance_details.append({
+                "mode_of_payment": payment.mode_of_payment,
+                "opening_amount": 0.0
+            })
     
     # If no payment methods, add a default Cash entry or get from POS Profile payments
     if not balance_details:
@@ -498,18 +551,9 @@ def _get_or_create_pos_profile(company: str) -> str:
         pos_profile_doc.insert(ignore_permissions=True)
         pos_profile_doc.save(ignore_permissions=True)
         
-        # Set POS Settings to use POS Invoice if not already set
-        # Handle case where invoice_type field doesn't exist on POS Settings
-        try:
-            current_invoice_type = frappe.db.get_single_value("POS Settings", "invoice_type")
-            if not current_invoice_type:
-                frappe.db.set_single_value("POS Settings", "invoice_type", "POS Invoice")
-        except (frappe.exceptions.ValidationError, AttributeError, KeyError):
-            # Field doesn't exist on POS Settings, continue without setting it
-            pass
-        except Exception:
-            # If POS Settings doesn't exist or can't be updated, continue
-            pass
+        # Set POS Settings to use POS Invoice if not already set (only where the setting exists)
+        if _pos_settings_has_invoice_type() and not _get_pos_settings_invoice_type():
+            _set_pos_settings_invoice_type("POS Invoice")
         
         return pos_profile_doc.name
     except Exception as e:
@@ -884,15 +928,10 @@ def create_pos_invoice(
         # Ensure every payment row has an account; allow opt-in mapping to receivables
         # Determine invoice type with company override; default to POS Invoice when not set
         invoice_type = _get_invoice_type(company)
-        # Try to align POS Settings to the resolved invoice type, but handle case where field doesn't exist
-        try:
-            current_global_invoice_type = frappe.db.get_single_value("POS Settings", "invoice_type")
-            if current_global_invoice_type != invoice_type:
-                # Align POS Settings to the resolved invoice type so ERPNext validation passes
-                frappe.db.set_single_value("POS Settings", "invoice_type", invoice_type)
-        except (frappe.exceptions.ValidationError, AttributeError, KeyError):
-            # Field doesn't exist on POS Settings, skip setting it
-            pass
+        # Align POS Settings to the resolved invoice type so ERPNext validation passes
+        # (only on ERPNext versions that have the setting)
+        if _pos_settings_has_invoice_type() and _get_pos_settings_invoice_type() != invoice_type:
+            _set_pos_settings_invoice_type(invoice_type)
 
         # Ensure every payment row has an account; allow receivable when POS behavior is intended
         parsed_payments = _apply_payment_accounts(
@@ -1594,11 +1633,7 @@ def set_pos_invoice_type(invoice_type: str, company: Optional[str] = None) -> Di
     if company:
         frappe.db.set_default(f"pos_invoice_type::{company}", invoice_type)
     else:
-        # Try to set POS Settings invoice_type, but handle case where field doesn't exist
-        try:
-            frappe.db.set_single_value("POS Settings", "invoice_type", invoice_type)
-        except (frappe.exceptions.ValidationError, AttributeError, KeyError):
-            # Field doesn't exist on POS Settings, throw error to inform user
+        if not _set_pos_settings_invoice_type(invoice_type):
             frappe.throw(
                 _("Cannot set invoice_type: Field 'invoice_type' does not exist on POS Settings doctype. Please use company-specific invoice type instead or add the field to POS Settings."),
                 frappe.ValidationError
@@ -2569,7 +2604,8 @@ def create_pos_opening_entry(
         opening_entry_name = _get_or_create_pos_opening_entry(
             pos_profile=pos_profile,
             company=company,
-            user=user
+            user=user,
+            balance_details=balance_details,
         )
         
         if not opening_entry_name:
