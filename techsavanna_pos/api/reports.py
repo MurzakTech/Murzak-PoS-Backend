@@ -12,7 +12,7 @@ from erpnext.accounts.report.profit_and_loss_statement.profit_and_loss_statement
 
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def inventory_summary_report(
     company: Optional[str] = None,
     warehouse: Optional[str] = None
@@ -84,7 +84,7 @@ def inventory_summary_report(
 
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def inventory_movement_report(
     start_date: str,
     end_date: str,
@@ -165,7 +165,7 @@ def inventory_movement_report(
 
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def stock_aging_report(
     slow_moving_threshold: Optional[float] = None,
     company: Optional[str] = None,
@@ -319,7 +319,7 @@ def stock_aging_report(
             "message": f"Error generating stock aging report: {str(e)}"
         }
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def inventory_value_report(
     company: Optional[str] = None,
     warehouse: Optional[str] = None
@@ -2340,7 +2340,7 @@ def inventory_transfer_efficiency_report(
 
 # ==================== GRN (GOODS RECEIPT NOTE) REPORTS ====================
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def grn_list_report(
     company: Optional[str] = None,
     supplier: Optional[str] = None,
@@ -2506,7 +2506,7 @@ def grn_list_report(
         }
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def grn_detail_report(grn_no: str) -> Dict:
     """
     Get detailed information for a specific GRN (Goods Receipt Note).

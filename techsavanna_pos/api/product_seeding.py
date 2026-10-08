@@ -150,7 +150,7 @@ def get_pos_industries(is_active: bool = False) -> Dict:
         }
 
 
-@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+@frappe.whitelist(methods=["GET", "POST"])
 def seed_products(industry):
     """
     Return all items for the given industry, the total count.
@@ -203,7 +203,7 @@ def seed_products(industry):
 
 
 
-@frappe.whitelist(allow_guest=True, methods=["POST"])
+@frappe.whitelist(methods=["POST"])
 def bulk_upload_products():
     """
     Load industry products from JSON file and insert into Industry Product Template.
@@ -847,7 +847,7 @@ def create_seed_item(company: str = None):
 
 
 
-@frappe.whitelist(allow_guest=True, methods=["POST"])
+@frappe.whitelist(methods=["POST"])
 def create_seed_item(company: str = None):
     """
     Create Items, Item Prices, and optionally update inventory from seed data.
