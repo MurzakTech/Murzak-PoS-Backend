@@ -657,6 +657,53 @@ def _build_invoice_items(items: List[Dict], company: str) -> List[Dict]:
     return built_items
 
 
+def _recorded_sale_response(doctype: str, name: str) -> Dict:
+    """Reply for a retried sale: the invoice that was already created, as if just created."""
+    doc = frappe.get_doc(doctype, name)
+    return {
+        "success": True,
+        "duplicate": True,
+        "message": _("This sale was already recorded as {0}").format(doc.name),
+        "data": {
+            "name": doc.name,
+            "customer": doc.customer,
+            "company": doc.company,
+            "posting_date": str(doc.posting_date),
+            "grand_total": flt(doc.get("grand_total")),
+            "rounded_total": flt(doc.get("rounded_total")),
+            "outstanding_amount": flt(doc.get("outstanding_amount")),
+            "docstatus": doc.docstatus,
+            "is_pos": bool(doc.get("is_pos")) if doctype == "Sales Invoice" else None,
+        },
+    }
+
+
+def _lock_gateway_payments_or_recorded(
+    gateway_claims: List, company: Optional[str], client_reference: Optional[str]
+) -> Optional[Dict]:
+    """
+    Lock the sale's gateway payments right before the invoice is saved (see
+    payment_gateway_api.lock_gateway_payments). When another copy of the same sale got there
+    first, return that sale instead of an error.
+    """
+    from techsavanna_pos.api.payment_gateway_api import find_recorded_sale, lock_gateway_payments
+
+    try:
+        lock_gateway_payments(gateway_claims)
+    except frappe.ValidationError:
+        recorded = find_recorded_sale(company, client_reference)
+        if recorded:
+            return _recorded_sale_response(*recorded)
+        raise
+    return None
+
+
+def _payment_row_has_reference(doctype: str) -> bool:
+    """Sales Invoice Payment has reference_no on current ERPNext; older versions may not."""
+    child = frappe.get_meta(doctype).get_field("payments")
+    return bool(child and frappe.get_meta(child.options).has_field("reference_no"))
+
+
 def _create_invoice_document(
     doctype: str,
     customer: str,
@@ -721,15 +768,16 @@ def _create_invoice_document(
                     _("mode_of_payment is required for all payment rows"),
                     frappe.ValidationError,
                 )
-            doc.append(
-                "payments",
-                {
-                    "mode_of_payment": mode_of_payment,
-                    "amount": flt(p.get("amount", 0)),
-                    "base_amount": flt(p.get("base_amount", p.get("amount", 0))),
-                    "account": p.get("account"),
-                },
-            )
+            payment_row = {
+                "mode_of_payment": mode_of_payment,
+                "amount": flt(p.get("amount", 0)),
+                "base_amount": flt(p.get("base_amount", p.get("amount", 0))),
+                "account": p.get("account"),
+            }
+            # M-Pesa code, gateway confirmation or bank transfer reference, when the row has one
+            if p.get("reference_no") and _payment_row_has_reference(doctype):
+                payment_row["reference_no"] = str(p["reference_no"])[:140]
+            doc.append("payments", payment_row)
 
     return doc
 
@@ -750,6 +798,7 @@ def create_sales_invoice(
     additional_discount_percentage: Optional[float] = None,
     discount_amount: Optional[float] = None,
     do_not_submit: bool = False,
+    client_reference: Optional[str] = None,
 ) -> Dict:
     """
     Create a Sales Invoice for standard or POS sales.
@@ -769,6 +818,8 @@ def create_sales_invoice(
         additional_discount_percentage: Additional discount percentage on net total
         discount_amount: Flat discount amount
         do_not_submit: If True, don't submit the document (draft only)
+        client_reference: The till's id for this sale. Sending the same id again (a retry after a
+            lost reply) returns the invoice already created instead of making a second one.
 
     Returns:
         dict: Created Sales Invoice details
@@ -784,6 +835,20 @@ def create_sales_invoice(
                 parsed_payments = json.loads(payments)
             else:
                 parsed_payments = payments  # type: ignore[assignment]
+
+        # Gateway payments (M-Pesa, Pesapal, PayPal) must be real, successful and unused
+        from techsavanna_pos.api.payment_gateway_api import (
+            find_recorded_sale,
+            mark_gateway_payments_used,
+            remember_sale,
+            validate_gateway_payments,
+        )
+
+        company = company or _get_default_company()
+        recorded = find_recorded_sale(company, client_reference)
+        if recorded:
+            return _recorded_sale_response(*recorded)
+        gateway_claims = validate_gateway_payments(parsed_payments, company) if company else []
 
         si = _create_invoice_document(
             doctype="Sales Invoice",
@@ -823,10 +888,17 @@ def create_sales_invoice(
             except Exception:
                 pass  # Continue if POS Profile doesn't exist or has no warehouse
 
+        recorded = _lock_gateway_payments_or_recorded(gateway_claims, company, client_reference)
+        if recorded:
+            return recorded
+
         si.insert(ignore_permissions=True)
 
         if not do_not_submit:
             si.submit()
+
+        mark_gateway_payments_used(gateway_claims, "Sales Invoice", si.name)
+        remember_sale(company, client_reference, "Sales Invoice", si.name)
 
         return {
             "success": True,
@@ -881,6 +953,7 @@ def create_pos_invoice(
     redeem_loyalty_points: Optional[bool] = False,
     loyalty_points: Optional[int] = None,
     do_not_submit: bool = False,
+    client_reference: Optional[str] = None,
 ) -> Dict:
     """
     Create a POS Invoice (used for walk-in POS sales).
@@ -901,6 +974,8 @@ def create_pos_invoice(
         redeem_loyalty_points: Whether to redeem loyalty points (default: False)
         loyalty_points: Number of loyalty points to redeem (required if redeem_loyalty_points is True)
         do_not_submit: If True, don't submit the document (draft only)
+        client_reference: The till's id for this sale. Sending the same id again (a retry after a
+            lost reply) returns the invoice already created instead of making a second one.
 
     Returns:
         dict: Created POS Invoice details
@@ -927,6 +1002,19 @@ def create_pos_invoice(
                 )
 
         receivable_account = _resolve_receivable_account(customer, company, throw_if_missing=True)
+
+        # Gateway payments (M-Pesa, Pesapal, PayPal) must be real, successful and unused
+        from techsavanna_pos.api.payment_gateway_api import (
+            find_recorded_sale,
+            mark_gateway_payments_used,
+            remember_sale,
+            validate_gateway_payments,
+        )
+
+        recorded = find_recorded_sale(company, client_reference)
+        if recorded:
+            return _recorded_sale_response(*recorded)
+        gateway_claims = validate_gateway_payments(parsed_payments, company)
 
         # Ensure every payment row has an account; allow opt-in mapping to receivables
         # Determine invoice type with company override; default to POS Invoice when not set
@@ -1016,6 +1104,10 @@ def create_pos_invoice(
                 # The loyalty_amount will be calculated automatically during document validation
                 # based on the loyalty program's conversion_factor
             
+            recorded = _lock_gateway_payments_or_recorded(gateway_claims, company, client_reference)
+            if recorded:
+                return recorded
+
             si.insert(ignore_permissions=True)
             
             _finalize_credit_and_outstanding(si, pos_profile_doc, receivable_account)
@@ -1024,7 +1116,10 @@ def create_pos_invoice(
                 # Reload document from database to ensure we have the latest state
                 si = frappe.get_doc("Sales Invoice", si.name)
                 si.submit()
-            
+
+            mark_gateway_payments_used(gateway_claims, "Sales Invoice", si.name)
+            remember_sale(company, client_reference, "Sales Invoice", si.name)
+
             return {
                 "success": True,
                 "message": _("POS Invoice created successfully (as Sales Invoice)"),
@@ -1083,6 +1178,10 @@ def create_pos_invoice(
             # The loyalty_amount will be calculated automatically during document validation
             # based on the loyalty program's conversion_factor
 
+        recorded = _lock_gateway_payments_or_recorded(gateway_claims, company, client_reference)
+        if recorded:
+            return recorded
+
         pi.insert(ignore_permissions=True)
 
         _finalize_credit_and_outstanding(pi, pos_profile_doc, receivable_account)
@@ -1092,6 +1191,9 @@ def create_pos_invoice(
             # This ensures the overridden POS Invoice class is properly used
             pi = frappe.get_doc("POS Invoice", pi.name)
             pi.submit()
+
+        mark_gateway_payments_used(gateway_claims, "POS Invoice", pi.name)
+        remember_sale(company, client_reference, "POS Invoice", pi.name)
 
         return {
             "success": True,

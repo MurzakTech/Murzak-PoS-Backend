@@ -16,6 +16,8 @@
   "phone_number",
   "amount",
   "reference_number",
+  "payer_name",
+  "settle_invoice",
   "mpesa_identifiers_section",
   "merchant_request_id",
   "checkout_request_id",
@@ -58,7 +60,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Transaction Type",
-   "options": "STK Push\nB2C\nB2B",
+   "options": "STK Push\nC2B\nB2C\nB2B",
    "reqd": 1
   },
   {
@@ -96,6 +98,18 @@
    "description": "Internal reference (e.g., invoice number)"
   },
   {
+   "fieldname": "payer_name",
+   "fieldtype": "Data",
+   "label": "Payer Name"
+  },
+  {
+   "default": "0",
+   "fieldname": "settle_invoice",
+   "fieldtype": "Check",
+   "label": "Settle Invoice On Success",
+   "description": "Create a Payment Entry against the linked Sales Invoice when the payment succeeds."
+  },
+  {
    "fieldname": "mpesa_identifiers_section",
    "fieldtype": "Section Break",
    "label": "MPESA Identifiers"
@@ -124,7 +138,8 @@
    "fieldname": "mpesa_receipt_number",
    "fieldtype": "Data",
    "label": "MPESA Receipt Number",
-   "description": "MPESA receipt number (on success)"
+   "description": "MPESA receipt number (on success)",
+   "unique": 1
   },
   {
    "fieldname": "daraja_response_section",
@@ -235,7 +250,7 @@
    "link_fieldname": "invoice"
   }
  ],
- "modified": "2024-01-01 00:00:00",
+ "modified": "2026-10-08 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "Techsavanna POS",
  "name": "MPESA Transaction Log",
@@ -281,4 +296,3 @@
  "states": [],
  "title_field": "reference_number"
 }
-

@@ -102,10 +102,9 @@ class TestMpesaClient(FrappeTestCase):
 		
 		self.assertEqual(token, "test_access_token_123")
 		
-		# Verify settings were updated
-		settings = frappe.get_doc("MPESA Settings", {"company": "_Test Company"})
-		self.assertEqual(settings.access_token, "test_access_token_123")
-		self.assertIsNotNone(settings.token_expiry)
+		# A second call uses the cached token instead of signing in again
+		self.assertEqual(get_access_token("_Test Company"), "test_access_token_123")
+		self.assertEqual(mock_get.call_count, 1)
 	
 	@patch('techsavanna_pos.api.mpesa_client.requests.get')
 	def test_get_access_token_authentication_error(self, mock_get):
@@ -210,14 +209,12 @@ class TestMpesaClient(FrappeTestCase):
 		mock_post.return_value = mock_query_response
 		
 		result = query_stk_status("_Test Company", "test_checkout_123")
-		
+
 		self.assertEqual(result["result_code"], 0)
-		self.assertEqual(result["mpesa_receipt_number"], "RCT123456")
-		
-		# Verify transaction was updated
+
+		# Verify transaction was updated (the receipt number only arrives with the callback)
 		transaction.reload()
 		self.assertEqual(transaction.status, "Success")
-		self.assertEqual(transaction.mpesa_receipt_number, "RCT123456")
 	
 	def tearDown(self):
 		"""Clean up test data"""

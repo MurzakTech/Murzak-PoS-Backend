@@ -1,5 +1,13 @@
 # MPESA Integration - Implementation Summary
 
+> **Update (October 2026):** a review found that this version could not take payments: the
+> callback endpoints listed below did not exist, secrets were read without decryption, every
+> STK log failed validation before the request was sent, and settings were not limited to the
+> user's company. These are fixed, and Pesapal, PayPal and bank payments were added. See
+> [docs/PAYMENT_GATEWAYS_GUIDE.md](docs/PAYMENT_GATEWAYS_GUIDE.md) for the current design;
+> callbacks now live in `techsavanna_pos/api/payment_callbacks.py`.
+
+
 ## Project Overview
 Complete multitenant MPESA (Daraja) payment integration for Techsavanna POS system, enabling STK Push, B2C, and B2B payments with automatic reconciliation and invoice updates.
 

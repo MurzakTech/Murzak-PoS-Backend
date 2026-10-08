@@ -26,12 +26,19 @@ MPESA_TIMEOUT = 1037
 # Result Code Messages
 RESULT_CODE_MESSAGES = {
     0: "Success",
-    1032: "User cancelled the transaction",
-    2001: "Insufficient funds in customer account",
-    1: "Insufficient balance",
-    17: "Invalid MSISDN format",
-    1037: "Transaction timeout"
+    1032: "The customer cancelled the M-Pesa prompt",
+    2001: "The customer entered the wrong M-Pesa PIN",
+    1: "The customer does not have enough money in M-Pesa",
+    17: "M-Pesa could not process this number",
+    1037: "The customer's phone could not be reached or they did not respond in time",
+    1001: "The customer has another M-Pesa payment in progress. Try again shortly",
+    1019: "The payment request expired before the customer completed it",
+    1025: "M-Pesa could not send the prompt. Try again",
+    9999: "M-Pesa could not send the prompt. Try again",
 }
+
+# Daraja STK query answers with these error codes while the customer has not responded yet
+MPESA_STILL_PROCESSING_CODES = {"500.001.1001"}
 
 # ============================================================================
 # Daraja API Endpoints
@@ -47,6 +54,7 @@ STK_PUSH_ENDPOINT = "/mpesa/stkpush/v1/processrequest"
 STK_PUSH_QUERY_ENDPOINT = "/mpesa/stkpushquery/v1/query"
 B2C_ENDPOINT = "/mpesa/b2c/v1/paymentrequest"
 B2B_ENDPOINT = "/mpesa/b2b/v1/paymentrequest"
+C2B_REGISTER_URL_ENDPOINT = "/mpesa/c2b/v2/registerurl"
 
 # ============================================================================
 # Transaction Types
