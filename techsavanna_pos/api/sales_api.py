@@ -5,6 +5,7 @@ Handles creation and querying of Sales Invoices and POS Invoices for SavvyPOS
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import Dict, List, Optional, Union
 
 import frappe
@@ -2933,6 +2934,7 @@ def close_pos_opening_entry(
             }
         
         opening_entry = frappe.get_doc("POS Opening Entry", pos_opening_entry)
+        _ensure_can_manage_shift(opening_entry)
         
         # Check if opening entry is open
         if opening_entry.status != "Open":
@@ -2959,6 +2961,15 @@ def close_pos_opening_entry(
             make_closing_entry_from_opening,
         )
         
+        # A failed earlier attempt leaves an unsubmitted closing entry behind; remove it so
+        # the shift is closed from one fresh entry with every receipt up to now
+        for draft in frappe.get_all(
+            "POS Closing Entry",
+            filters={"pos_opening_entry": opening_entry.name, "docstatus": 0},
+            pluck="name",
+        ):
+            frappe.delete_doc("POS Closing Entry", draft, ignore_permissions=True)
+
         # Create the closing entry
         closing_entry = make_closing_entry_from_opening(opening_entry)
         
@@ -2973,7 +2984,11 @@ def close_pos_opening_entry(
         
         # Submit if requested
         if not do_not_submit:
-            closing_entry.submit()
+            # Submitting merges the shift's receipts into a Sales Invoice, which ERPNext saves
+            # with the current user's permissions. A cashier who may close the shift (checked
+            # above) need not be allowed to create invoices, so this step runs with full rights.
+            with _as_administrator():
+                closing_entry.submit()
             frappe.db.commit()
         
         # Reload to get updated status
@@ -3011,6 +3026,51 @@ def close_pos_opening_entry(
         return _shift_error("close", pos_opening_entry, e)
 
 
+# Roles that may close or cancel any shift of their own business, not only their own
+SHIFT_MANAGER_ROLES = {"System Manager", "Accounts Manager", "Sales Manager"}
+
+
+def _ensure_can_manage_shift(opening_entry) -> None:
+    """Only the cashier who opened a shift, or a manager of the same business, may close or cancel it."""
+    from techsavanna_pos.api.payment_gateway_common import get_user_companies
+
+    user = frappe.session.user
+    if user == "Administrator":
+        return
+    if user == "Guest":
+        frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
+    if opening_entry.company not in get_user_companies(user):
+        frappe.throw(_("This shift belongs to another business."), frappe.PermissionError)
+    if opening_entry.user != user and not SHIFT_MANAGER_ROLES.intersection(frappe.get_roles(user)):
+        frappe.throw(
+            _("Only the cashier who opened this shift ({0}) or a manager can close or cancel it.").format(
+                opening_entry.user
+            ),
+            frappe.PermissionError,
+        )
+
+
+@contextmanager
+def _as_administrator():
+    """Run the block as Administrator, then restore the signed-in user exactly as before.
+
+    frappe.set_user edits the session in place, so it is given a copy and the real session
+    is put back afterwards; the user's login stays untouched. A background job started in
+    the block (ERPNext queues the merge for 10 or more receipts) also runs as Administrator.
+    """
+    saved = {
+        key: getattr(frappe.local, key, None)
+        for key in ("session", "cache", "form_dict", "jenv", "role_permissions", "new_doc_templates", "user_perms")
+    }
+    frappe.local.session = frappe._dict(frappe.local.session)
+    frappe.set_user("Administrator")
+    try:
+        yield
+    finally:
+        for key, value in saved.items():
+            setattr(frappe.local, key, value)
+
+
 def _shift_error(action: str, name: str, e: Exception) -> Dict:
     """A failed close or cancel: save the full details to the Error Log and give the
     cashier a message that is never empty (some exceptions carry no text at all)."""
@@ -3045,6 +3105,7 @@ def cancel_pos_opening_entry(name: str, reason: Optional[str] = None) -> Dict:
             }
         
         opening_entry = frappe.get_doc("POS Opening Entry", name)
+        _ensure_can_manage_shift(opening_entry)
         
         # Check if it's already cancelled
         if opening_entry.status == "Cancelled":
