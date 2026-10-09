@@ -204,8 +204,8 @@ def validate_password_strength(password):
     if not re.search(r"\d", password):
         errors.append("one number")
 
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-        errors.append("one special character")
+    if not re.search(r"[^A-Za-z0-9\s]", password):
+        errors.append("one symbol, such as ! @ # - or _")
 
     return errors
 
