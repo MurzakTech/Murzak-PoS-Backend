@@ -150,7 +150,7 @@ def send_email_verification(email: str) -> Dict:
             retry=3,
         )
     except Exception as e:
-        frappe.log_error(f"Error sending email verification to {email}: {str(e)}", "Email Verification Error")
+        frappe.log_error("Email Verification Error", f"Error sending email verification to {email}: {str(e)}")
         frappe.throw(
             _("Failed to send verification email. Please try again later or contact support."),
             frappe.ValidationError
@@ -238,7 +238,7 @@ def send_phone_verification(phone: str) -> Dict:
         send_sms([phone], message)
         
     except Exception as e:
-        frappe.log_error(f"Error sending SMS verification to {phone}: {str(e)}", "SMS Verification Error")
+        frappe.log_error("SMS Verification Error", f"Error sending SMS verification to {phone}: {str(e)}")
         # If SMS fails, we can still allow registration but log the error
         # Or throw an error depending on requirements
         frappe.throw(

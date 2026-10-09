@@ -138,8 +138,8 @@ def execute():
         except Exception as e:
             error_count += 1
             frappe.log_error(
-                f"Error creating custom field '{fieldname}' on {doctype}: {str(e)}",
-                "Custom Field Setup Error"
+                "Custom Field Setup Error",
+                f"Error creating custom field '{fieldname}' on {doctype}: {str(e)}"
             )
             print(f"  ❌ Error creating field {fieldname}: {str(e)}")
     

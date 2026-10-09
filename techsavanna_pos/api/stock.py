@@ -156,8 +156,8 @@ def create_stock_transfer():
     # Unexpected Errors
     except Exception:
         frappe.log_error(
-            frappe.get_traceback(),
-            "Stock Transfer API Error"
+            "Stock Transfer API Error",
+            frappe.get_traceback()
         )
         return {
             "status": "error",
@@ -413,8 +413,8 @@ def create_stock_receipt():
     # Unexpected Errors
     except Exception:
         frappe.log_error(
-            frappe.get_traceback(),
-            "Material Receipt API Error"
+            "Material Receipt API Error",
+            frappe.get_traceback()
         )
         return {
             "status": "error",
@@ -483,8 +483,8 @@ def get_low_stock_items():
 
     except Exception:
         frappe.log_error(
-            frappe.get_traceback(),
-            "Low Stock Alert API Error"
+            "Low Stock Alert API Error",
+            frappe.get_traceback()
         )
         return {
             "status": "error",
@@ -1749,7 +1749,7 @@ def get_stock_transfer_request(request_id: str = None):
     except frappe.DoesNotExistError:
         return error_response(f"Material Request {request_id} not found", 404)
     except Exception as e:
-        frappe.log_error(f"Get Stock Transfer Request Failed for {request_id}", frappe.get_traceback())
+        frappe.log_error("Get Stock Transfer Request Failed", f"{request_id}\n{frappe.get_traceback()}")
         return error_response(f"Failed to fetch stock transfer request: {str(e)}", 500)
 
 
@@ -2015,7 +2015,7 @@ def create_stock_entry_old(
             }
         else:
             # If stock was not updated, return failure response
-            frappe.log_error(f"Stock update failed for Stock Entry {stock_entry.name}", "Stock Entry Error")
+            frappe.log_error("Stock Entry Error", f"Stock update failed for Stock Entry {stock_entry.name}")
             return {
                 "success": False,
                 "message": "Stock entry created, but stock balance was not updated",
@@ -2030,11 +2030,11 @@ def create_stock_entry_old(
             }
 
     except frappe.ValidationError as e:
-        frappe.log_error(f"Validation error creating stock entry: {str(e)}", "Create Stock Entry Validation Error")
+        frappe.log_error("Create Stock Entry Validation Error", f"Validation error creating stock entry: {str(e)}")
         return {"success": False, "message": f"Validation error: {str(e)}", "error_type": "validation_error"}
 
     except Exception as e:
-        frappe.log_error(f"Error creating stock entry: {str(e)}", "Create Stock Entry Error")
+        frappe.log_error("Create Stock Entry Error", f"Error creating stock entry: {str(e)}")
         return {"success": False, "message": f"Error creating stock entry: {str(e)}"}
 
 
@@ -2240,7 +2240,7 @@ def create_stock_entry(
             }
         else:
             # If stock was not updated, return failure response
-            frappe.log_error(f"Stock update failed for Stock Entry {stock_entry.name}", "Stock Entry Error")
+            frappe.log_error("Stock Entry Error", f"Stock update failed for Stock Entry {stock_entry.name}")
             return {
                 "success": False,
                 "message": "Stock entry created, but stock balance was not updated",
@@ -2255,11 +2255,11 @@ def create_stock_entry(
             }
 
     except frappe.ValidationError as e:
-        frappe.log_error(f"Validation error creating stock entry: {str(e)}", "Create Stock Entry Validation Error")
+        frappe.log_error("Create Stock Entry Validation Error", f"Validation error creating stock entry: {str(e)}")
         return {"success": False, "message": f"Validation error: {str(e)}", "error_type": "validation_error"}
 
     except Exception as e:
-        frappe.log_error(f"Error creating stock entry: {str(e)}", "Create Stock Entry Error")
+        frappe.log_error("Create Stock Entry Error", f"Error creating stock entry: {str(e)}")
         return {"success": False, "message": f"Error creating stock entry: {str(e)}"}
 
 

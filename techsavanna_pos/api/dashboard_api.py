@@ -149,7 +149,7 @@ def get_dashboard_metrics(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error getting dashboard metrics: {str(e)}", "Dashboard Metrics Error")
+        frappe.log_error("Dashboard Metrics Error", f"Error getting dashboard metrics: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting dashboard metrics: {str(e)}",

@@ -222,7 +222,7 @@ def initiate_stk_push_payment(
 			)
 		except Exception as e:
 			if not isinstance(e, MpesaClientError):
-				frappe.log_error(frappe.get_traceback(), "MPESA STK Push Error")
+				frappe.log_error("MPESA STK Push Error", frappe.get_traceback())
 			return _error_response(e)
 	finally:
 		frappe.cache().delete_value(lock_key)
@@ -763,7 +763,7 @@ def setup_mpesa_mode_of_payment(company: str) -> str | None:
 	try:
 		ensure_mode_of_payment(mode, "Phone", company, settings.payment_account)
 	except Exception:
-		frappe.log_error(frappe.get_traceback(), "MPESA Setup Error")
+		frappe.log_error("MPESA Setup Error", frappe.get_traceback())
 		return None
 
 	if settings.mode_of_payment != mode:

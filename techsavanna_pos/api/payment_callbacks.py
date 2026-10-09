@@ -53,7 +53,7 @@ def daraja_stk_result(t: str | None = None, **kwargs):
 	payload = read_request_json()
 	company, _settings = _company_for_mpesa_token(t)
 	if not company:
-		frappe.log_error(json.dumps(payload)[:5000], "MPESA callback with unknown token")
+		frappe.log_error("MPESA callback with unknown token", json.dumps(payload)[:5000])
 		return _accept_daraja()
 
 	callback = (payload.get("Body") or {}).get("stkCallback") or {}
@@ -64,7 +64,7 @@ def daraja_stk_result(t: str | None = None, **kwargs):
 		"name",
 	)
 	if not log_name:
-		frappe.log_error(json.dumps(payload)[:5000], "MPESA callback for unknown transaction")
+		frappe.log_error("MPESA callback for unknown transaction", json.dumps(payload)[:5000])
 		return _accept_daraja()
 
 	process_stk_callback(log_name, callback, payload)
@@ -182,7 +182,7 @@ def settle_invoice_if_needed(log) -> None:
 		frappe.db.commit()
 	except Exception:
 		frappe.db.rollback()
-		frappe.log_error(frappe.get_traceback(), "MPESA Payment Entry Error")
+		frappe.log_error("MPESA Payment Entry Error", frappe.get_traceback())
 	finally:
 		frappe.set_user(original_user)
 
@@ -199,7 +199,7 @@ def daraja_c2b_confirmation(t: str | None = None, **kwargs):
 	payload = read_request_json()
 	company, _settings = _company_for_mpesa_token(t)
 	if not company:
-		frappe.log_error(json.dumps(payload)[:5000], "MPESA C2B callback with unknown token")
+		frappe.log_error("MPESA C2B callback with unknown token", json.dumps(payload)[:5000])
 		return _accept_daraja()
 
 	receipt = (payload.get("TransID") or "").strip().upper()
@@ -323,7 +323,7 @@ def pesapal_ipn(t: str | None = None, **kwargs):
 				refresh_transaction(frappe.get_doc("POS Gateway Transaction", txn_name))
 				status = 200
 			except Exception:
-				frappe.log_error(frappe.get_traceback(), "Pesapal IPN Error")
+				frappe.log_error("Pesapal IPN Error", frappe.get_traceback())
 
 	frappe.response["orderNotificationType"] = notification_type
 	frappe.response["orderTrackingId"] = tracking_id
@@ -377,7 +377,7 @@ def paypal_return(t: str | None = None, token: str | None = None, **kwargs):
 	try:
 		txn = refresh_transaction(frappe.get_doc("POS Gateway Transaction", txn_name))
 	except Exception:
-		frappe.log_error(frappe.get_traceback(), "PayPal Return Error")
+		frappe.log_error("PayPal Return Error", frappe.get_traceback())
 		return _customer_page(_("Almost done"), _("Please show this screen to the cashier."))
 
 	if txn.status == STATUS_SUCCESS:

@@ -35,8 +35,8 @@ def execute():
                 updated_count += 1
             except Exception as e:
                 frappe.log_error(
-                    f"Error updating POS Profile {profile.name}: {str(e)}",
-                    "POS Profile Update Stock Patch Error"
+                    "POS Profile Update Stock Patch Error",
+                    f"Error updating POS Profile {profile.name}: {str(e)}"
                 )
     
     # Commit the changes

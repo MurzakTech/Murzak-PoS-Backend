@@ -180,8 +180,8 @@ def create_customer(
         }
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error creating customer: {str(e)}",
-            "Customer Creation Validation Error"
+            "Customer Creation Validation Error",
+            f"Validation error creating customer: {str(e)}"
         )
         return {
             "success": False,
@@ -189,7 +189,7 @@ def create_customer(
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error creating customer: {str(e)}", "Customer Creation Error")
+        frappe.log_error("Customer Creation Error", f"Error creating customer: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating customer: {str(e)}",
@@ -383,7 +383,7 @@ def list_customers(
             "count": len(customers),
         }
     except Exception as e:
-        frappe.log_error(f"Error listing customers: {str(e)}", "List Customers Error")
+        frappe.log_error("List Customers Error", f"Error listing customers: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing customers: {str(e)}",
@@ -548,7 +548,7 @@ def get_customer(name: str, company: str = None) -> Dict:
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error fetching customer: {str(e)}", "Get Customer Error")
+        frappe.log_error("Get Customer Error", f"Error fetching customer: {str(e)}")
         return {
             "success": False,
             "message": f"Error fetching customer: {str(e)}",
@@ -657,8 +657,8 @@ def update_customer(
         }
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error updating customer: {str(e)}",
-            "Customer Update Validation Error"
+            "Customer Update Validation Error",
+            f"Validation error updating customer: {str(e)}"
         )
         return {
             "success": False,
@@ -666,7 +666,7 @@ def update_customer(
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error updating customer: {str(e)}", "Customer Update Error")
+        frappe.log_error("Customer Update Error", f"Error updating customer: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating customer: {str(e)}",
@@ -771,8 +771,8 @@ def set_customer_credit_limit(
     
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error setting credit limit for customer {customer}: {str(e)}",
-            "Set Credit Limit Validation Error"
+            "Set Credit Limit Validation Error",
+            f"Validation error setting credit limit for customer {customer}: {str(e)}"
         )
         return {
             "success": False,
@@ -781,8 +781,8 @@ def set_customer_credit_limit(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error setting credit limit for customer {customer}: {str(e)}",
-            "Set Credit Limit Error"
+            "Set Credit Limit Error",
+            f"Error setting credit limit for customer {customer}: {str(e)}"
         )
         return {
             "success": False,
@@ -905,8 +905,8 @@ def get_customer_credit_limit(customer: str, company: str = None) -> Dict:
     
     except Exception as e:
         frappe.log_error(
-            f"Error getting credit limit for customer {customer}: {str(e)}",
-            "Get Credit Limit Error"
+            "Get Credit Limit Error",
+            f"Error getting credit limit for customer {customer}: {str(e)}"
         )
         return {
             "success": False,
@@ -1081,8 +1081,8 @@ def get_customer_credit_history(
     
     except Exception as e:
         frappe.log_error(
-            f"Error getting credit history for customer {customer}: {str(e)}",
-            "Get Credit History Error"
+            "Get Credit History Error",
+            f"Error getting credit history for customer {customer}: {str(e)}"
         )
         return {
             "success": False,
@@ -1162,8 +1162,8 @@ def remove_customer_credit_limit(customer: str, company: str) -> Dict:
     
     except Exception as e:
         frappe.log_error(
-            f"Error removing credit limit for customer {customer}: {str(e)}",
-            "Remove Credit Limit Error"
+            "Remove Credit Limit Error",
+            f"Error removing credit limit for customer {customer}: {str(e)}"
         )
         return {
             "success": False,

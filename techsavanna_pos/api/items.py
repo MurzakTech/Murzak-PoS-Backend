@@ -201,8 +201,8 @@ def get_item_detail(item, doc=None, warehouse=None, price_list=None, company=Non
 				exchange_rate = get_exchange_rate(price_list_currency, company_currency, today)
 			except Exception:
 				frappe.log_error(
-					f"Missing exchange rate from {price_list_currency} to {company_currency}",
 					"POS Next",
+					f"Missing exchange rate from {price_list_currency} to {company_currency}",
 				)
 
 		item["price_list_currency"] = price_list_currency
@@ -352,7 +352,7 @@ def search_by_barcode(barcode, pos_profile):
 
 		return item_details
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Search by Barcode Error")
+		frappe.log_error("Search by Barcode Error", frappe.get_traceback())
 		frappe.throw(_("Error searching by barcode: {0}").format(str(e)))
 
 
@@ -382,7 +382,7 @@ def get_item_stock(item_code, warehouse):
 			"available_qty": available_qty,
 		}
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Item Stock Error")
+		frappe.log_error("Get Item Stock Error", frappe.get_traceback())
 		frappe.throw(_("Error fetching item stock: {0}").format(str(e)))
 
 
@@ -433,7 +433,7 @@ def get_batch_serial_details(item_code, warehouse):
 
 		return result
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Batch/Serial Details Error")
+		frappe.log_error("Get Batch/Serial Details Error", frappe.get_traceback())
 		frappe.throw(_("Error fetching batch/serial details: {0}").format(str(e)))
 
 
@@ -569,7 +569,7 @@ def get_item_variants(template_item, pos_profile):
 
 		return variants
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Item Variants Error")
+		frappe.log_error("Get Item Variants Error", frappe.get_traceback())
 		frappe.throw(_("Error fetching item variants: {0}").format(str(e)))
 
 
@@ -1219,7 +1219,7 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 
 		return items
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Items Error")
+		frappe.log_error("Get Items Error", frappe.get_traceback())
 		frappe.throw(_("Error fetching items: {0}").format(str(e)))
 
 
@@ -1269,7 +1269,7 @@ def get_item_details(item_code, pos_profile, customer=None, qty=1, uom=None):
 			company=pos_profile_doc.company,
 		)
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Item Details Error")
+		frappe.log_error("Get Item Details Error", frappe.get_traceback())
 		frappe.throw(_("Error fetching item details: {0}").format(str(e)))
 
 
@@ -1301,7 +1301,7 @@ def get_item_groups(pos_profile):
 
 		return item_groups
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Item Groups Error")
+		frappe.log_error("Get Item Groups Error", frappe.get_traceback())
 		frappe.throw(_("Error fetching item groups: {0}").format(str(e)))
 
 
@@ -1408,7 +1408,7 @@ def get_stock_quantities(item_codes, warehouse):
 		return result
 
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Stock Quantities Error")
+		frappe.log_error("Get Stock Quantities Error", frappe.get_traceback())
 		frappe.throw(_("Error fetching stock quantities: {0}").format(str(e)))
 
 
@@ -1587,7 +1587,7 @@ def get_item_warehouse_availability(item_code=None, item_codes=None, company=Non
 		return result
 
 	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Warehouse Availability Error")
+		frappe.log_error("Get Warehouse Availability Error", frappe.get_traceback())
 		frappe.throw(_("Error fetching warehouse availability: {0}").format(str(e)))
 
 
@@ -1676,8 +1676,8 @@ def get_product_bundle_availability(item_code, warehouse):
 
 	except Exception as e:
 		frappe.log_error(
-			frappe.get_traceback(),
-			f"Bundle Availability Error: {item_code} in {warehouse}"
+			"Bundle Availability Error",
+			f"{item_code} in {warehouse}\n{frappe.get_traceback()}"
 		)
 		frappe.throw(_("Error fetching bundle availability for {0}: {1}").format(item_code, str(e)))
 
@@ -1785,7 +1785,7 @@ def return_items():
 
     except Exception as e:
         frappe.db.rollback()
-        frappe.log_error(f"Return Items Failed: {str(e)}", frappe.get_traceback())
+        frappe.log_error("Return Items Failed", frappe.get_traceback())
         return {
             "success": False,
             "message": f"Failed to return items: {str(e)}"

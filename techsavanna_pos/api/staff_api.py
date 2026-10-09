@@ -190,8 +190,8 @@ def create_staff_user(
             # Log short error message to avoid CharacterLengthExceededError
             error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
             frappe.log_error(
-                f"POS industry field missing: {error_msg}",
-                "Create Staff User - POS Industry"
+                "Create Staff User - POS Industry",
+                f"POS industry field missing: {error_msg}"
             )
             parent_industry = None
         
@@ -206,8 +206,8 @@ def create_staff_user(
             # Log short error message to avoid CharacterLengthExceededError
             error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
             frappe.log_error(
-                f"POS industry field missing: {error_msg}",
-                "Create Staff User - Get Assigned Industry"
+                "Create Staff User - Get Assigned Industry",
+                f"POS industry field missing: {error_msg}"
             )
             assigned_industry = None
         
@@ -288,8 +288,8 @@ def create_staff_user(
     except Exception as e:
         frappe.db.rollback()
         frappe.log_error(
-            f"Error creating staff user '{email}': {frappe.get_traceback()}",
-            "Staff User Creation Error"
+            "Staff User Creation Error",
+            f"Error creating staff user '{email}': {frappe.get_traceback()}"
         )
         error_message = _("An error occurred while creating the staff member. Please check that all information is correct (email format, password strength, etc.) and try again. If the problem persists, contact support.")
         if hasattr(frappe.local, "message_log"):
@@ -335,8 +335,8 @@ def create_staff_user(
     except Exception as e:
         # Log the full error for debugging
         frappe.log_error(
-            f"Error creating staff user '{email}': {frappe.get_traceback()}",
-            "Staff User Creation Error"
+            "Staff User Creation Error",
+            f"Error creating staff user '{email}': {frappe.get_traceback()}"
         )
         # Return user-friendly error message
         error_message = _("An error occurred while creating the staff member. Please check that all information is correct (email format, password strength, etc.) and try again. If the problem persists, contact support.")
@@ -511,8 +511,8 @@ def get_staff_users(company: str = None, enabled_only: bool = False) -> dict:
         # Log short error message to avoid CharacterLengthExceededError
         error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
         frappe.log_error(
-            f"POS industry field missing: {error_msg}",
-            "Get Staff Users - POS Industry"
+            "Get Staff Users - POS Industry",
+            f"POS industry field missing: {error_msg}"
         )
         staff_users = frappe.get_all(
             "User",
@@ -590,8 +590,8 @@ def get_staff_user_details(user_email: str) -> dict:
         # Log short error message to avoid CharacterLengthExceededError
         error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
         frappe.log_error(
-            f"POS industry field missing: {error_msg}",
-            "Get Staff User - POS Industry"
+            "Get Staff User - POS Industry",
+            f"POS industry field missing: {error_msg}"
         )
         staff_industry = None
     

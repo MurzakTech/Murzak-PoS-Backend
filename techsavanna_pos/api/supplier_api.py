@@ -128,7 +128,7 @@ def get_suppliers(
             "count": len(suppliers),
         }
     except Exception as e:
-        frappe.log_error(f"Error getting suppliers: {str(e)}", "Get Suppliers Error")
+        frappe.log_error("Get Suppliers Error", f"Error getting suppliers: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting suppliers: {str(e)}",
@@ -300,7 +300,7 @@ def create_supplier(
             frappe.throw(_("Some required information is missing: {0}. Please fill in all required fields and try again.").format(error_msg), frappe.ValidationError)
     except frappe.PermissionError as e:
         # This should not happen with ignore_permissions=True, but handle it just in case
-        frappe.log_error(f"Permission error creating supplier: {str(e)}", "Supplier Creation Permission Error")
+        frappe.log_error("Supplier Creation Permission Error", f"Permission error creating supplier: {str(e)}")
         frappe.throw(
             _("You don't have permission to create suppliers. Please contact your administrator to grant you the necessary permissions."),
             frappe.PermissionError
@@ -308,8 +308,8 @@ def create_supplier(
     except Exception as e:
         # Log the full error for debugging
         frappe.log_error(
-            f"Error creating supplier '{supplier_name}': {frappe.get_traceback()}",
-            "Supplier Creation Error"
+            "Supplier Creation Error",
+            f"Error creating supplier '{supplier_name}': {frappe.get_traceback()}"
         )
         # Return user-friendly error message
         frappe.throw(
@@ -413,7 +413,7 @@ def update_supplier(
         frappe.throw(_("Some required information is missing: {0}. Please fill in all required fields and try again.").format(error_msg), frappe.ValidationError)
     except frappe.PermissionError as e:
         # This should not happen with ignore_permissions=True, but handle it just in case
-        frappe.log_error(f"Permission error updating supplier: {str(e)}", "Supplier Update Permission Error")
+        frappe.log_error("Supplier Update Permission Error", f"Permission error updating supplier: {str(e)}")
         frappe.throw(
             _("You don't have permission to update suppliers. Please contact your administrator to grant you the necessary permissions."),
             frappe.PermissionError
@@ -421,8 +421,8 @@ def update_supplier(
     except Exception as e:
         # Log the full error for debugging
         frappe.log_error(
-            f"Error updating supplier '{name}': {frappe.get_traceback()}",
-            "Supplier Update Error"
+            "Supplier Update Error",
+            f"Error updating supplier '{name}': {frappe.get_traceback()}"
         )
         # Return user-friendly error message
         frappe.throw(
@@ -474,7 +474,7 @@ def get_supplier_groups(
             "count": len(supplier_groups),
         }
     except Exception as e:
-        frappe.log_error(f"Error getting supplier groups: {str(e)}", "Get Supplier Groups Error")
+        frappe.log_error("Get Supplier Groups Error", f"Error getting supplier groups: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting supplier groups: {str(e)}",
@@ -545,7 +545,7 @@ def create_supplier_group(
             "parent_supplier_group": supplier_group.parent_supplier_group,
         }
     except frappe.PermissionError as e:
-        frappe.log_error(f"Permission error creating supplier group: {str(e)}", "Supplier Group Creation Permission Error")
+        frappe.log_error("Supplier Group Creation Permission Error", f"Permission error creating supplier group: {str(e)}")
         return {
             "success": False,
             "message": f"Permission denied: You do not have permission to create Supplier Group documents. Please contact your administrator to grant you the necessary role permissions.",
@@ -553,14 +553,14 @@ def create_supplier_group(
             "required_permission": "Supplier Group: Create",
         }
     except frappe.exceptions.ValidationError as e:
-        frappe.log_error(f"Validation error creating supplier group: {str(e)}", "Supplier Group Creation Validation Error")
+        frappe.log_error("Supplier Group Creation Validation Error", f"Validation error creating supplier group: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error creating supplier group: {str(e)}", "Supplier Group Creation Error")
+        frappe.log_error("Supplier Group Creation Error", f"Error creating supplier group: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating supplier group: {str(e)}",
@@ -617,7 +617,7 @@ def update_supplier_group(
             "name": supplier_group.name,
         }
     except frappe.PermissionError as e:
-        frappe.log_error(f"Permission error updating supplier group: {str(e)}", "Supplier Group Update Permission Error")
+        frappe.log_error("Supplier Group Update Permission Error", f"Permission error updating supplier group: {str(e)}")
         return {
             "success": False,
             "message": f"Permission denied: You do not have permission to update Supplier Group documents. Please contact your administrator to grant you the necessary role permissions.",
@@ -625,14 +625,14 @@ def update_supplier_group(
             "required_permission": "Supplier Group: Write",
         }
     except frappe.exceptions.ValidationError as e:
-        frappe.log_error(f"Validation error updating supplier group: {str(e)}", "Supplier Group Update Validation Error")
+        frappe.log_error("Supplier Group Update Validation Error", f"Validation error updating supplier group: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error updating supplier group: {str(e)}", "Supplier Group Update Error")
+        frappe.log_error("Supplier Group Update Error", f"Error updating supplier group: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating supplier group: {str(e)}",

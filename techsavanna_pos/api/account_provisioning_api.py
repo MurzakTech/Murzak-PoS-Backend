@@ -83,7 +83,7 @@ def get_provisional_accounting_status(company: str) -> Dict:
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error getting provisional accounting status: {str(e)}", "Get Provisional Accounting Status Error")
+        frappe.log_error("Get Provisional Accounting Status Error", f"Error getting provisional accounting status: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting provisional accounting status: {str(e)}",
@@ -208,8 +208,8 @@ def set_default_provisional_account(
         return response
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error setting default provisional account: {str(e)}",
-            "Set Default Provisional Account Validation Error"
+            "Set Default Provisional Account Validation Error",
+            f"Validation error setting default provisional account: {str(e)}"
         )
         return {
             "success": False,
@@ -217,7 +217,7 @@ def set_default_provisional_account(
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error setting default provisional account: {str(e)}", "Set Default Provisional Account Error")
+        frappe.log_error("Set Default Provisional Account Error", f"Error setting default provisional account: {str(e)}")
         return {
             "success": False,
             "message": f"Error setting default provisional account: {str(e)}",
@@ -310,7 +310,7 @@ def list_available_provisional_accounts(
             "recommended_types": recommended_types,
         }
     except Exception as e:
-        frappe.log_error(f"Error listing available provisional accounts: {str(e)}", "List Provisional Accounts Error")
+        frappe.log_error("List Provisional Accounts Error", f"Error listing available provisional accounts: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing available provisional accounts: {str(e)}",
@@ -492,8 +492,8 @@ def auto_configure_provisional_account(
         return result
     except Exception as e:
         frappe.log_error(
-            f"Error auto-configuring provisional account: {str(e)}",
-            "Auto Configure Provisional Account Error"
+            "Auto Configure Provisional Account Error",
+            f"Error auto-configuring provisional account: {str(e)}"
         )
         return {
             "success": False,
@@ -648,8 +648,8 @@ def validate_provisional_accounting_setup(company: str) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error validating provisional accounting setup: {str(e)}",
-            "Validate Provisional Accounting Setup Error"
+            "Validate Provisional Accounting Setup Error",
+            f"Error validating provisional accounting setup: {str(e)}"
         )
         return {
             "success": False,
@@ -759,8 +759,8 @@ def validate_and_get_provisional_account(company: str, auto_fix: bool = False) -
         return True, None, default_provisional_account
     except Exception as e:
         frappe.log_error(
-            f"Error validating provisional account: {str(e)}",
-            "Validate Provisional Account Helper Error"
+            "Validate Provisional Account Helper Error",
+            f"Error validating provisional account: {str(e)}"
         )
         error_dict = {
             "success": False,

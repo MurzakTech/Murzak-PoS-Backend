@@ -82,7 +82,7 @@ def create_role(
     except frappe.DuplicateEntryError:
         raise
     except Exception as e:
-        frappe.log_error(f"Error creating role: {str(e)}", "Create Role Error")
+        frappe.log_error("Create Role Error", f"Error creating role: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating role: {str(e)}"
@@ -161,7 +161,7 @@ def update_role(
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error updating role: {str(e)}", "Update Role Error")
+        frappe.log_error("Update Role Error", f"Error updating role: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating role: {str(e)}"
@@ -213,7 +213,7 @@ def delete_role(role_name: str) -> Dict:
             "message": _("Role deleted successfully")
         }
     except Exception as e:
-        frappe.log_error(f"Error deleting role: {str(e)}", "Delete Role Error")
+        frappe.log_error("Delete Role Error", f"Error deleting role: {str(e)}")
         return {
             "success": False,
             "message": f"Error deleting role: {str(e)}"
@@ -258,7 +258,7 @@ def disable_role(role_name: str) -> Dict:
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error disabling role: {str(e)}", "Disable Role Error")
+        frappe.log_error("Disable Role Error", f"Error disabling role: {str(e)}")
         return {
             "success": False,
             "message": f"Error disabling role: {str(e)}"
@@ -299,7 +299,7 @@ def enable_role(role_name: str) -> Dict:
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error enabling role: {str(e)}", "Enable Role Error")
+        frappe.log_error("Enable Role Error", f"Error enabling role: {str(e)}")
         return {
             "success": False,
             "message": f"Error enabling role: {str(e)}"
@@ -440,7 +440,7 @@ def assign_permissions_to_role(
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error assigning permissions: {str(e)}", "Assign Permissions Error")
+        frappe.log_error("Assign Permissions Error", f"Error assigning permissions: {str(e)}")
         return {
             "success": False,
             "message": f"Error assigning permissions: {str(e)}"
@@ -550,7 +550,7 @@ def get_role_permissions(
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error getting role permissions: {str(e)}", "Get Role Permissions Error")
+        frappe.log_error("Get Role Permissions Error", f"Error getting role permissions: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting role permissions: {str(e)}"
@@ -615,7 +615,7 @@ def remove_permissions_from_role(
         else:
             frappe.throw(_("Permission not found for role '{0}' on doctype '{1}'").format(role_name, doctype), frappe.DoesNotExistError)
     except Exception as e:
-        frappe.log_error(f"Error removing permissions: {str(e)}", "Remove Permissions Error")
+        frappe.log_error("Remove Permissions Error", f"Error removing permissions: {str(e)}")
         return {
             "success": False,
             "message": f"Error removing permissions: {str(e)}"
@@ -723,7 +723,7 @@ def list_roles(
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error listing roles: {str(e)}", "List Roles Error")
+        frappe.log_error("List Roles Error", f"Error listing roles: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing roles: {str(e)}"
@@ -785,7 +785,7 @@ def get_role_details(role_name: str) -> Dict:
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error getting role details: {str(e)}", "Get Role Details Error")
+        frappe.log_error("Get Role Details Error", f"Error getting role details: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting role details: {str(e)}"

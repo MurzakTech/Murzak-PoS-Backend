@@ -384,7 +384,7 @@ def update_invoice(data):
                 invoice_doc.customer = cust.name
                 invoice_doc.customer_name = cust.customer_name
             except Exception as e:
-                frappe.log_error(f"Failed to create customer {customer_name}: {e}")
+                frappe.log_error("POS Customer Creation Failed", f"Failed to create customer {customer_name}: {e}")
 
         # Disable automatic pricing rules (we handle discounts manually from POS)
         invoice_doc.ignore_pricing_rule = 1
@@ -448,7 +448,7 @@ def update_invoice(data):
                     disable_rounded = cint(pos_settings_value)
             except Exception as e:
                 # Log error but continue with default
-                frappe.log_error(f"Error loading rounding setting: {str(e)}", "POS Invoice Creation")
+                frappe.log_error("POS Invoice Creation", f"Error loading rounding setting: {str(e)}")
 
         invoice_doc.disable_rounded_total = disable_rounded
 
@@ -515,7 +515,7 @@ def update_invoice(data):
 
         return invoice_doc.as_dict()
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Update Invoice Error")
+        frappe.log_error("Update Invoice Error", frappe.get_traceback())
         raise
 
 
@@ -709,7 +709,7 @@ def submit_invoice(invoice=None, data=None):
             "change_amount": getattr(invoice_doc, "change_amount", 0),
         }
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Submit Invoice Error")
+        frappe.log_error("Submit Invoice Error", frappe.get_traceback())
         raise
 
 
@@ -909,8 +909,8 @@ def cleanup_old_drafts(pos_profile=None, max_age_hours=24):
             deleted_count += 1
         except Exception as e:
             frappe.log_error(
-                f"Failed to delete draft {draft['name']}: {str(e)}",
                 "Draft Cleanup Error",
+                f"Failed to delete draft {draft['name']}: {str(e)}",
             )
 
     if deleted_count > 0:
@@ -1526,5 +1526,5 @@ def apply_offers(invoice_data, selected_offers=None):
             "applied_pricing_rules": sorted(applied_rules),
         }
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Apply Offers Error")
+        frappe.log_error("Apply Offers Error", frappe.get_traceback())
         frappe.throw(_("Error applying offers: {0}").format(str(e)))

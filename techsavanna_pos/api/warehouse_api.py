@@ -225,7 +225,7 @@ def create_warehouse(
             "parent_warehouse": warehouse.parent_warehouse,
         }
     except frappe.PermissionError as e:
-        frappe.log_error(f"Permission error creating warehouse: {str(e)}", "Warehouse Creation Permission Error")
+        frappe.log_error("Warehouse Creation Permission Error", f"Permission error creating warehouse: {str(e)}")
         return {
             "success": False,
             "message": f"Permission denied: You do not have permission to create Warehouse documents. Please contact your administrator to grant you the necessary role permissions.",
@@ -233,14 +233,14 @@ def create_warehouse(
             "required_permission": "Warehouse: Create",
         }
     except frappe.exceptions.ValidationError as e:
-        frappe.log_error(f"Validation error creating warehouse: {str(e)}", "Warehouse Creation Validation Error")
+        frappe.log_error("Warehouse Creation Validation Error", f"Validation error creating warehouse: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error creating warehouse: {str(e)}", "Warehouse Creation Error")
+        frappe.log_error("Warehouse Creation Error", f"Error creating warehouse: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating warehouse: {str(e)}",
@@ -399,7 +399,7 @@ def list_warehouses(
             "total_count": total_count,
         }
     except Exception as e:
-        frappe.log_error(f"Error listing warehouses: {str(e)}", "List Warehouses Error")
+        frappe.log_error("List Warehouses Error", f"Error listing warehouses: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing warehouses: {str(e)}",
@@ -493,7 +493,7 @@ def get_warehouse_details(name: str) -> dict:
             "message": f"Warehouse '{name}' not found",
         }
     except Exception as e:
-        frappe.log_error(f"Error fetching warehouse details: {str(e)}", "Get Warehouse Details Error")
+        frappe.log_error("Get Warehouse Details Error", f"Error fetching warehouse details: {str(e)}")
         return {
             "success": False,
             "message": f"Error fetching warehouse details: {str(e)}",
@@ -616,7 +616,7 @@ def update_warehouse(
             "name": warehouse.name,
         }
     except frappe.PermissionError as e:
-        frappe.log_error(f"Permission error updating warehouse: {str(e)}", "Warehouse Update Permission Error")
+        frappe.log_error("Warehouse Update Permission Error", f"Permission error updating warehouse: {str(e)}")
         return {
             "success": False,
             "message": f"Permission denied: You do not have permission to update Warehouse documents. Please contact your administrator to grant you the necessary role permissions.",
@@ -624,14 +624,14 @@ def update_warehouse(
             "required_permission": "Warehouse: Write",
         }
     except frappe.exceptions.ValidationError as e:
-        frappe.log_error(f"Validation error updating warehouse: {str(e)}", "Warehouse Update Validation Error")
+        frappe.log_error("Warehouse Update Validation Error", f"Validation error updating warehouse: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error updating warehouse: {str(e)}", "Warehouse Update Error")
+        frappe.log_error("Warehouse Update Error", f"Error updating warehouse: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating warehouse: {str(e)}",
@@ -733,7 +733,7 @@ def assign_warehouses_to_staff(
             "count": len(created_permissions),
         }
     except Exception as e:
-        frappe.log_error(f"Error assigning warehouses to staff: {str(e)}", "Assign Warehouses Error")
+        frappe.log_error("Assign Warehouses Error", f"Error assigning warehouses to staff: {str(e)}")
         return {
             "success": False,
             "message": f"Error assigning warehouses to staff: {str(e)}",
@@ -813,7 +813,7 @@ def get_staff_warehouses(user_email: str = None) -> dict:
             "user": user_email,
         }
     except Exception as e:
-        frappe.log_error(f"Error getting staff warehouses: {str(e)}", "Get Staff Warehouses Error")
+        frappe.log_error("Get Staff Warehouses Error", f"Error getting staff warehouses: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting staff warehouses: {str(e)}",
@@ -880,7 +880,7 @@ def get_warehouse_staff(warehouse: str) -> dict:
             "warehouse": warehouse,
         }
     except Exception as e:
-        frappe.log_error(f"Error getting warehouse staff: {str(e)}", "Get Warehouse Staff Error")
+        frappe.log_error("Get Warehouse Staff Error", f"Error getting warehouse staff: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting warehouse staff: {str(e)}",
@@ -927,7 +927,7 @@ def remove_warehouse_from_staff(
             "message": f"Successfully removed warehouse '{warehouse}' from user '{user_email}'",
         }
     except Exception as e:
-        frappe.log_error(f"Error removing warehouse from staff: {str(e)}", "Remove Warehouse Error")
+        frappe.log_error("Remove Warehouse Error", f"Error removing warehouse from staff: {str(e)}")
         return {
             "success": False,
             "message": f"Error removing warehouse from staff: {str(e)}",
@@ -959,7 +959,7 @@ def get_or_create_warehouse_type(warehouse_type_name: str) -> str:
         
         return wt.name
     except Exception as e:
-        frappe.log_error(f"Error creating warehouse type: {str(e)}", "Create Warehouse Type Error")
+        frappe.log_error("Create Warehouse Type Error", f"Error creating warehouse type: {str(e)}")
         return None
 
 
@@ -984,7 +984,7 @@ def list_warehouse_types() -> dict:
             "count": len(warehouse_types),
         }
     except Exception as e:
-        frappe.log_error(f"Error listing warehouse types: {str(e)}", "List Warehouse Types Error")
+        frappe.log_error("List Warehouse Types Error", f"Error listing warehouse types: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing warehouse types: {str(e)}",
@@ -1042,19 +1042,19 @@ def set_default_warehouse_for_company(company: str, warehouse: str) -> bool:
     try:
         # Validate company exists
         if not frappe.db.exists("Company", company):
-            frappe.log_error(f"Company '{company}' does not exist", "Set Default Warehouse Error")
+            frappe.log_error("Set Default Warehouse Error", f"Company '{company}' does not exist")
             return False
         
         # Validate warehouse exists and belongs to company
         if not frappe.db.exists("Warehouse", warehouse):
-            frappe.log_error(f"Warehouse '{warehouse}' does not exist", "Set Default Warehouse Error")
+            frappe.log_error("Set Default Warehouse Error", f"Warehouse '{warehouse}' does not exist")
             return False
         
         warehouse_company = frappe.db.get_value("Warehouse", warehouse, "company")
         if warehouse_company != company:
             frappe.log_error(
-                f"Warehouse '{warehouse}' does not belong to company '{company}'",
-                "Set Default Warehouse Error"
+                "Set Default Warehouse Error",
+                f"Warehouse '{warehouse}' does not belong to company '{company}'"
             )
             return False
         
@@ -1102,12 +1102,12 @@ def set_default_warehouse_for_company(company: str, warehouse: str) -> bool:
             return True
         except Exception as e:
             frappe.log_error(
-                f"Error setting default warehouse: {str(e)}",
-                "Set Default Warehouse Error"
+                "Set Default Warehouse Error",
+                f"Error setting default warehouse: {str(e)}"
             )
             return False
     except Exception as e:
-        frappe.log_error(f"Error setting default warehouse: {str(e)}", "Set Default Warehouse Error")
+        frappe.log_error("Set Default Warehouse Error", f"Error setting default warehouse: {str(e)}")
         return False
 
 
@@ -1159,7 +1159,7 @@ def set_default_warehouse(company: str, warehouse: str) -> dict:
                 "message": "Failed to set default warehouse. The field may not exist on Company doctype.",
             }
     except Exception as e:
-        frappe.log_error(f"Error setting default warehouse: {str(e)}", "Set Default Warehouse API Error")
+        frappe.log_error("Set Default Warehouse API Error", f"Error setting default warehouse: {str(e)}")
         return {
             "success": False,
             "message": f"Error setting default warehouse: {str(e)}",
@@ -1209,7 +1209,7 @@ def get_default_warehouse(company: str) -> dict:
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error getting default warehouse: {str(e)}", "Get Default Warehouse API Error")
+        frappe.log_error("Get Default Warehouse API Error", f"Error getting default warehouse: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting default warehouse: {str(e)}",
