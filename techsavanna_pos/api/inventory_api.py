@@ -119,7 +119,7 @@ def get_stock_balance_api(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error getting stock balance: {str(e)}", "Get Stock Balance Error")
+        frappe.log_error("Get Stock Balance Error", f"Error getting stock balance: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting stock balance: {str(e)}",
@@ -184,7 +184,7 @@ def get_stock_balance_multiple(
             "count": len(results),
         }
     except Exception as e:
-        frappe.log_error(f"Error getting stock balance for multiple items: {str(e)}", "Get Stock Balance Multiple Error")
+        frappe.log_error("Get Stock Balance Multiple Error", f"Error getting stock balance for multiple items: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting stock balance: {str(e)}",
@@ -247,8 +247,8 @@ def create_stock_entry(
             ensure_fiscal_year_exists(company, posting_date)
         except Exception as fy_error:
             frappe.log_error(
-                f"Could not auto-create fiscal year for {company}: {str(fy_error)}",
-                "Fiscal Year Auto-Creation Error"
+                "Fiscal Year Auto-Creation Error",
+                f"Could not auto-create fiscal year for {company}: {str(fy_error)}"
             )
             # Continue anyway - ERPNext might still work if there's a global fiscal year
         
@@ -359,8 +359,8 @@ def create_stock_entry(
                             )
                         except Exception as sync_error:
                             frappe.log_error(
-                                f"Could not sync buying_price for {entry_item.item_code}: {str(sync_error)}",
-                                "Stock Entry Buying Price Sync"
+                                "Stock Entry Buying Price Sync",
+                                f"Could not sync buying_price for {entry_item.item_code}: {str(sync_error)}"
                             )
         return {
             "success": True,
@@ -375,14 +375,14 @@ def create_stock_entry(
             },
         }
     except frappe.ValidationError as e:
-        frappe.log_error(f"Validation error creating stock entry: {str(e)}", "Create Stock Entry Validation Error")
+        frappe.log_error("Create Stock Entry Validation Error", f"Validation error creating stock entry: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error creating stock entry: {str(e)}", "Create Stock Entry Error")
+        frappe.log_error("Create Stock Entry Error", f"Error creating stock entry: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating stock entry: {str(e)}",
@@ -779,8 +779,8 @@ def create_stock_reconciliation(
                 except Exception as e:
                     # Log error but don't fail the stock reconciliation
                     frappe.log_error(
-                        f"Error creating inventory item details for {item_code} in {warehouse}: {str(e)}",
-                        "Inventory Item Details Creation Error"
+                        "Inventory Item Details Creation Error",
+                        f"Error creating inventory item details for {item_code} in {warehouse}: {str(e)}"
                     )
         
         if not do_not_submit:
@@ -801,14 +801,14 @@ def create_stock_reconciliation(
             },
         }
     except frappe.ValidationError as e:
-        frappe.log_error(f"Validation error creating stock reconciliation: {str(e)}", "Create Stock Reconciliation Validation Error")
+        frappe.log_error("Create Stock Reconciliation Validation Error", f"Validation error creating stock reconciliation: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error creating stock reconciliation: {str(e)}", "Create Stock Reconciliation Error")
+        frappe.log_error("Create Stock Reconciliation Error", f"Error creating stock reconciliation: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating stock reconciliation: {str(e)}",
@@ -912,7 +912,7 @@ def check_stock_availability(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error checking stock availability: {str(e)}", "Check Stock Availability Error")
+        frappe.log_error("Check Stock Availability Error", f"Error checking stock availability: {str(e)}")
         return {
             "success": False,
             "message": f"Error checking stock availability: {str(e)}",
@@ -1000,7 +1000,7 @@ def get_stock_ledger_entries(
             "count": len(entries),
         }
     except Exception as e:
-        frappe.log_error(f"Error getting stock ledger entries: {str(e)}", "Get Stock Ledger Entries Error")
+        frappe.log_error("Get Stock Ledger Entries Error", f"Error getting stock ledger entries: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting stock ledger entries: {str(e)}",
@@ -1097,7 +1097,7 @@ def get_stock_summary(
             "count": len(bins),
         }
     except Exception as e:
-        frappe.log_error(f"Error getting stock summary: {str(e)}", "Get Stock Summary Error")
+        frappe.log_error("Get Stock Summary Error", f"Error getting stock summary: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting stock summary: {str(e)}",
@@ -1168,7 +1168,7 @@ def repost_stock(
                 "message": "Either item_code or both item_code and warehouse must be provided",
             }
     except Exception as e:
-        frappe.log_error(f"Error reposting stock: {str(e)}", "Repost Stock Error")
+        frappe.log_error("Repost Stock Error", f"Error reposting stock: {str(e)}")
         return {
             "success": False,
             "message": f"Error reposting stock: {str(e)}",
@@ -1253,7 +1253,7 @@ def get_low_stock_items(
             "threshold": threshold,
         }
     except Exception as e:
-        frappe.log_error(f"Error getting low stock items: {str(e)}", "Get Low Stock Items Error")
+        frappe.log_error("Get Low Stock Items Error", f"Error getting low stock items: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting low stock items: {str(e)}",
@@ -1379,7 +1379,7 @@ def list_stock_reconciliation_accounts(
             "recommendation": "Use a Temporary account (preferred) or Asset/Liability account" if is_opening else "Use Profit and Loss account (Stock Adjustment account preferred)",
         }
     except Exception as e:
-        frappe.log_error(f"Error listing stock reconciliation accounts: {str(e)}", "List Stock Reconciliation Accounts Error")
+        frappe.log_error("List Stock Reconciliation Accounts Error", f"Error listing stock reconciliation accounts: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing accounts: {str(e)}",
@@ -1455,7 +1455,7 @@ def get_company_default_accounts(company: str = None) -> Dict:
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error getting company default accounts: {str(e)}", "Get Company Default Accounts Error")
+        frappe.log_error("Get Company Default Accounts Error", f"Error getting company default accounts: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting default accounts: {str(e)}",
@@ -1544,7 +1544,7 @@ def get_inventory_item_details(
                 "message": "No inventory details found for this item-warehouse combination",
             }
     except Exception as e:
-        frappe.log_error(f"Error getting inventory item details: {str(e)}", "Get Inventory Item Details Error")
+        frappe.log_error("Get Inventory Item Details Error", f"Error getting inventory item details: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting inventory item details: {str(e)}",
@@ -1652,7 +1652,7 @@ def list_inventory_items(
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error listing inventory items: {str(e)}", "List Inventory Items Error")
+        frappe.log_error("List Inventory Items Error", f"Error listing inventory items: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing inventory items: {str(e)}",
@@ -1739,7 +1739,7 @@ def update_inventory_item_details(
             "data": inventory_item,
         }
     except Exception as e:
-        frappe.log_error(f"Error updating inventory item details: {str(e)}", "Update Inventory Item Details Error")
+        frappe.log_error("Update Inventory Item Details Error", f"Error updating inventory item details: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating inventory item details: {str(e)}",
@@ -1817,7 +1817,7 @@ def create_inventory_discount_rule(
             "data": _serialize_discount_rule(doc.as_dict()),
         }
     except Exception as e:
-        frappe.log_error(f"Error creating inventory discount rule: {str(e)}", "Create Inventory Discount Rule Error")
+        frappe.log_error("Create Inventory Discount Rule Error", f"Error creating inventory discount rule: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating inventory discount rule: {str(e)}",
@@ -1884,7 +1884,7 @@ def update_inventory_discount_rule(
             "data": _serialize_discount_rule(doc.as_dict()),
         }
     except Exception as e:
-        frappe.log_error(f"Error updating inventory discount rule: {str(e)}", "Update Inventory Discount Rule Error")
+        frappe.log_error("Update Inventory Discount Rule Error", f"Error updating inventory discount rule: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating inventory discount rule: {str(e)}",
@@ -1904,7 +1904,7 @@ def delete_inventory_discount_rule(name: str) -> Dict:
         frappe.delete_doc("Inventory Discount Rule", name, ignore_permissions=True)
         return {"success": True, "message": "Inventory discount rule deleted"}
     except Exception as e:
-        frappe.log_error(f"Error deleting inventory discount rule: {str(e)}", "Delete Inventory Discount Rule Error")
+        frappe.log_error("Delete Inventory Discount Rule Error", f"Error deleting inventory discount rule: {str(e)}")
         return {
             "success": False,
             "message": f"Error deleting inventory discount rule: {str(e)}",
@@ -1920,7 +1920,7 @@ def get_inventory_discount_rule(name: str) -> Dict:
         doc = frappe.get_doc("Inventory Discount Rule", name)
         return {"success": True, "data": _serialize_discount_rule(doc.as_dict())}
     except Exception as e:
-        frappe.log_error(f"Error fetching inventory discount rule: {str(e)}", "Get Inventory Discount Rule Error")
+        frappe.log_error("Get Inventory Discount Rule Error", f"Error fetching inventory discount rule: {str(e)}")
         return {
             "success": False,
             "message": f"Error fetching inventory discount rule: {str(e)}",
@@ -1995,7 +1995,7 @@ def list_inventory_discount_rules(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error listing inventory discount rules: {str(e)}", "List Inventory Discount Rules Error")
+        frappe.log_error("List Inventory Discount Rules Error", f"Error listing inventory discount rules: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing inventory discount rules: {str(e)}",
@@ -2036,7 +2036,7 @@ def get_inventory_discount_for_item(
             "message": "Discount rule found" if rule else "No discount rule found",
         }
     except Exception as e:
-        frappe.log_error(f"Error getting inventory discount for item: {str(e)}", "Get Inventory Discount For Item Error")
+        frappe.log_error("Get Inventory Discount For Item Error", f"Error getting inventory discount for item: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting inventory discount for item: {str(e)}",
@@ -2097,7 +2097,7 @@ def bulk_get_inventory_discounts(
             "message": "Discount lookup completed",
         }
     except Exception as e:
-        frappe.log_error(f"Error getting inventory discounts in bulk: {str(e)}", "Bulk Get Inventory Discounts Error")
+        frappe.log_error("Bulk Get Inventory Discounts Error", f"Error getting inventory discounts in bulk: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting inventory discounts: {str(e)}",
@@ -2229,7 +2229,7 @@ def list_stock_entries(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error listing stock entries: {str(e)}", "List Stock Entries Error")
+        frappe.log_error("List Stock Entries Error", f"Error listing stock entries: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing stock entries: {str(e)}",
@@ -2415,7 +2415,7 @@ def get_stock_entry_details(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error getting stock entry details: {str(e)}", "Get Stock Entry Details Error")
+        frappe.log_error("Get Stock Entry Details Error", f"Error getting stock entry details: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting stock entry details: {str(e)}",
@@ -2567,14 +2567,14 @@ def update_stock_entry(
             },
         }
     except frappe.ValidationError as e:
-        frappe.log_error(f"Validation error updating stock entry: {str(e)}", "Update Stock Entry Validation Error")
+        frappe.log_error("Update Stock Entry Validation Error", f"Validation error updating stock entry: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error updating stock entry: {str(e)}", "Update Stock Entry Error")
+        frappe.log_error("Update Stock Entry Error", f"Error updating stock entry: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating stock entry: {str(e)}",
@@ -2630,14 +2630,14 @@ def cancel_stock_entry(
             },
         }
     except frappe.ValidationError as e:
-        frappe.log_error(f"Validation error cancelling stock entry: {str(e)}", "Cancel Stock Entry Validation Error")
+        frappe.log_error("Cancel Stock Entry Validation Error", f"Validation error cancelling stock entry: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error cancelling stock entry: {str(e)}", "Cancel Stock Entry Error")
+        frappe.log_error("Cancel Stock Entry Error", f"Error cancelling stock entry: {str(e)}")
         return {
             "success": False,
             "message": f"Error cancelling stock entry: {str(e)}",
@@ -2690,14 +2690,14 @@ def submit_stock_entry(
             },
         }
     except frappe.ValidationError as e:
-        frappe.log_error(f"Validation error submitting stock entry: {str(e)}", "Submit Stock Entry Validation Error")
+        frappe.log_error("Submit Stock Entry Validation Error", f"Validation error submitting stock entry: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error submitting stock entry: {str(e)}", "Submit Stock Entry Error")
+        frappe.log_error("Submit Stock Entry Error", f"Error submitting stock entry: {str(e)}")
         return {
             "success": False,
             "message": f"Error submitting stock entry: {str(e)}",
@@ -2898,7 +2898,7 @@ def create_multi_level_stock_reconciliation(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error creating multi-level stock reconciliation: {str(e)}", "Create Multi-Level Stock Reconciliation Error")
+        frappe.log_error("Create Multi-Level Stock Reconciliation Error", f"Error creating multi-level stock reconciliation: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating multi-level stock reconciliation: {str(e)}",
@@ -3029,7 +3029,7 @@ def add_sales_person_stock_take(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error adding sales person stock take: {str(e)}", "Add Sales Person Stock Take Error")
+        frappe.log_error("Add Sales Person Stock Take Error", f"Error adding sales person stock take: {str(e)}")
         return {
             "success": False,
             "message": f"Error adding sales person stock take: {str(e)}",
@@ -3159,7 +3159,7 @@ def add_stock_controller_stock_take(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error adding stock controller stock take: {str(e)}", "Add Stock Controller Stock Take Error")
+        frappe.log_error("Add Stock Controller Stock Take Error", f"Error adding stock controller stock take: {str(e)}")
         return {
             "success": False,
             "message": f"Error adding stock controller stock take: {str(e)}",
@@ -3325,7 +3325,7 @@ def add_stock_manager_stock_take_and_submit(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error adding stock manager stock take: {str(e)}", "Add Stock Manager Stock Take Error")
+        frappe.log_error("Add Stock Manager Stock Take Error", f"Error adding stock manager stock take: {str(e)}")
         return {
             "success": False,
             "message": f"Error adding stock manager stock take: {str(e)}",
@@ -3405,8 +3405,8 @@ def get_multi_level_stock_reconciliation(
             workflow_status = stock_reconciliation.get("workflow_state")
         else:
             frappe.log_error(
-                f"'workflow_state' field not found in Stock Reconciliation doctype. Please run the workflow setup script.",
-                "Missing Field Warning"
+                "Missing Field Warning",
+                f"'workflow_state' field not found in Stock Reconciliation doctype. Please run the workflow setup script."
             )
 
         # Get accepted workflow states (transitions)
@@ -3420,8 +3420,8 @@ def get_multi_level_stock_reconciliation(
         except Exception as e:
             # Log error but don't fail the request
             frappe.log_error(
-                f"Error getting workflow transitions for Stock Reconciliation '{reconciliation_name}': {str(e)}",
-                "Get Workflow Transitions Error"
+                "Get Workflow Transitions Error",
+                f"Error getting workflow transitions for Stock Reconciliation '{reconciliation_name}': {str(e)}"
             )
 
         return {
@@ -3449,7 +3449,7 @@ def get_multi_level_stock_reconciliation(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error getting multi-level stock reconciliation: {str(e)}", "Get Multi-Level Stock Reconciliation Error")
+        frappe.log_error("Get Multi-Level Stock Reconciliation Error", f"Error getting multi-level stock reconciliation: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting multi-level stock reconciliation: {str(e)}",
@@ -3611,7 +3611,7 @@ def list_multi_level_stock_reconciliations(
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error listing multi-level stock reconciliations: {str(e)}", "List Multi-Level Stock Reconciliations Error")
+        frappe.log_error("List Multi-Level Stock Reconciliations Error", f"Error listing multi-level stock reconciliations: {str(e)}")
         return {
             "success": False,
             "message": f"Error listing multi-level stock reconciliations: {str(e)}",

@@ -476,7 +476,7 @@ def get_purchase_order(po_name: str = None):
         return {"status": "error", "message": "No permission to access this Purchase Order"}
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Purchase Order API Error")
+        frappe.log_error("Get Purchase Order API Error", frappe.get_traceback())
         return {"status": "error", "message": f"Internal server error: {str(e)}"}
 
 
@@ -553,7 +553,7 @@ def get_purchase_order_no_grn(po_name: str = None):
         return {"status": "error", "message": "No permission to access this Purchase Order"}
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Purchase Order API Error")
+        frappe.log_error("Get Purchase Order API Error", frappe.get_traceback())
         return {"status": "error", "message": f"Internal server error: {str(e)}"}
 
 
@@ -608,7 +608,7 @@ def list_purchase_orders(filters=None, limit_start=0, limit_page_length=20):
         return {"status": "error", "message": "No permission to access Purchase Orders"}
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "List Purchase Orders API Error")
+        frappe.log_error("List Purchase Orders API Error", frappe.get_traceback())
         return {"status": "error", "message": f"Internal server error: {str(e)}"}
 
 
@@ -1281,7 +1281,7 @@ def get_grn_list(
 
     except Exception as e:
         print(str(e))
-        frappe.log_error(frappe.get_traceback(), "get_grn_list ERROR")
+        frappe.log_error("get_grn_list ERROR", frappe.get_traceback())
 
         return {
             "status": "error",
@@ -1754,7 +1754,7 @@ def list_purchase_invoices(
         }
     
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "List Purchase Invoices Error")
+        frappe.log_error("List Purchase Invoices Error", frappe.get_traceback())
         return {
             "status": "error",
             "message": f"Error fetching purchase invoices: {str(e)}"
@@ -1984,7 +1984,7 @@ def get_purchase_invoice_details(invoice_no):
         )
     
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Purchase Invoice Details Error")
+        frappe.log_error("Get Purchase Invoice Details Error", frappe.get_traceback())
         return pos_response(
             status="error",
             code=POSErrorCode.UNKNOWN_ERROR,
@@ -2487,8 +2487,8 @@ def pay_purchase_invoice(
     except frappe.ValidationError as e:
         frappe.db.rollback()
         frappe.log_error(
-            f"Validation error creating Payment Entry for Purchase Invoice {invoice_no}: {str(e)}",
             "Create Payment Entry Validation Error",
+            f"Validation error creating Payment Entry for Purchase Invoice {invoice_no}: {str(e)}",
         )
         return pos_response(
             status="error",
@@ -2499,8 +2499,8 @@ def pay_purchase_invoice(
     except Exception as e:
         frappe.db.rollback()
         frappe.log_error(
-            f"Error creating Payment Entry for Purchase Invoice {invoice_no}: {str(e)}",
             "Create Payment Entry Error",
+            f"Error creating Payment Entry for Purchase Invoice {invoice_no}: {str(e)}",
         )
         return pos_response(
             status="error",

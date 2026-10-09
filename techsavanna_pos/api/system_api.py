@@ -151,7 +151,7 @@ def list_doctypes(
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error listing doctypes: {str(e)}", "List Doctypes Error")
+        frappe.log_error("List Doctypes Error", f"Error listing doctypes: {str(e)}")
         frappe.local.response["http_status_code"] = 500
         return {
             "success": False,
@@ -280,7 +280,7 @@ def get_doctype_details(doctype: str) -> Dict:
             "message": _("DocType '{0}' does not exist").format(doctype)
         }
     except Exception as e:
-        frappe.log_error(f"Error getting doctype details: {str(e)}", "Get Doctype Details Error")
+        frappe.log_error("Get Doctype Details Error", f"Error getting doctype details: {str(e)}")
         frappe.local.response["http_status_code"] = 500
         return {
             "success": False,
@@ -327,7 +327,7 @@ def list_modules() -> Dict:
             }
         }
     except Exception as e:
-        frappe.log_error(f"Error listing modules: {str(e)}", "List Modules Error")
+        frappe.log_error("List Modules Error", f"Error listing modules: {str(e)}")
         frappe.local.response["http_status_code"] = 500
         return {
             "success": False,

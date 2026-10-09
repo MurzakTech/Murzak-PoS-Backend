@@ -88,8 +88,8 @@ def ensure_fiscal_year_exists(company: str, posting_date: str = None) -> str:
         return fy_name
     except Exception as e:
         frappe.log_error(
-            f"Error creating Fiscal Year for {company}: {str(e)}",
-            "Auto Create Fiscal Year Error"
+            "Auto Create Fiscal Year Error",
+            f"Error creating Fiscal Year for {company}: {str(e)}"
         )
         raise
 
@@ -140,7 +140,7 @@ def get_pos_industries(is_active: bool = False) -> Dict:
         }
     
     except Exception as e:
-        frappe.log_error(f"Error getting POS industries: {str(e)}", "Get POS Industries")
+        frappe.log_error("Get POS Industries", f"Error getting POS industries: {str(e)}")
         frappe.local.response["http_status_code"] = 500  # Internal Server Error
         
         return {
@@ -559,8 +559,8 @@ def create_seed_item(company: str = None):
             # Log short error message to avoid CharacterLengthExceededError
             error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
             frappe.log_error(
-                f"POS industry field missing: {error_msg}",
-                "Seed Products - POS Industry"
+                "Seed Products - POS Industry",
+                f"POS industry field missing: {error_msg}"
             )
             user_industry = None
         if user_industry:
@@ -779,8 +779,8 @@ def create_seed_item(company: str = None):
                 fiscal_year = ensure_fiscal_year_exists(company)
             except Exception as fy_error:
                 frappe.log_error(
-                    f"Could not create fiscal year for {company}: {str(fy_error)}",
-                    "Fiscal Year Auto-Creation Error"
+                    "Fiscal Year Auto-Creation Error",
+                    f"Could not create fiscal year for {company}: {str(fy_error)}"
                 )
                 # Continue anyway - ERPNext might still work if there's a global fiscal year
             
@@ -810,8 +810,8 @@ def create_seed_item(company: str = None):
             
         except Exception as e:
             frappe.log_error(
-                f"Error creating stock entry for items: {str(e)}",
-                "Create Seed Item - Stock Entry Error"
+                "Create Seed Item - Stock Entry Error",
+                f"Error creating stock entry for items: {str(e)}"
             )
             # Add to failed items but don't fail the entire operation
             failed.append({
@@ -936,8 +936,8 @@ def create_seed_item(company: str = None):
                 # Log short error message to avoid CharacterLengthExceededError
                 error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
                 frappe.log_error(
-                    f"POS industry field missing: {error_msg}",
-                    "Seed Products - POS Industry"
+                    "Seed Products - POS Industry",
+                    f"POS industry field missing: {error_msg}"
                 )
                 user_industry = None
 
@@ -1094,8 +1094,8 @@ def create_seed_item(company: str = None):
                     fiscal_year = ensure_fiscal_year_exists(company)
                 except Exception as fy_error:
                     frappe.log_error(
-                        f"Could not create fiscal year for {company}: {str(fy_error)}",
-                        "Fiscal Year Auto-Creation Error"
+                        "Fiscal Year Auto-Creation Error",
+                        f"Could not create fiscal year for {company}: {str(fy_error)}"
                     )
                     # Continue anyway - ERPNext might still work if there's a global fiscal year
 

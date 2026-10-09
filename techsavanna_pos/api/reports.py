@@ -76,7 +76,7 @@ def inventory_summary_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_summary_report: {str(e)}", "Inventory Summary Report Error")
+        frappe.log_error("Inventory Summary Report Error", f"Error in inventory_summary_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating inventory summary report: {str(e)}"
@@ -157,7 +157,7 @@ def inventory_movement_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_movement_report: {str(e)}", "Inventory Movement Report Error")
+        frappe.log_error("Inventory Movement Report Error", f"Error in inventory_movement_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating inventory movement report: {str(e)}"
@@ -313,7 +313,7 @@ def stock_aging_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in stock_aging_report: {str(e)}", "Stock Aging Report Error")
+        frappe.log_error("Stock Aging Report Error", f"Error in stock_aging_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating stock aging report: {str(e)}"
@@ -381,7 +381,7 @@ def inventory_value_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_value_report: {str(e)}", "Inventory Value Report Error")
+        frappe.log_error("Inventory Value Report Error", f"Error in inventory_value_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating inventory value report: {str(e)}"
@@ -606,7 +606,7 @@ def sales_analytics_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in sales_analytics_report: {str(e)}", "Sales Analytics Report Error")
+        frappe.log_error("Sales Analytics Report Error", f"Error in sales_analytics_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating sales analytics report: {str(e)}"
@@ -667,7 +667,7 @@ def export_sales_analytics_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in export_sales_analytics_report: {str(e)}", "Export Sales Analytics Report Error")
+        frappe.log_error("Export Sales Analytics Report Error", f"Error in export_sales_analytics_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error exporting sales analytics report: {str(e)}"
@@ -790,7 +790,7 @@ def inventory_value_by_category_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_value_by_category_report: {str(e)}", "Inventory Value by Category Report Error")
+        frappe.log_error("Inventory Value by Category Report Error", f"Error in inventory_value_by_category_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating inventory value by category report: {str(e)}"
@@ -894,7 +894,7 @@ def inventory_cost_method_comparison_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_cost_method_comparison_report: {str(e)}", "Inventory Cost Method Comparison Report Error")
+        frappe.log_error("Inventory Cost Method Comparison Report Error", f"Error in inventory_cost_method_comparison_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating cost method comparison report: {str(e)}"
@@ -1035,7 +1035,7 @@ def inventory_value_trends_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_value_trends_report: {str(e)}", "Inventory Value Trends Report Error")
+        frappe.log_error("Inventory Value Trends Report Error", f"Error in inventory_value_trends_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating inventory value trends report: {str(e)}"
@@ -1188,7 +1188,7 @@ def inventory_turnover_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_turnover_report: {str(e)}", "Inventory Turnover Report Error")
+        frappe.log_error("Inventory Turnover Report Error", f"Error in inventory_turnover_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating inventory turnover report: {str(e)}"
@@ -1362,7 +1362,7 @@ def inventory_days_on_hand_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_days_on_hand_report: {str(e)}", "Inventory Days on Hand Report Error")
+        frappe.log_error("Inventory Days on Hand Report Error", f"Error in inventory_days_on_hand_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating days on hand report: {str(e)}"
@@ -1525,7 +1525,7 @@ def inventory_movement_patterns_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_movement_patterns_report: {str(e)}", "Inventory Movement Patterns Report Error")
+        frappe.log_error("Inventory Movement Patterns Report Error", f"Error in inventory_movement_patterns_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating movement patterns report: {str(e)}"
@@ -1695,7 +1695,7 @@ def inventory_obsolescence_risk_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_obsolescence_risk_report: {str(e)}", "Inventory Obsolescence Risk Report Error")
+        frappe.log_error("Inventory Obsolescence Risk Report Error", f"Error in inventory_obsolescence_risk_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating obsolescence risk report: {str(e)}"
@@ -1826,7 +1826,7 @@ def inventory_aging_recommendations_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_aging_recommendations_report: {str(e)}", "Inventory Aging Recommendations Report Error")
+        frappe.log_error("Inventory Aging Recommendations Report Error", f"Error in inventory_aging_recommendations_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating aging recommendations report: {str(e)}"
@@ -1943,7 +1943,7 @@ def inventory_accuracy_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_accuracy_report: {str(e)}", "Inventory Accuracy Report Error")
+        frappe.log_error("Inventory Accuracy Report Error", f"Error in inventory_accuracy_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating inventory accuracy report: {str(e)}"
@@ -2067,7 +2067,7 @@ def inventory_variance_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_variance_report: {str(e)}", "Inventory Variance Report Error")
+        frappe.log_error("Inventory Variance Report Error", f"Error in inventory_variance_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating inventory variance report: {str(e)}"
@@ -2196,7 +2196,7 @@ def inventory_adjustment_trends_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_adjustment_trends_report: {str(e)}", "Inventory Adjustment Trends Report Error")
+        frappe.log_error("Inventory Adjustment Trends Report Error", f"Error in inventory_adjustment_trends_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating adjustment trends report: {str(e)}"
@@ -2331,7 +2331,7 @@ def inventory_transfer_efficiency_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in inventory_transfer_efficiency_report: {str(e)}", "Inventory Transfer Efficiency Report Error")
+        frappe.log_error("Inventory Transfer Efficiency Report Error", f"Error in inventory_transfer_efficiency_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error generating transfer efficiency report: {str(e)}"
@@ -2499,7 +2499,7 @@ def grn_list_report(
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in grn_list_report: {str(e)}", "GRN List Report Error")
+        frappe.log_error("GRN List Report Error", f"Error in grn_list_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error fetching GRN list: {str(e)}"
@@ -2619,7 +2619,7 @@ def grn_detail_report(grn_no: str) -> Dict:
         }
     
     except Exception as e:
-        frappe.log_error(f"Error in grn_detail_report: {str(e)}", "GRN Detail Report Error")
+        frappe.log_error("GRN Detail Report Error", f"Error in grn_detail_report: {str(e)}")
         return {
             "success": False,
             "message": f"Error fetching GRN details: {str(e)}"

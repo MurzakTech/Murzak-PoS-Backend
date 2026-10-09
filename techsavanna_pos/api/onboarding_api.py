@@ -147,7 +147,7 @@ def create_company(
                 _("A company with similar details already exists. Please check the company name and abbreviation, or contact support if you believe this is an error."),
                 frappe.ValidationError
             )
-        frappe.log_error(f"Error inserting company: {error_msg}", "Company Creation Error")
+        frappe.log_error("Company Creation Error", f"Error inserting company: {error_msg}")
         frappe.throw(
             _("An error occurred while creating the company. Please verify all fields are correct and try again. Error: {0}").format(error_msg),
             frappe.ValidationError
@@ -180,8 +180,8 @@ def create_company(
         except Exception as e:
             # Log error but don't fail company creation - address is optional
             frappe.log_error(
-                f"Error creating address for company {company.name}: {str(e)}",
-                "Company Address Creation Error"
+                "Company Address Creation Error",
+                f"Error creating address for company {company.name}: {str(e)}"
             )
     
     # Create company contact if provided
@@ -205,8 +205,8 @@ def create_company(
         except Exception as e:
             # Log error but don't fail company creation - contact is optional
             frappe.log_error(
-                f"Error creating contact for company {company.name}: {str(e)}",
-                "Company Contact Creation Error"
+                "Company Contact Creation Error",
+                f"Error creating contact for company {company.name}: {str(e)}"
             )
     
     # Set as default company for current user
@@ -220,8 +220,8 @@ def create_company(
     except Exception as e:
         # Log error but don't fail company creation - custom_company is optional
         frappe.log_error(
-            f"Error setting custom_company for user {frappe.session.user}: {str(e)}",
-            "Company Creation - Set Custom Company"
+            "Company Creation - Set Custom Company",
+            f"Error setting custom_company for user {frappe.session.user}: {str(e)}"
         )
     
     # Create default accounts and settings
@@ -252,7 +252,7 @@ def create_company(
             if len(error_title) > 140:
                 error_title = error_title[:137] + "..."
             error_msg = f"Some accounts already exist for company {company.name}. This is normal if accounts were partially created. Company creation will continue."
-            frappe.log_error(error_msg, error_title)
+            frappe.log_error(title=error_title, message=error_msg)
             # Don't fail the company creation if accounts already exist - this is acceptable
         except Exception as e:
             # Truncate error message to fit within 140 character limit for Error Log title
@@ -283,13 +283,13 @@ def create_company(
             if len(error_msg_body) > 10000:  # Limit error message body to reasonable size
                 error_msg_body = error_msg_body[:10000] + "... (truncated)"
             
-            frappe.log_error(error_msg_body, error_title)
+            frappe.log_error(title=error_title, message=error_msg_body)
             # Don't fail the company creation if accounts fail - user can create them manually
     else:
         # Accounts already exist - log this but don't fail
         frappe.log_error(
-            f"Accounts already exist for company {company.name} ({existing_accounts_count} accounts found). Skipping account creation.",
-            "Accounts Already Exist"
+            "Accounts Already Exist",
+            f"Accounts already exist for company {company.name} ({existing_accounts_count} accounts found). Skipping account creation."
         )
 
     # Install ERPNext defaults now that company/accounts exist
@@ -298,8 +298,8 @@ def create_company(
         finalize_site(company)
     except Exception:
         frappe.log_error(
-            frappe.get_traceback(),
-            "ERPNext Default Initialization"
+            "ERPNext Default Initialization",
+            frappe.get_traceback()
         )
 
     frappe.db.set_single_value("System Settings", "country", company.country)
@@ -516,7 +516,7 @@ def get_company(company_name: str = None) -> dict:
             },
         }
     except Exception as e:
-        frappe.log_error(f"Error getting company details: {str(e)}", "Get Company Error")
+        frappe.log_error("Get Company Error", f"Error getting company details: {str(e)}")
         return {
             "success": False,
             "message": f"Error getting company details: {str(e)}",
@@ -727,8 +727,8 @@ def update_company(
                     address.insert(ignore_permissions=True)
             except Exception as e:
                 frappe.log_error(
-                    f"Error updating address for company {company_name}: {str(e)}",
-                    "Company Address Update Error"
+                    "Company Address Update Error",
+                    f"Error updating address for company {company_name}: {str(e)}"
                 )
                 # Don't fail the update if address fails
         
@@ -777,8 +777,8 @@ def update_company(
                     contact.insert(ignore_permissions=True)
             except Exception as e:
                 frappe.log_error(
-                    f"Error updating contact for company {company_name}: {str(e)}",
-                    "Company Contact Update Error"
+                    "Company Contact Update Error",
+                    f"Error updating contact for company {company_name}: {str(e)}"
                 )
                 # Don't fail the update if contact fails
         
@@ -814,14 +814,14 @@ def update_company(
             },
         }
     except frappe.ValidationError as e:
-        frappe.log_error(f"Validation error updating company: {str(e)}", "Update Company Validation Error")
+        frappe.log_error("Update Company Validation Error", f"Validation error updating company: {str(e)}")
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        frappe.log_error(f"Error updating company: {str(e)}", "Update Company Error")
+        frappe.log_error("Update Company Error", f"Error updating company: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating company: {str(e)}",
@@ -960,7 +960,7 @@ def create_pos_profile(
         pos_profile.save(ignore_permissions=True)
     except Exception as e:
         error_msg = str(e)
-        frappe.log_error(f"Error creating POS profile: {error_msg}", "POS Profile Creation Error")
+        frappe.log_error("POS Profile Creation Error", f"Error creating POS profile: {error_msg}")
         # Provide helpful error message
         if "duplicate" in error_msg.lower() or "already exists" in error_msg.lower():
             frappe.throw(
@@ -1277,7 +1277,7 @@ def update_pos_profile(
         pos_profile.save(ignore_permissions=True)
     except Exception as e:
         error_msg = str(e)
-        frappe.log_error(f"Error updating POS profile {name}: {error_msg}", "POS Profile Update Error")
+        frappe.log_error("POS Profile Update Error", f"Error updating POS profile {name}: {error_msg}")
         # Provide helpful error message
         if "duplicate" in error_msg.lower() or "already exists" in error_msg.lower():
             frappe.throw(
@@ -1437,7 +1437,7 @@ def create_etims_settings(
         settings.save(ignore_permissions=True)
     except Exception as e:
         error_msg = str(e)
-        frappe.log_error(f"Error creating eTIMS settings: {error_msg}", "eTIMS Settings Creation Error")
+        frappe.log_error("eTIMS Settings Creation Error", f"Error creating eTIMS settings: {error_msg}")
         # Provide helpful error message
         if "duplicate" in error_msg.lower() or "already exists" in error_msg.lower():
             frappe.throw(
@@ -1506,8 +1506,8 @@ def complete_onboarding(
         )
     except Exception as e:
         frappe.log_error(
-            f"Error creating company during onboarding: {str(e)}",
-            "Onboarding Error - Company Creation"
+            "Onboarding Error - Company Creation",
+            f"Error creating company during onboarding: {str(e)}"
         )
         frappe.throw(
             _("An unexpected error occurred while creating your company. Please verify all required fields are filled correctly and try again. If the problem persists, contact support."),
@@ -1529,8 +1529,8 @@ def complete_onboarding(
         )
     except Exception as e:
         frappe.log_error(
-            f"Error creating POS profile during onboarding for company {company_name}: {str(e)}",
-            "Onboarding Error - POS Profile Creation"
+            "Onboarding Error - POS Profile Creation",
+            f"Error creating POS profile during onboarding for company {company_name}: {str(e)}"
         )
         frappe.throw(
             _("Company '{0}' was created successfully, but an unexpected error occurred while setting up your POS profile. You can continue using the system and create the POS profile manually later, or contact support for assistance.").format(company_name),
@@ -1552,8 +1552,8 @@ def complete_onboarding(
         )
     except Exception as e:
         frappe.log_error(
-            f"Error creating eTIMS settings during onboarding for company {company_name}: {str(e)}",
-            "Onboarding Error - eTIMS Settings Creation"
+            "Onboarding Error - eTIMS Settings Creation",
+            f"Error creating eTIMS settings during onboarding for company {company_name}: {str(e)}"
         )
         frappe.throw(
             _("Company and POS profile were set up successfully, but an unexpected error occurred while configuring eTIMS settings. You can configure eTIMS settings later from the settings page if needed."),
@@ -1569,8 +1569,8 @@ def complete_onboarding(
     except Exception as e:
         # Log but don't fail onboarding if role assignment fails
         frappe.log_error(
-            f"Error assigning roles after onboarding for user {frappe.session.user}: {str(e)}",
-            "Onboarding Role Assignment Error"
+            "Onboarding Role Assignment Error",
+            f"Error assigning roles after onboarding for user {frappe.session.user}: {str(e)}"
         )
     
     # Set HTTP status code for successful onboarding
@@ -1600,13 +1600,13 @@ def create_default_warehouse(company: str) -> str:
         except Exception as e:
             # Log but don't fail if setting default fails - warehouse is still created
             frappe.log_error(
-                f"Error setting default warehouse for company {company}: {str(e)}",
-                "Set Default Warehouse Error"
+                "Set Default Warehouse Error",
+                f"Error setting default warehouse for company {company}: {str(e)}"
             )
         
         return warehouse.name
     except Exception as e:
-        frappe.log_error(f"Error creating default warehouse for company {company}: {str(e)}", "Warehouse Creation Error")
+        frappe.log_error("Warehouse Creation Error", f"Error creating default warehouse for company {company}: {str(e)}")
         frappe.throw(
             _("Unable to create a default warehouse for your company. Please create a warehouse manually in the Warehouse settings and try again."),
             frappe.ValidationError
@@ -1627,7 +1627,7 @@ def create_default_customer(company: str) -> str:
         
         return customer.name
     except Exception as e:
-        frappe.log_error(f"Error creating default customer: {str(e)}", "Customer Creation Error")
+        frappe.log_error("Customer Creation Error", f"Error creating default customer: {str(e)}")
         frappe.throw(
             _("Unable to create a default customer. Please create a customer manually in the Customer settings and try again."),
             frappe.ValidationError
@@ -1648,7 +1648,7 @@ def create_default_price_list(company: str, currency: str) -> str:
         
         return price_list.name
     except Exception as e:
-        frappe.log_error(f"Error creating default price list for company {company}: {str(e)}", "Price List Creation Error")
+        frappe.log_error("Price List Creation Error", f"Error creating default price list for company {company}: {str(e)}")
         frappe.throw(
             _("Unable to create a default price list for your company. Please create a selling price list manually in the Price List settings and try again."),
             frappe.ValidationError
@@ -1680,7 +1680,7 @@ def get_default_write_off_account(company: str) -> str:
         
         return account.name
     except Exception as e:
-        frappe.log_error(f"Error creating write off account for company {company}: {str(e)}", "Write Off Account Creation Error")
+        frappe.log_error("Write Off Account Creation Error", f"Error creating write off account for company {company}: {str(e)}")
         # Return None to allow POS profile creation to continue without write off account
         return None
 
@@ -1705,7 +1705,7 @@ def get_default_cost_center(company: str) -> str:
         
         return cost_center_doc.name
     except Exception as e:
-        frappe.log_error(f"Error creating cost center for company {company}: {str(e)}", "Cost Center Creation Error")
+        frappe.log_error("Cost Center Creation Error", f"Error creating cost center for company {company}: {str(e)}")
         # Return None to allow POS profile creation to continue without cost center
         return None
 

@@ -258,8 +258,8 @@ def create_product(
             except Exception:
                 # If price creation fails, log but don't fail the item creation
                 frappe.log_error(
-                    f"Failed to create Item Price for {item_code}: {frappe.get_traceback()}",
-                    "Item Price Creation Error"
+                    "Item Price Creation Error",
+                    f"Failed to create Item Price for {item_code}: {frappe.get_traceback()}"
                 )
         
         frappe.db.commit()
@@ -312,8 +312,8 @@ def create_product(
     except Exception as e:
         # Log the full error for debugging
         frappe.log_error(
-            f"Error creating product '{item_code}': {frappe.get_traceback()}",
-            "Product Creation Error"
+            "Product Creation Error",
+            f"Error creating product '{item_code}': {frappe.get_traceback()}"
         )
         # Return user-friendly error message
         frappe.throw(
@@ -401,8 +401,8 @@ def get_products(
         # Log short error message to avoid CharacterLengthExceededError
         error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
         frappe.log_error(
-            f"POS industry field missing: {error_msg}",
-            "Get Products - POS Industry"
+            "Get Products - POS Industry",
+            f"POS industry field missing: {error_msg}"
         )
         user_industry = None
     
@@ -2101,8 +2101,8 @@ def update_price_list(
                 frappe.throw(_("Unable to rename price list: {0}. Please check that all information is correct and try again.").format(error_msg), frappe.ValidationError)
         except Exception as e:
             frappe.log_error(
-                f"Error renaming price list '{current_identifier}' to '{new_name}': {frappe.get_traceback()}",
-                "Rename Price List Error"
+                "Rename Price List Error",
+                f"Error renaming price list '{current_identifier}' to '{new_name}': {frappe.get_traceback()}"
             )
             frappe.throw(_("An error occurred while renaming the price list. Please check that all information is correct and try again. If the problem persists, contact support."), frappe.ValidationError)
     
@@ -2267,8 +2267,8 @@ def create_uom(uom_name: str, must_be_whole_number: bool = False) -> Dict:
         return response
     except Exception as e:
         frappe.log_error(
-            f"Error creating UOM '{uom_name}': {frappe.get_traceback()}",
-            "Create UOM Error"
+            "Create UOM Error",
+            f"Error creating UOM '{uom_name}': {frappe.get_traceback()}"
         )
         error_msg = str(e).lower()
         if "duplicate" in error_msg or "already exists" in error_msg:
@@ -2485,8 +2485,8 @@ def update_uom(
                 }
         except Exception as e:
             frappe.log_error(
-                f"Error renaming UOM '{current_identifier}' to '{new_name}': {frappe.get_traceback()}",
-                "Rename UOM Error"
+                "Rename UOM Error",
+                f"Error renaming UOM '{current_identifier}' to '{new_name}': {frappe.get_traceback()}"
             )
             error_msg = str(e).lower()
             if "duplicate" in error_msg or "already exists" in error_msg:
@@ -2628,8 +2628,8 @@ def delete_uom(uom_name: str) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error deleting UOM '{uom_name}': {frappe.get_traceback()}",
-            "Delete UOM Error"
+            "Delete UOM Error",
+            f"Error deleting UOM '{uom_name}': {frappe.get_traceback()}"
         )
         frappe.local.response["http_status_code"] = 500
         return {
@@ -2774,8 +2774,8 @@ def update_item_group(
                 frappe.throw(_("Unable to rename item group: {0}. Please check that all information is correct and try again.").format(error_msg), frappe.ValidationError)
         except Exception as e:
             frappe.log_error(
-                f"Error renaming item group '{current_name}' to '{new_name}': {frappe.get_traceback()}",
-                "Rename Item Group Error"
+                "Rename Item Group Error",
+                f"Error renaming item group '{current_name}' to '{new_name}': {frappe.get_traceback()}"
             )
             frappe.throw(_("An error occurred while renaming the item group. Please check that all information is correct and try again. If the problem persists, contact support."), frappe.ValidationError)
     
@@ -2909,7 +2909,7 @@ def delete_item_group(name: str = None, item_group_name: str = None) -> Dict:
                     "items_count": items_count
                 }
     except Exception as e:
-        frappe.log_error(f"Error checking items using item group '{group_name_to_delete}': {str(e)}", "Delete Item Group - Check Items Error")
+        frappe.log_error("Delete Item Group - Check Items Error", f"Error checking items using item group '{group_name_to_delete}': {str(e)}")
         # Continue with deletion attempt if check fails (shouldn't happen, but be safe)
     
     # Check if item group has child item groups (since Item Group is a tree structure)
@@ -2961,7 +2961,7 @@ def delete_item_group(name: str = None, item_group_name: str = None) -> Dict:
                     "child_count": child_count
                 }
     except Exception as e:
-        frappe.log_error(f"Error checking child item groups for '{group_name_to_delete}': {str(e)}", "Delete Item Group - Check Children Error")
+        frappe.log_error("Delete Item Group - Check Children Error", f"Error checking child item groups for '{group_name_to_delete}': {str(e)}")
         # Continue with deletion attempt
     
     # Delete the item group
@@ -3075,8 +3075,8 @@ def delete_item_group(name: str = None, item_group_name: str = None) -> Dict:
     except Exception as e:
         # Log the full error for debugging
         frappe.log_error(
-            f"Error deleting item group '{group_name_to_delete}': {frappe.get_traceback()}",
-            "Delete Item Group Error"
+            "Delete Item Group Error",
+            f"Error deleting item group '{group_name_to_delete}': {frappe.get_traceback()}"
         )
         
         # Return user-friendly error message
@@ -3267,8 +3267,8 @@ def update_brand(brand_name: str, new_brand_name: str, company: str = None) -> D
     except Exception as e:
         # Log the full error for debugging
         frappe.log_error(
-            f"Error renaming brand '{brand_name}' to '{new_brand_name}': {frappe.get_traceback()}",
-            "Rename Brand Error"
+            "Rename Brand Error",
+            f"Error renaming brand '{brand_name}' to '{new_brand_name}': {frappe.get_traceback()}"
         )
         
         # Return user-friendly error message
@@ -3375,7 +3375,7 @@ def delete_brand(brand_name: str) -> Dict:
                     "items_count": items_count
                 }
     except Exception as e:
-        frappe.log_error(f"Error checking items using brand '{brand_name}': {str(e)}", "Delete Brand - Check Items Error")
+        frappe.log_error("Delete Brand - Check Items Error", f"Error checking items using brand '{brand_name}': {str(e)}")
         # Continue with deletion attempt if check fails (shouldn't happen, but be safe)
     
     # Delete the brand
@@ -3490,8 +3490,8 @@ def delete_brand(brand_name: str) -> Dict:
     except Exception as e:
         # Log the full error for debugging
         frappe.log_error(
-            f"Error deleting brand '{brand_name}': {frappe.get_traceback()}",
-            "Delete Brand Error"
+            "Delete Brand Error",
+            f"Error deleting brand '{brand_name}': {frappe.get_traceback()}"
         )
         
         # Return user-friendly error message
@@ -3585,7 +3585,7 @@ def seed_global_products(company: str = None, products_data: list = None) -> Dic
     except frappe.ValidationError:
         raise
     except Exception as e:
-        frappe.log_error(f"Error seeding global products: {str(e)}", "Seed Global Products")
+        frappe.log_error("Seed Global Products", f"Error seeding global products: {str(e)}")
         frappe.throw(_("Error seeding products: {0}").format(str(e)), frappe.ValidationError)
 
 
@@ -3642,8 +3642,8 @@ def set_product_warranty(item_code: str, warranty_period: int, warranty_period_u
         except Exception as e:
             # Custom fields might not exist yet - log but continue (main warranty_period will still be saved)
             frappe.log_error(
-                f"Could not save custom warranty fields for Item '{item_code}'. Error: {str(e)}. Please ensure custom fields 'custom_warranty_period_unit' and 'custom_warranty_period_value' exist on Item doctype.",
-                "Set Warranty Custom Fields Warning"
+                "Set Warranty Custom Fields Warning",
+                f"Could not save custom warranty fields for Item '{item_code}'. Error: {str(e)}. Please ensure custom fields 'custom_warranty_period_unit' and 'custom_warranty_period_value' exist on Item doctype."
             )
     
     item.save(ignore_permissions=True)

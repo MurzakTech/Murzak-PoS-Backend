@@ -67,8 +67,8 @@ def assign_all_business_roles(user_email: str) -> None:
                 else:
                     # Log warning if role doesn't exist (shouldn't happen for standard roles)
                     frappe.log_error(
-                        f"Role '{role}' does not exist in the system. Skipping assignment.",
-                        "Role Assignment Warning"
+                        "Role Assignment Warning",
+                        f"Role '{role}' does not exist in the system. Skipping assignment."
                     )
         
         # Only save if roles were added to avoid unnecessary database writes
@@ -78,8 +78,8 @@ def assign_all_business_roles(user_email: str) -> None:
             
     except Exception as e:
         frappe.log_error(
-            f"Error assigning roles to user {user_email}: {str(e)}",
-            "Assign Business Roles Error"
+            "Assign Business Roles Error",
+            f"Error assigning roles to user {user_email}: {str(e)}"
         )
         # Re-raise to ensure the error is visible
         raise
@@ -395,7 +395,7 @@ def register_user(
         }
     except Exception as e:
         # Catch-all for unexpected errors
-        frappe.log_error(f"Error registering user '{email}': {str(e)}", "User Registration Error")
+        frappe.log_error("User Registration Error", f"Error registering user '{email}': {str(e)}")
         return {
             "error": _("Something went wrong while creating your account. Please try again later or contact support."),
             "error_type": "Exception"
@@ -587,7 +587,7 @@ def get_current_user() -> Dict:
                     }
         except Exception as e:
             # If POS Profile creation fails, log but don't fail the request
-            frappe.log_error(f"Error getting POS Profile for user profile: {str(e)}", "Get User Profile")
+            frappe.log_error("Get User Profile", f"Error getting POS Profile for user profile: {str(e)}")
     
     # Set HTTP status code for successful retrieval
     frappe.local.response["http_status_code"] = 200
@@ -601,8 +601,8 @@ def get_current_user() -> Dict:
         # Log short error message to avoid CharacterLengthExceededError
         error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
         frappe.log_error(
-            f"POS industry field missing: {error_msg}",
-            "Get User Profile - POS Industry"
+            "Get User Profile - POS Industry",
+            f"POS industry field missing: {error_msg}"
         )
         user_industry = None
     if user_industry:
@@ -626,7 +626,7 @@ def get_current_user() -> Dict:
         # from frappe.permissions import AUTOMATIC_ROLES
         # roles = [r for r in roles if r not in AUTOMATIC_ROLES]
     except Exception as e:
-        frappe.log_error(f"Error getting user roles: {str(e)}", "Get User Roles")
+        frappe.log_error("Get User Roles", f"Error getting user roles: {str(e)}")
     
     # Get user permissions
     user_permissions = {}
@@ -648,7 +648,7 @@ def get_current_user() -> Dict:
             ]
         user_permissions = permissions_dict
     except Exception as e:
-        frappe.log_error(f"Error getting user permissions: {str(e)}", "Get User Permissions")
+        frappe.log_error("Get User Permissions", f"Error getting user permissions: {str(e)}")
     
     response = {
         "user": {
@@ -777,7 +777,7 @@ def grant_all_permissions() -> Dict:
             "user": user
         }
     except Exception as e:
-        frappe.log_error(f"Error granting permissions to user {user}: {str(e)}", "Grant Permissions Error")
+        frappe.log_error("Grant Permissions Error", f"Error granting permissions to user {user}: {str(e)}")
         frappe.throw(
             _("An error occurred while granting permissions. Please contact support."),
             frappe.ValidationError

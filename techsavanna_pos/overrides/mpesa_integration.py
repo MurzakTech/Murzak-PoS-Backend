@@ -69,8 +69,8 @@ def add_mpesa_to_pos_profile(pos_profile: str, company: str) -> None:
             
     except Exception as e:
         frappe.log_error(
-            f"Error adding MPESA to POS Profile {pos_profile}: {str(e)}",
-            "MPESA Integration Error"
+            "MPESA Integration Error",
+            f"Error adding MPESA to POS Profile {pos_profile}: {str(e)}"
         )
 
 
@@ -184,8 +184,8 @@ def on_pos_profile_update(doc: Document, method: str = None) -> None:
             add_gateway_modes_to_pos_profile(doc.name, doc.company)
     except Exception as e:
         frappe.log_error(
-            f"Error in on_pos_profile_update hook: {str(e)}",
-            "MPESA Integration Error"
+            "MPESA Integration Error",
+            f"Error in on_pos_profile_update hook: {str(e)}"
         )
 
 
@@ -200,8 +200,8 @@ def on_pos_invoice_update(doc: Document, method: str = None) -> None:
         pass
     except Exception as e:
         frappe.log_error(
-            f"Error in on_pos_invoice_update hook: {str(e)}",
-            "MPESA Integration Error"
+            "MPESA Integration Error",
+            f"Error in on_pos_invoice_update hook: {str(e)}"
         )
 
 
@@ -216,7 +216,7 @@ def on_sales_invoice_update(doc: Document, method: str = None) -> None:
         pass
     except Exception as e:
         frappe.log_error(
-            f"Error in on_sales_invoice_update hook: {str(e)}",
-            "MPESA Integration Error"
+            "MPESA Integration Error",
+            f"Error in on_sales_invoice_update hook: {str(e)}"
         )
 

@@ -139,8 +139,8 @@ def execute():
             setup_workflow_if_missing()
         except Exception as e:
             frappe.log_error(
-                f"Failed to setup workflow '{workflow_name}': {str(e)}",
-                "Workflow Reconciliation Error"
+                "Workflow Reconciliation Error",
+                f"Failed to setup workflow '{workflow_name}': {str(e)}"
             )
             print(f"ERROR: Failed to setup workflow '{workflow_name}': {str(e)}")
             print("Please run the workflow setup script manually:")
@@ -155,8 +155,8 @@ def execute():
     # Verify workflow is for the correct doctype
     if workflow.document_type != doctype:
         frappe.log_error(
-            f"Workflow '{workflow_name}' is for '{workflow.document_type}', not '{doctype}'",
-            "Workflow Reconciliation Error"
+            "Workflow Reconciliation Error",
+            f"Workflow '{workflow_name}' is for '{workflow.document_type}', not '{doctype}'"
         )
         print(f"ERROR: Workflow '{workflow_name}' is configured for '{workflow.document_type}', not '{doctype}'")
         return
@@ -164,8 +164,8 @@ def execute():
     # Check if workflow is active
     if not workflow.is_active:
         frappe.log_error(
-            f"Workflow '{workflow_name}' is not active. Activating it...",
-            "Workflow Reconciliation Warning"
+            "Workflow Reconciliation Warning",
+            f"Workflow '{workflow_name}' is not active. Activating it..."
         )
         workflow.is_active = 1
         workflow.save(ignore_permissions=True)
@@ -178,8 +178,8 @@ def execute():
     meta = frappe.get_meta(doctype)
     if not meta.has_field(workflow_state_field):
         frappe.log_error(
-            f"Workflow state field '{workflow_state_field}' does not exist in '{doctype}'",
-            "Workflow Reconciliation Error"
+            "Workflow Reconciliation Error",
+            f"Workflow state field '{workflow_state_field}' does not exist in '{doctype}'"
         )
         print(f"ERROR: Workflow state field '{workflow_state_field}' does not exist in '{doctype}'")
         print("The workflow will automatically create this field when saved. Please save the workflow once.")
@@ -239,8 +239,8 @@ def execute():
             except Exception as e:
                 error_count += 1
                 frappe.log_error(
-                    f"Error updating workflow state for {doctype} '{docname}': {str(e)}",
-                    "Workflow Reconciliation Error"
+                    "Workflow Reconciliation Error",
+                    f"Error updating workflow state for {doctype} '{docname}': {str(e)}"
                 )
         elif docstatus == 0:
             # For draft documents, verify the state is valid
@@ -259,8 +259,8 @@ def execute():
                 except Exception as e:
                     error_count += 1
                     frappe.log_error(
-                        f"Error updating workflow state for {doctype} '{docname}': {str(e)}",
-                        "Workflow Reconciliation Error"
+                        "Workflow Reconciliation Error",
+                        f"Error updating workflow state for {doctype} '{docname}': {str(e)}"
                     )
         # For submitted (docstatus = 1) or cancelled (docstatus = 2) documents,
         # we don't modify them as they should not change workflow states

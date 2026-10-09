@@ -48,7 +48,7 @@ def get_pos_industries(is_active: bool = True) -> Dict:
             "message": _("Industries retrieved successfully")
         }
     except Exception as e:
-        frappe.log_error(f"Error getting POS industries: {str(e)}", "Get POS Industries")
+        frappe.log_error("Get POS Industries", f"Error getting POS industries: {str(e)}")
         frappe.throw(_("Error retrieving industries: {0}").format(str(e)), frappe.ValidationError)
 
 
@@ -71,8 +71,8 @@ def get_user_industry() -> Dict:
         # Log short error message to avoid CharacterLengthExceededError
         error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
         frappe.log_error(
-            f"POS industry field missing: {error_msg}",
-            "Get User Industry"
+            "Get User Industry",
+            f"POS industry field missing: {error_msg}"
         )
         industry = None
     

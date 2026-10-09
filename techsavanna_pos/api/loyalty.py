@@ -184,7 +184,7 @@ def create_loyalty_program(
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), _('Create Loyalty Program API Error'))
+        frappe.log_error(_('Create Loyalty Program API Error'), frappe.get_traceback())
         return {
             "status": "failure",
             "message": _("An error occurred while creating the Loyalty Program."),
@@ -301,7 +301,7 @@ def get_loyalty_program_rules(loyalty_program_name=None, loyalty_program_id=None
         }
         
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), _('Get Loyalty Program Rules API Error'))
+        frappe.log_error(_('Get Loyalty Program Rules API Error'), frappe.get_traceback())
         return {
             "status": "failure",
             "message": "An error occurred while fetching loyalty program rules.",
@@ -375,7 +375,7 @@ def list_loyalty_programs(company=None):
         }
         
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), _('List Loyalty Programs API Error'))
+        frappe.log_error(_('List Loyalty Programs API Error'), frappe.get_traceback())
         return {
             "status": "failure",
             "message": "An error occurred while fetching loyalty programs.",
@@ -461,7 +461,7 @@ def assign_loyalty_program(customer_id, loyalty_program_name, company=None):
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), _('Assign Loyalty Program API Error'))
+        frappe.log_error(_('Assign Loyalty Program API Error'), frappe.get_traceback())
         return {
             "status": "failure",
             "message": _("An error occurred while assigning the Loyalty Program to the customer."),
@@ -635,7 +635,7 @@ def earn_loyalty_points(customer_id, purchase_amount, company=None):
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Earn Points API Error")
+        frappe.log_error("Earn Points API Error", frappe.get_traceback())
         return {
             "status": "failure",
             "message": "Failed to earn points.",
@@ -757,7 +757,7 @@ def get_loyalty_balance(customer_id, company=None, limit=5):
             "debug": debug
         }
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Loyalty Balance API Error")
+        frappe.log_error("Get Loyalty Balance API Error", frappe.get_traceback())
         return {
             "status": "failure",
             "message": "Failed to fetch loyalty balance",
@@ -895,7 +895,7 @@ def redeem_points(customer_id, points_to_redeem, company=None, reference_documen
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Redeem Points API Error")
+        frappe.log_error("Redeem Points API Error", frappe.get_traceback())
         return {
             "status": "failure",
             "message": "Failed to redeem points",
@@ -1029,7 +1029,7 @@ def get_customer_loyalty_details(customer_id, company=None, invoice_amount=None)
         }
     
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Customer Loyalty Details API Error")
+        frappe.log_error("Get Customer Loyalty Details API Error", frappe.get_traceback())
         return {
             "status": "error",
             "message": f"Error fetching loyalty details: {str(e)}"
@@ -1132,7 +1132,7 @@ def calculate_loyalty_redemption(customer_id, points_to_redeem, invoice_amount=N
         }
     
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Calculate Loyalty Redemption API Error")
+        frappe.log_error("Calculate Loyalty Redemption API Error", frappe.get_traceback())
         return {
             "status": "error",
             "message": f"Error calculating redemption: {str(e)}"
@@ -1273,7 +1273,7 @@ def get_points_history(
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Points History API Error")
+        frappe.log_error("Get Points History API Error", frappe.get_traceback())
         return {
             "status": "failure",
             "message": "Failed to fetch points history",

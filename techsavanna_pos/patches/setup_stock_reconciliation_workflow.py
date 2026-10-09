@@ -165,8 +165,8 @@ def ensure_workflow_state_field():
             return True
     except Exception as e:
         frappe.log_error(
-            f"Error ensuring workflow_state field: {str(e)}",
-            "Workflow Setup Error"
+            "Workflow Setup Error",
+            f"Error ensuring workflow_state field: {str(e)}"
         )
         print(f"ERROR: Failed to create field: {str(e)}")
         return False
@@ -199,7 +199,7 @@ def create_workflow_state_field(doctype, fieldname):
         print(f"  ✓ Created Custom Field '{fieldname}'")
     except Exception as e:
         print(f"  ❌ Error creating custom field: {str(e)}")
-        frappe.log_error(f"Error creating workflow_state field: {str(e)}", "Workflow Setup Error")
+        frappe.log_error("Workflow Setup Error", f"Error creating workflow_state field: {str(e)}")
         raise
 
 

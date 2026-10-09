@@ -249,8 +249,8 @@ def _get_or_create_pos_opening_entry(
                 # If we can't check, assume it has invoices to be safe
                 error_msg = f"Error checking invoices for POS Opening Entry {outdated_entry.name}"
                 frappe.log_error(
-                    f"{error_msg}: {str(e)[:100]}",
-                    "POS Opening Entry Check Error"
+                    "POS Opening Entry Check Error",
+                    f"{error_msg}: {str(e)[:100]}"
                 )
                 entries_with_invoices.append(outdated_entry)
         
@@ -273,14 +273,14 @@ def _get_or_create_pos_opening_entry(
                 opening_entry_doc.cancel()
                 frappe.db.commit()
                 frappe.log_error(
-                    f"Cancelled outdated POS Opening Entry {outdated_entry.name} (period_start_date: {outdated_entry.period_start_date})",
-                    "POS Opening Entry Auto-Cancel"
+                    "POS Opening Entry Auto-Cancel",
+                    f"Cancelled outdated POS Opening Entry {outdated_entry.name} (period_start_date: {outdated_entry.period_start_date})"
                 )
             except Exception as e:
                 # If we can't cancel, throw an error
                 frappe.log_error(
-                    f"Error cancelling outdated POS Opening Entry {outdated_entry.name}: {str(e)}",
-                    "POS Opening Entry Auto-Cancel Error"
+                    "POS Opening Entry Auto-Cancel Error",
+                    f"Error cancelling outdated POS Opening Entry {outdated_entry.name}: {str(e)}"
                 )
                 frappe.throw(
                     _(
@@ -352,7 +352,7 @@ def _get_or_create_pos_opening_entry(
         
         return opening_entry_doc.name
     except Exception as e:
-        frappe.log_error(f"Error creating POS Opening Entry for {pos_profile}: {str(e)}", "POS Opening Entry Creation")
+        frappe.log_error("POS Opening Entry Creation", f"Error creating POS Opening Entry for {pos_profile}: {str(e)}")
         frappe.throw(
             _("Failed to create POS Opening Entry: {0}").format(str(e)),
             frappe.ValidationError
@@ -428,7 +428,7 @@ def _get_or_create_pos_profile(company: str) -> str:
             customer_doc.insert(ignore_permissions=True)
             customer = customer_doc.name
         except Exception as e:
-            frappe.log_error(f"Error creating Walk-in Customer: {str(e)}", "POS Profile Creation")
+            frappe.log_error("POS Profile Creation", f"Error creating Walk-in Customer: {str(e)}")
             # Try to get any customer
             customer = frappe.db.get_value("Customer", {"company": company}, "name")
             if not customer:
@@ -505,7 +505,7 @@ def _get_or_create_pos_profile(company: str) -> str:
             cash_mode_doc.insert(ignore_permissions=True)
             cash_mode = cash_mode_doc.name
         except Exception as e:
-            frappe.log_error(f"Error creating Cash mode of payment: {str(e)}", "POS Profile Creation")
+            frappe.log_error("POS Profile Creation", f"Error creating Cash mode of payment: {str(e)}")
             # Try to get any mode of payment
             cash_mode = frappe.db.get_value("Mode of Payment", {}, "name")
             if not cash_mode:
@@ -560,7 +560,7 @@ def _get_or_create_pos_profile(company: str) -> str:
         
         return pos_profile_doc.name
     except Exception as e:
-        frappe.log_error(f"Error creating POS Profile: {str(e)}", "POS Profile Creation")
+        frappe.log_error("POS Profile Creation", f"Error creating POS Profile: {str(e)}")
         frappe.throw(
             _("Error creating POS Profile: {0}").format(str(e)),
             frappe.ValidationError
@@ -918,8 +918,8 @@ def create_sales_invoice(
         }
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error creating Sales Invoice: {str(e)}",
             "Create Sales Invoice Validation Error",
+            f"Validation error creating Sales Invoice: {str(e)}",
         )
         return {
             "success": False,
@@ -928,8 +928,8 @@ def create_sales_invoice(
         }
     except Exception as e:
         frappe.log_error(
-            frappe.get_traceback(),
             "Create Sales Invoice Error",
+            frappe.get_traceback(),
         )
         return {
             "success": False,
@@ -1052,7 +1052,7 @@ def create_pos_invoice(
                         frappe.ValidationError
                     )
             except Exception as e:
-                frappe.log_error(f"Error creating POS Opening Entry: {str(e)}", "POS Opening Entry Creation Error")
+                frappe.log_error("POS Opening Entry Creation Error", f"Error creating POS Opening Entry: {str(e)}")
                 frappe.throw(
                     _("Error creating POS Opening Entry for POS Profile {0}: {1}. Please create it manually first.").format(pos_profile, str(e)),
                     frappe.ValidationError
@@ -1211,8 +1211,8 @@ def create_pos_invoice(
         }
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error creating POS Invoice: {str(e)}",
             "Create POS Invoice Validation Error",
+            f"Validation error creating POS Invoice: {str(e)}",
         )
         return {
             "success": False,
@@ -1221,8 +1221,8 @@ def create_pos_invoice(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error creating POS Invoice: {str(e)}",
             "Create POS Invoice Error",
+            f"Error creating POS Invoice: {str(e)}",
         )
         return {
             "success": False,
@@ -1250,8 +1250,8 @@ def get_sales_invoice(name: str) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error fetching Sales Invoice {name}: {str(e)}",
             "Get Sales Invoice Error",
+            f"Error fetching Sales Invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -1319,8 +1319,8 @@ def list_sales_invoices(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error listing Sales Invoices: {str(e)}",
             "List Sales Invoices Error",
+            f"Error listing Sales Invoices: {str(e)}",
         )
         return {
             "success": False,
@@ -1372,8 +1372,8 @@ def cancel_sales_invoice(name: str, reason: Optional[str] = None) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error cancelling Sales Invoice {name}: {str(e)}",
             "Cancel Sales Invoice Error",
+            f"Error cancelling Sales Invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -1892,8 +1892,8 @@ def update_sales_invoice(
         }
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error updating Sales Invoice {name}: {str(e)}",
             "Update Sales Invoice Validation Error",
+            f"Validation error updating Sales Invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -1902,8 +1902,8 @@ def update_sales_invoice(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error updating Sales Invoice {name}: {str(e)}",
             "Update Sales Invoice Error",
+            f"Error updating Sales Invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -2016,8 +2016,8 @@ def update_pos_invoice(
         }
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error updating POS Invoice {name}: {str(e)}",
             "Update POS Invoice Validation Error",
+            f"Validation error updating POS Invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -2026,8 +2026,8 @@ def update_pos_invoice(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error updating POS Invoice {name}: {str(e)}",
             "Update POS Invoice Error",
+            f"Error updating POS Invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -2056,8 +2056,8 @@ def get_pos_invoice(name: str) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error fetching POS Invoice {name}: {str(e)}",
             "Get POS Invoice Error",
+            f"Error fetching POS Invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -2182,8 +2182,8 @@ def list_pos_invoices(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error listing POS Invoices: {str(e)}",
             "List POS Invoices Error",
+            f"Error listing POS Invoices: {str(e)}",
         )
         return {
             "success": False,
@@ -2237,8 +2237,8 @@ def cancel_pos_invoice(name: str, reason: Optional[str] = None) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error cancelling POS Invoice {name}: {str(e)}",
             "Cancel POS Invoice Error",
+            f"Error cancelling POS Invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -2400,8 +2400,8 @@ def create_sales_return(
         }
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error creating Sales Return: {str(e)}",
             "Create Sales Return Validation Error",
+            f"Validation error creating Sales Return: {str(e)}",
         )
         return {
             "success": False,
@@ -2410,8 +2410,8 @@ def create_sales_return(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error creating Sales Return: {str(e)}",
             "Create Sales Return Error",
+            f"Error creating Sales Return: {str(e)}",
         )
         return {
             "success": False,
@@ -2448,8 +2448,8 @@ def get_sales_return(name: str) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error fetching Sales Return {name}: {str(e)}",
             "Get Sales Return Error",
+            f"Error fetching Sales Return {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -2517,8 +2517,8 @@ def list_sales_returns(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error listing Sales Returns: {str(e)}",
             "List Sales Returns Error",
+            f"Error listing Sales Returns: {str(e)}",
         )
         return {
             "success": False,
@@ -2580,8 +2580,8 @@ def cancel_sales_return(name: str, reason: Optional[str] = None) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error cancelling Sales Return {name}: {str(e)}",
             "Cancel Sales Return Error",
+            f"Error cancelling Sales Return {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -2663,8 +2663,8 @@ def submit_invoice(name: str, invoice_type: Optional[str] = None) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error submitting invoice {name}: {str(e)}",
             "Submit Invoice Error",
+            f"Error submitting invoice {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -2743,16 +2743,14 @@ def create_pos_opening_entry(
             }
         }
     except frappe.ValidationError as e:
-        error_msg = str(e)[:200]  # Truncate to avoid character limit issues
-        frappe.log_error(f"Validation error creating POS Opening Entry: {error_msg}", "POS Opening Entry Validation Error")
+        frappe.log_error("POS Opening Entry Validation Error", frappe.get_traceback())
         return {
             "success": False,
             "message": f"Validation error: {str(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
-        error_msg = str(e)[:200]  # Truncate to avoid character limit issues
-        frappe.log_error(f"Error creating POS Opening Entry: {error_msg}", "POS Opening Entry Error")
+        frappe.log_error("POS Opening Entry Error", frappe.get_traceback())
         return {
             "success": False,
             "message": f"Error creating POS Opening Entry: {str(e)}",
@@ -2845,8 +2843,8 @@ def list_pos_opening_entries(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error listing POS Opening Entries: {str(e)}",
             "List POS Opening Entries Error",
+            f"Error listing POS Opening Entries: {str(e)}",
         )
         return {
             "success": False,
@@ -2901,8 +2899,8 @@ def get_pos_opening_entry(name: str) -> Dict:
         }
     except Exception as e:
         frappe.log_error(
-            f"Error fetching POS Opening Entry {name}: {str(e)}",
             "Get POS Opening Entry Error",
+            f"Error fetching POS Opening Entry {name}: {str(e)}",
         )
         return {
             "success": False,
@@ -3281,8 +3279,8 @@ def create_payment_entry_for_invoice(
     
     except frappe.ValidationError as e:
         frappe.log_error(
-            f"Validation error creating Payment Entry for Sales Invoice {sales_invoice}: {str(e)}",
             "Create Payment Entry Validation Error",
+            f"Validation error creating Payment Entry for Sales Invoice {sales_invoice}: {str(e)}",
         )
         return {
             "success": False,
@@ -3291,8 +3289,8 @@ def create_payment_entry_for_invoice(
         }
     except Exception as e:
         frappe.log_error(
-            f"Error creating Payment Entry for Sales Invoice {sales_invoice}: {str(e)}",
             "Create Payment Entry Error",
+            f"Error creating Payment Entry for Sales Invoice {sales_invoice}: {str(e)}",
         )
         return {
             "success": False,
@@ -3370,8 +3368,8 @@ def get_invoice_payment_status(sales_invoice: str) -> Dict:
     
     except Exception as e:
         frappe.log_error(
-            f"Error getting payment status for Sales Invoice {sales_invoice}: {str(e)}",
             "Get Payment Status Error",
+            f"Error getting payment status for Sales Invoice {sales_invoice}: {str(e)}",
         )
         return {
             "success": False,
