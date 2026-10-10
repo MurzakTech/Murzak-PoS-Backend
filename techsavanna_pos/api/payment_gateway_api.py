@@ -633,13 +633,27 @@ def find_recorded_sale(company: str | None, client_reference: str | None) -> tup
 	if not company or not client_reference:
 		return None
 	remembered = frappe.cache().get_value(_sale_key(company, client_reference))
-	if not remembered or "::" not in remembered:
-		return None
-	doctype, name = remembered.split("::", 1)
-	docstatus = frappe.db.get_value(doctype, name, "docstatus")
-	if docstatus is None or int(docstatus) == 2:
-		return None  # deleted or cancelled: treat as a new sale
-	return doctype, name
+	if remembered and "::" in remembered:
+		doctype, name = remembered.split("::", 1)
+		docstatus = frappe.db.get_value(doctype, name, "docstatus")
+		if docstatus is not None and int(docstatus) != 2:
+			return doctype, name
+
+	# The memory above lasts a day and can be cleared; offline sales may arrive later than
+	# that, so also look for the id stored on the invoice itself.
+	from techsavanna_pos.api.offline_sales import CLIENT_REFERENCE_FIELD
+
+	for doctype in ("POS Invoice", "Sales Invoice"):
+		if not frappe.get_meta(doctype).has_field(CLIENT_REFERENCE_FIELD):
+			continue
+		name = frappe.db.get_value(
+			doctype,
+			{CLIENT_REFERENCE_FIELD: str(client_reference)[:140], "company": company, "docstatus": ["!=", 2]},
+			"name",
+		)
+		if name:
+			return doctype, name
+	return None
 
 
 def remember_sale(company: str | None, client_reference: str | None, doctype: str, name: str) -> None:

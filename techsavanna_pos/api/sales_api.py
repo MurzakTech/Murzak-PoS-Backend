@@ -11,6 +11,13 @@ from typing import Dict, List, Optional, Union
 import frappe
 from frappe import _
 from frappe.utils import flt, nowdate, getdate, cint
+
+from techsavanna_pos.api.offline_sales import (
+    CLIENT_REFERENCE_FIELD,
+    OFFLINE_SOLD_AT_FIELD,
+    offline_remark,
+    parse_sold_at,
+)
 from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
 )
@@ -609,7 +616,7 @@ def _validate_items_exist(items: List[Dict]) -> None:
             )
 
 
-def _build_invoice_items(items: List[Dict], company: str) -> List[Dict]:
+def _build_invoice_items(items: List[Dict], company: str, auto_discount: bool = True) -> List[Dict]:
     built_items: List[Dict] = []
     for row in items:
         qty = flt(row.get("qty"))
@@ -627,7 +634,8 @@ def _build_invoice_items(items: List[Dict], company: str) -> List[Dict]:
         warehouse = row.get("warehouse")
         item_code = row.get("item_code")
 
-        if not discount_percentage and not discount_amount:
+        # Offline sales were already charged at the till, so never add a discount afterwards
+        if auto_discount and not discount_percentage and not discount_amount:
             item_group = frappe.db.get_value("Item", item_code, "item_group")
             rule = get_applicable_inventory_discount(
                 item_code=item_code,
@@ -718,6 +726,8 @@ def _create_invoice_document(
     apply_discount_on: Optional[str] = None,
     additional_discount_percentage: Optional[float] = None,
     discount_amount: Optional[float] = None,
+    client_reference: Optional[str] = None,
+    offline_sold_at: Optional[str] = None,
 ) -> "frappe.model.document.Document":
     if not company:
         company = _get_default_company()
@@ -748,7 +758,8 @@ def _create_invoice_document(
         doc.pos_profile = pos_profile
 
     # Build items
-    for row in _build_invoice_items(items, company):
+    sold_offline = parse_sold_at(offline_sold_at)
+    for row in _build_invoice_items(items, company, auto_discount=not sold_offline):
         doc.append("items", row)
 
     # Discounts
@@ -780,6 +791,15 @@ def _create_invoice_document(
                 payment_row["reference_no"] = str(p["reference_no"])[:140]
             doc.append("payments", payment_row)
 
+    # Keep the till's sale id on the invoice itself, so a sale sent again (a retry, or an
+    # offline sale uploaded later) is found even after the short-lived memory is gone
+    if client_reference and doc.meta.has_field(CLIENT_REFERENCE_FIELD):
+        doc.set(CLIENT_REFERENCE_FIELD, str(client_reference)[:140])
+    if sold_offline:
+        if doc.meta.has_field(OFFLINE_SOLD_AT_FIELD):
+            doc.set(OFFLINE_SOLD_AT_FIELD, sold_offline)
+        doc.remarks = offline_remark(sold_offline, doc.get("remarks"))
+
     return doc
 
 
@@ -800,6 +820,7 @@ def create_sales_invoice(
     discount_amount: Optional[float] = None,
     do_not_submit: bool = False,
     client_reference: Optional[str] = None,
+    offline_sold_at: Optional[str] = None,
 ) -> Dict:
     """
     Create a Sales Invoice for standard or POS sales.
@@ -819,6 +840,8 @@ def create_sales_invoice(
         additional_discount_percentage: Additional discount percentage on net total
         discount_amount: Flat discount amount
         do_not_submit: If True, don't submit the document (draft only)
+        offline_sold_at: When the till sold this while offline ("YYYY-MM-DD HH:MM:SS"). The
+            sale is recorded now, keeps this time on the invoice, and gets no automatic discount.
         client_reference: The till's id for this sale. Sending the same id again (a retry after a
             lost reply) returns the invoice already created instead of making a second one.
 
@@ -864,6 +887,8 @@ def create_sales_invoice(
             apply_discount_on=apply_discount_on,
             additional_discount_percentage=additional_discount_percentage,
             discount_amount=discount_amount,
+            client_reference=client_reference,
+            offline_sold_at=offline_sold_at,
         )
 
         # Set update_stock flag - CRITICAL for inventory reduction
@@ -955,6 +980,7 @@ def create_pos_invoice(
     loyalty_points: Optional[int] = None,
     do_not_submit: bool = False,
     client_reference: Optional[str] = None,
+    offline_sold_at: Optional[str] = None,
 ) -> Dict:
     """
     Create a POS Invoice (used for walk-in POS sales).
@@ -975,6 +1001,8 @@ def create_pos_invoice(
         redeem_loyalty_points: Whether to redeem loyalty points (default: False)
         loyalty_points: Number of loyalty points to redeem (required if redeem_loyalty_points is True)
         do_not_submit: If True, don't submit the document (draft only)
+        offline_sold_at: When the till sold this while offline ("YYYY-MM-DD HH:MM:SS"). The
+            sale is recorded now, keeps this time on the invoice, and gets no automatic discount.
         client_reference: The till's id for this sale. Sending the same id again (a retry after a
             lost reply) returns the invoice already created instead of making a second one.
 
@@ -1074,6 +1102,8 @@ def create_pos_invoice(
                 apply_discount_on=apply_discount_on,
                 additional_discount_percentage=additional_discount_percentage,
                 discount_amount=discount_amount,
+                client_reference=client_reference,
+                offline_sold_at=offline_sold_at,
             )
 
             if receivable_account and hasattr(si, "debit_to"):
@@ -1149,6 +1179,8 @@ def create_pos_invoice(
             apply_discount_on=apply_discount_on,
             additional_discount_percentage=additional_discount_percentage,
             discount_amount=discount_amount,
+            client_reference=client_reference,
+            offline_sold_at=offline_sold_at,
         )
 
         if receivable_account and hasattr(pi, "debit_to"):
