@@ -2267,9 +2267,11 @@ def _build_credit_note_items(items: List[Dict], return_against: Optional[str] = 
                 frappe.ValidationError,
             )
 
+        # Callers send how many units came back as a positive number; ERPNext
+        # rejects a return unless its lines carry negative quantities.
         item_data = {
             "item_code": row.get("item_code"),
-            "qty": qty,
+            "qty": -qty,
             "rate": flt(row.get("rate")) if row.get("rate") is not None else None,
             "uom": row.get("uom"),
             "warehouse": row.get("warehouse"),
@@ -2279,16 +2281,19 @@ def _build_credit_note_items(items: List[Dict], return_against: Optional[str] = 
             "serial_no": row.get("serial_no"),
         }
 
-        # Link to original invoice if provided
+        # Link each line to the original invoice row so ERPNext can check it
+        # against what was sold and what has already been returned.
         if return_against:
-            item_data["against_sales_invoice"] = return_against
-            if row.get("against_sales_invoice_item"):
-                item_data["against_sales_invoice_item"] = row.get("against_sales_invoice_item")
-            
+            original_row = row.get("sales_invoice_item") or row.get("against_sales_invoice_item")
+            if original_row:
+                item_data["sales_invoice_item"] = original_row
+
             # If rate not provided, try to get from original invoice
             if item_data["rate"] is None and original_invoice:
                 for orig_item in original_invoice.items:
-                    if orig_item.item_code == row.get("item_code"):
+                    if (original_row and orig_item.name == original_row) or (
+                        not original_row and orig_item.item_code == row.get("item_code")
+                    ):
                         item_data["rate"] = orig_item.rate
                         break
 
@@ -2363,6 +2368,9 @@ def create_sales_return(
 
         if return_against:
             cn.return_against = return_against
+            # A POS sale takes stock out at the till; its return must put the stock
+            # back the same way, or returned goods never reappear in inventory.
+            cn.update_stock = frappe.db.get_value("Sales Invoice", return_against, "update_stock") or 0
 
         if reason:
             cn.remarks = reason
