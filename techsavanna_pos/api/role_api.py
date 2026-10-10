@@ -9,6 +9,8 @@ from frappe.permissions import AUTOMATIC_ROLES
 from frappe.query_builder import DocType
 from typing import Dict, List, Optional, Union
 
+from techsavanna_pos.api.access_control import require_manager, require_role_manageable
+
 
 @frappe.whitelist()
 def create_role(
@@ -32,6 +34,8 @@ def create_role(
     Returns:
         Created role details
     """
+    # Roles are shared by the whole site, so only a business owner may create one
+    require_manager()
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -111,6 +115,9 @@ def update_role(
     Returns:
         Updated role details
     """
+    # Only a business owner, and only for a role that is theirs to change
+    require_manager()
+    require_role_manageable(role_name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -178,6 +185,9 @@ def delete_role(role_name: str) -> Dict:
     Returns:
         Success message
     """
+    # Only a business owner, and only for a role that is theirs to change
+    require_manager()
+    require_role_manageable(role_name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -230,6 +240,9 @@ def disable_role(role_name: str) -> Dict:
     Returns:
         Success message
     """
+    # Only a business owner, and only for a role that is theirs to change
+    require_manager()
+    require_role_manageable(role_name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -275,6 +288,9 @@ def enable_role(role_name: str) -> Dict:
     Returns:
         Success message
     """
+    # Only a business owner, and only for a role that is theirs to change
+    require_manager()
+    require_role_manageable(role_name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -342,6 +358,9 @@ def assign_permissions_to_role(
     Returns:
         Success message with permission details
     """
+    # Only a business owner, and only for a role that is theirs to change
+    require_manager()
+    require_role_manageable(role_name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -575,6 +594,9 @@ def remove_permissions_from_role(
     Returns:
         Success message
     """
+    # Only a business owner, and only for a role that is theirs to change
+    require_manager()
+    require_role_manageable(role_name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)

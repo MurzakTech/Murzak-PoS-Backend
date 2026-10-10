@@ -5,6 +5,7 @@ Handles company/business setup, POS profile creation, and optional eTIMS configu
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 from frappe.utils import now, today
 from erpnext.setup.setup_wizard import setup_wizard
 
@@ -323,6 +324,7 @@ def create_company(
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=30, seconds=10 * 60)
 def check_abbreviation_exists(abbr: str) -> dict:
     """Check if a company abbreviation already exists
     

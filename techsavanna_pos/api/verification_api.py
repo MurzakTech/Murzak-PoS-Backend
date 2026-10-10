@@ -10,6 +10,7 @@ from typing import Dict, Optional
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 from frappe.utils import now_datetime, add_to_date
 
 
@@ -72,6 +73,7 @@ def get_resend_key(identifier: str, verification_type: str) -> str:
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=10, seconds=60 * 60)
 def send_email_verification(email: str) -> Dict:
     """Send email verification code
     
@@ -164,6 +166,7 @@ def send_email_verification(email: str) -> Dict:
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=10, seconds=60 * 60)
 def send_phone_verification(phone: str) -> Dict:
     """Send phone verification code via SMS
     
@@ -254,6 +257,7 @@ def send_phone_verification(phone: str) -> Dict:
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=30, seconds=60 * 60)
 def verify_email_code(email: str, code: str) -> Dict:
     """Verify email verification code
     
@@ -336,6 +340,7 @@ def verify_email_code(email: str, code: str) -> Dict:
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=30, seconds=60 * 60)
 def verify_phone_code(phone: str, code: str) -> Dict:
     """Verify phone verification code
     
@@ -418,6 +423,7 @@ def verify_phone_code(phone: str, code: str) -> Dict:
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=60, seconds=60 * 60)
 def check_verification_status(identifier: str, verification_type: str) -> Dict:
     """Check if email or phone is verified
     

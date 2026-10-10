@@ -11,11 +11,14 @@ from typing import Dict, Optional
 import frappe
 from frappe import _
 from frappe.core.doctype.user.user import generate_keys
+from frappe.rate_limiter import rate_limit
 from frappe.utils import (
     add_to_date,
     get_site_name,
     now_datetime,
 )
+
+from techsavanna_pos.api.access_control import require_manager
 
 
 # OAuth Configuration
@@ -186,6 +189,7 @@ def generate_oauth_bearer_token(user: str) -> Dict[str, str]:
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=10, seconds=60 * 60)
 def register_user(
     email: str,
     first_name: str,
@@ -404,6 +408,7 @@ def register_user(
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=30, seconds=10 * 60)
 def login_user(email: str, password: str) -> Dict:
     """Login user and generate OAuth Bearer Token
     
@@ -763,6 +768,10 @@ def grant_all_permissions() -> Dict:
     if user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
+    # Only an existing business owner may use this. Without the check, anyone signed in could
+    # call it to make themselves a System Manager.
+    require_manager()
+
     try:
         assign_all_business_roles(user)
         
