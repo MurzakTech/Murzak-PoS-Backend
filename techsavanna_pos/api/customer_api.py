@@ -6,6 +6,8 @@ Handles customer listing, creation, and management
 import frappe
 from frappe import _
 from frappe.utils import flt
+
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 from typing import Optional, Dict, List
 
 
@@ -55,6 +57,9 @@ def create_customer(
             )
         
         # Get logged-in user's company (required for isolation)
+        if company:
+            # Refuse a company the caller does not belong to
+            company = resolve_company(company)
         if not company:
             company = frappe.defaults.get_user_default("Company")
             if not company:
@@ -234,6 +239,9 @@ def list_customers(
     """
     try:
         # Get logged-in user's company (required for isolation)
+        if company:
+            # Refuse a company the caller does not belong to
+            company = resolve_company(company)
         if not company:
             company = frappe.defaults.get_user_default("Company")
             if not company:
@@ -413,6 +421,9 @@ def get_customer(name: str, company: str = None) -> Dict:
             }
         
         # Get logged-in user's company (required for isolation)
+        if company:
+            # Refuse a company the caller does not belong to
+            company = resolve_company(company)
         if not company:
             company = frappe.defaults.get_user_default("Company")
             if not company:
@@ -601,6 +612,9 @@ def update_customer(
             }
         
         # Get logged-in user's company (required for isolation validation)
+        if company:
+            # Refuse a company the caller does not belong to
+            company = resolve_company(company)
         if not company:
             company = frappe.defaults.get_user_default("Company")
             if not company:
@@ -694,6 +708,8 @@ def set_customer_credit_limit(
         dict: Operation result with credit limit details
     """
     try:
+        # Refuse a company the caller does not belong to
+        company = resolve_company(company)
         # Validate customer exists
         if not frappe.db.exists("Customer", customer):
             return {
@@ -806,6 +822,9 @@ def get_customer_credit_limit(customer: str, company: str = None) -> Dict:
         dict: Credit limit information
     """
     try:
+        # Refuse a company the caller does not belong to
+        if company:
+            company = resolve_company(company)
         # Validate customer exists
         if not frappe.db.exists("Customer", customer):
             return {
@@ -940,6 +959,9 @@ def get_customer_credit_history(
         dict: Credit history with transactions
     """
     try:
+        # Refuse a company the caller does not belong to
+        if company:
+            company = resolve_company(company)
         # Validate customer exists
         if not frappe.db.exists("Customer", customer):
             return {
@@ -1105,6 +1127,8 @@ def remove_customer_credit_limit(customer: str, company: str) -> Dict:
         dict: Operation result
     """
     try:
+        # Refuse a company the caller does not belong to
+        company = resolve_company(company)
         # Validate customer exists
         if not frappe.db.exists("Customer", customer):
             return {

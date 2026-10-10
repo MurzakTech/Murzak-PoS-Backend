@@ -8,6 +8,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
 
+from techsavanna_pos.api.payment_gateway_common import resolve_company
+
 
 @frappe.whitelist()
 def get_suppliers(
@@ -41,6 +43,10 @@ def get_suppliers(
     - Set filter_by_company_transactions=False (default) to return all suppliers.
     """
     try:
+        # A company named in the request must be one the caller belongs to
+        if company:
+            company = resolve_company(company)
+
         filters = {}
         
         if not disabled:
