@@ -2302,6 +2302,29 @@ def _build_credit_note_items(items: List[Dict], return_against: Optional[str] = 
     return built_items
 
 
+# Returns hand money back, so only managers and owners may record or cancel them.
+RETURN_ROLES = {"System Manager", "Sales Manager", "Accounts Manager"}
+
+
+def _check_return_access(company: Optional[str] = None, invoice: Optional[str] = None) -> str:
+    """Refuse cashiers and other businesses; return the company the return belongs to."""
+    from techsavanna_pos.api.payment_gateway_common import resolve_company
+
+    if frappe.session.user != "Administrator" and not RETURN_ROLES.intersection(frappe.get_roles()):
+        frappe.throw(
+            _("Only a Sales Manager, Accounts Manager or the owner can record or cancel returns."),
+            frappe.PermissionError,
+        )
+    if invoice:
+        invoice_company = frappe.db.get_value("Sales Invoice", invoice, "company")
+        if invoice_company:
+            if company and company != invoice_company:
+                frappe.throw(_("Invoice {0} belongs to another company.").format(invoice), frappe.ValidationError)
+            company = invoice_company
+    # resolve_company refuses a company the user does not belong to
+    return resolve_company(company)
+
+
 @frappe.whitelist()
 def create_sales_return(
     customer: str,
@@ -2335,18 +2358,10 @@ def create_sales_return(
     """
     import json
 
+    company = _check_return_access(company, return_against)
+
     try:
         parsed_items = _parse_items(items)
-
-        if not company:
-            company = _get_default_company()
-            if not company:
-                frappe.throw(
-                    _(
-                        "Company is required. Please set a default company or provide company parameter."
-                    ),
-                    frappe.ValidationError,
-                )
 
         _validate_customer(customer)
         _validate_items_exist(parsed_items)
@@ -2451,6 +2466,10 @@ def get_sales_return(name: str) -> Dict:
                 "error_type": "validation_error",
             }
 
+        from techsavanna_pos.api.payment_gateway_common import resolve_company
+
+        resolve_company(cn.company)
+
         return {
             "success": True,
             "data": cn.as_dict(),
@@ -2481,8 +2500,9 @@ def list_sales_returns(
     List Sales Returns (Credit Notes) with optional filters.
     """
     try:
-        if not company:
-            company = _get_default_company()
+        from techsavanna_pos.api.payment_gateway_common import resolve_company
+
+        company = resolve_company(company)
 
         filters: Dict = {"is_return": 1}
         if company:
@@ -2544,6 +2564,8 @@ def cancel_sales_return(name: str, reason: Optional[str] = None) -> Dict:
         name: Credit Note name
         reason: Optional cancellation reason (stored in remarks)
     """
+    _check_return_access(invoice=name)
+
     try:
         if not frappe.db.exists("Sales Invoice", name):
             return {
