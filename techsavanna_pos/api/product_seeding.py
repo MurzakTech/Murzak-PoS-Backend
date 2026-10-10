@@ -11,6 +11,9 @@ from frappe import _
 from typing import Dict, List, Optional
 from frappe.utils import flt, nowdate, getdate, get_first_day, get_last_day
 
+from techsavanna_pos.api.etims_optional import relax_etims_mandatory
+from techsavanna_pos.api.seed_results import readable_seed_error, seed_result_status
+
 
 def ensure_fiscal_year_exists(company: str, posting_date: str = None) -> str:
     """
@@ -954,6 +957,9 @@ def create_seed_item(company: str = None):
         # Process each item
         # ----------------------
         for row in items:
+            # A row that fails part way (say the item saved but its price did not)
+            # is undone completely, so no half-made products are left behind
+            frappe.db.savepoint("seed_item")
             try:
                 if not isinstance(row, dict):
                     raise ValueError(_("Each item must be an object"))
@@ -1018,6 +1024,8 @@ def create_seed_item(company: str = None):
                 
                 # Try to insert the item
                 # If it fails due to custom_item_classification AttributeError, retry with ignore_validate
+                # Starter products are not sent to eTIMS, so they have no KRA classification
+                relax_etims_mandatory(item_doc)
                 try:
                     item_doc.insert(ignore_permissions=True)
                 except AttributeError as e:
@@ -1068,10 +1076,12 @@ def create_seed_item(company: str = None):
                 items_created.append(item_code)
 
             except Exception as e:
+                frappe.db.rollback(save_point="seed_item")
                 items_failed.append({
                     "item_code": row.get("item_code"),
+                    "item_name": row.get("item_name") if isinstance(row, dict) else None,
                     "prefixed_item_code": item_code if 'item_code' in locals() else None,
-                    "error_message": str(e)
+                    "error_message": readable_seed_error(e)
                 })
 
         # ----------------------
@@ -1127,10 +1137,12 @@ def create_seed_item(company: str = None):
         # Final response
         # ----------------------
         return {
-            "status": (
-                "success" if items_created and not items_failed and stock_entry_status["created"]
-                else "partial_success" if items_created or items_failed or stock_entry_items
-                else "failed"
+            "status": seed_result_status(
+                created=len(items_created),
+                failed=len(items_failed),
+                skipped=len(items_skipped),
+                stock_needed=bool(stock_entry_items),
+                stock_created=stock_entry_status["created"],
             ),
             "company": company,
             "company_abbr": company_abbr,

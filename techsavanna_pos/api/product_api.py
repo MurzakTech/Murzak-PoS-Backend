@@ -14,6 +14,8 @@ from datetime import datetime
 import erpnext
 import re
 
+from techsavanna_pos.api.etims_optional import relax_etims_mandatory
+
 
 @frappe.whitelist()
 def create_product(
@@ -217,6 +219,8 @@ def create_product(
         temp_standard_rate = item.standard_rate
         item.standard_rate = 0
         
+        # Products not sent to eTIMS have no KRA classification to give
+        relax_etims_mandatory(item)
         item.insert(ignore_permissions=True)
         
         # Restore standard_rate
