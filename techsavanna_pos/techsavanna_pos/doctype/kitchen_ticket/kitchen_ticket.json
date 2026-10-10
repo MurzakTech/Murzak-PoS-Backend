@@ -1,0 +1,189 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-10 16:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "ticket_section",
+  "client_id",
+  "company",
+  "warehouse",
+  "station",
+  "column_break_ticket",
+  "ticket_date",
+  "number",
+  "round",
+  "order_type",
+  "label",
+  "status_section",
+  "status",
+  "status_by",
+  "column_break_status",
+  "status_at",
+  "created_at",
+  "lines_section",
+  "lines"
+ ],
+ "fields": [
+  {
+   "fieldname": "ticket_section",
+   "fieldtype": "Section Break",
+   "label": "Kitchen Ticket"
+  },
+  {
+   "description": "The till's own id for this ticket. Unique within a company, so sending it again changes nothing.",
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "search_index": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "in_standard_filter": 1
+  },
+  {
+   "description": "The name of the station the ticket is for, for example Kitchen or Bar.",
+   "fieldname": "station",
+   "fieldtype": "Data",
+   "label": "Station",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_ticket",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The day the ticket number belongs to. Numbers start again at 1 each day.",
+   "fieldname": "ticket_date",
+   "fieldtype": "Date",
+   "label": "Ticket Date",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "number",
+   "fieldtype": "Int",
+   "label": "Number",
+   "in_list_view": 1
+  },
+  {
+   "description": "Which time the table has ordered: 1 for the first order, 2 for the second.",
+   "fieldname": "round",
+   "fieldtype": "Int",
+   "label": "Round",
+   "default": "1"
+  },
+  {
+   "fieldname": "order_type",
+   "fieldtype": "Select",
+   "label": "Order Type",
+   "options": "table\ncounter",
+   "default": "table"
+  },
+  {
+   "description": "Table or tab name, up to 40 characters. Never a customer's name.",
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Table or Tab",
+   "length": 40,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Progress"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "New\nPreparing\nReady\nServed",
+   "default": "New",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "status_by",
+   "fieldtype": "Link",
+   "label": "Status Changed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Stored in UTC.",
+   "fieldname": "status_at",
+   "fieldtype": "Datetime",
+   "label": "Status Changed At"
+  },
+  {
+   "description": "When the order was sent from the till, stored in UTC.",
+   "fieldname": "created_at",
+   "fieldtype": "Datetime",
+   "label": "Sent At",
+   "search_index": 1
+  },
+  {
+   "fieldname": "lines_section",
+   "fieldtype": "Section Break",
+   "label": "Items",
+   "collapsible": 1
+  },
+  {
+   "description": "What to make, change and stop making, as JSON: adds, changes and voids.",
+   "fieldname": "lines",
+   "fieldtype": "Long Text",
+   "label": "Items (JSON)"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-10 16:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Techsavanna POS",
+ "name": "Kitchen Ticket",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "label",
+ "track_changes": 0
+}
