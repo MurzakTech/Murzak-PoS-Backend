@@ -1,0 +1,53 @@
+name: CI
+
+# Runs on every pull request into main. The deploy workflow only runs after a merge, so until now
+# nothing checked a change before it reached the server.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request replaces the run that is still going
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint the changed files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the check compares the pull request with its base branch
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ruff 0.8.1 is the version pinned in .pre-commit-config.yaml
+      - run: pip install ruff==0.8.1 pyyaml
+
+      - run: python .github/scripts/check_changed_files.py "origin/${{ github.base_ref }}"
+
+  unit-tests:
+    name: Unit tests (no database)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Frappe 15, the same major version the server runs
+      - run: pip install "frappe @ git+https://github.com/frappe/frappe.git@version-15"
+
+      # ERPNext's code only, so the product and inventory modules (which import it) can be loaded and
+      # tested. No site or database is built, so this is fast.
+      - run: pip install --no-deps "erpnext @ git+https://github.com/frappe/erpnext.git@version-15"
+
+      - run: python .github/scripts/run_unit_tests.py
