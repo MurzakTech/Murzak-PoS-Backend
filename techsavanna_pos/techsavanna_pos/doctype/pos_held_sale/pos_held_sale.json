@@ -1,0 +1,131 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-10 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "bill_section",
+  "held_id",
+  "company",
+  "warehouse",
+  "label",
+  "column_break_bill",
+  "customer_name",
+  "item_count",
+  "total",
+  "held_at",
+  "payload_section",
+  "payload"
+ ],
+ "fields": [
+  {
+   "fieldname": "bill_section",
+   "fieldtype": "Section Break",
+   "label": "Held Bill"
+  },
+  {
+   "description": "The till's own id for this bill. Unique within a company.",
+   "fieldname": "held_id",
+   "fieldtype": "Data",
+   "label": "Held ID",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "search_index": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "in_standard_filter": 1
+  },
+  {
+   "description": "Table or tab name, up to 40 characters.",
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label",
+   "length": 40,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_bill",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer"
+  },
+  {
+   "fieldname": "item_count",
+   "fieldtype": "Int",
+   "label": "Items",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "total",
+   "fieldtype": "Currency",
+   "label": "Total",
+   "in_list_view": 1
+  },
+  {
+   "description": "When the bill was put on hold, stored in UTC.",
+   "fieldname": "held_at",
+   "fieldtype": "Datetime",
+   "label": "Held At"
+  },
+  {
+   "fieldname": "payload_section",
+   "fieldtype": "Section Break",
+   "label": "Sale",
+   "collapsible": 1
+  },
+  {
+   "description": "The sale exactly as the till sent it, as JSON.",
+   "fieldname": "payload",
+   "fieldtype": "Long Text",
+   "label": "Sale (JSON)"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-10 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Techsavanna POS",
+ "name": "POS Held Sale",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "label",
+ "track_changes": 0
+}

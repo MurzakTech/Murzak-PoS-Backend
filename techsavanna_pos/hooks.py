@@ -143,9 +143,7 @@ required_apps = ["frappe/erpnext", "navariltd/kenya_compliance"]
 # ---------------
 # Override standard doctype classes
 
-override_doctype_class = {
-	"POS Invoice": "techsavanna_pos.overrides.pos_invoice_class.POSInvoice"
-}
+override_doctype_class = {"POS Invoice": "techsavanna_pos.overrides.pos_invoice_class.POSInvoice"}
 
 # Document Events
 # ---------------
@@ -156,15 +154,13 @@ override_doctype_class = {
 doc_events = {
 	"POS Invoice": {
 		"before_submit": "techsavanna_pos.overrides.pos_invoice.before_submit",
-		"on_update_after_submit": "techsavanna_pos.overrides.mpesa_integration.on_pos_invoice_update"
+		"on_update_after_submit": "techsavanna_pos.overrides.mpesa_integration.on_pos_invoice_update",
 	},
 	"Sales Invoice": {
 		"before_submit": "techsavanna_pos.overrides.sales_invoice.before_submit",
-		"on_update_after_submit": "techsavanna_pos.overrides.mpesa_integration.on_sales_invoice_update"
+		"on_update_after_submit": "techsavanna_pos.overrides.mpesa_integration.on_sales_invoice_update",
 	},
-	"POS Profile": {
-		"on_update": "techsavanna_pos.overrides.mpesa_integration.on_pos_profile_update"
-	},
+	"POS Profile": {"on_update": "techsavanna_pos.overrides.mpesa_integration.on_pos_profile_update"},
 	# Item hooks - for POS-specific functionality (no eTIMS)
 	"Item": {
 		"validate": "techsavanna_pos.overrides.item.validate",
@@ -178,23 +174,10 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"techsavanna_pos.tasks.all"
-# 	],
-# 	"daily": [
-# 		"techsavanna_pos.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"techsavanna_pos.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"techsavanna_pos.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"techsavanna_pos.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	# Removes held bills (open tabs) that were abandoned more than 30 days ago
+	"daily": ["techsavanna_pos.api.held_sales_api.purge_old_held_sales"],
+}
 
 # Testing
 # -------
@@ -280,4 +263,3 @@ doc_events = {
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-
