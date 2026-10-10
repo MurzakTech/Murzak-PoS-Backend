@@ -11,6 +11,9 @@ from frappe.core.doctype.user.user import generate_keys
 from frappe.permissions import AUTOMATIC_ROLES
 from frappe.query_builder import DocType
 
+from techsavanna_pos.api.access_control import require_manager, require_roles_held
+from techsavanna_pos.api.payment_gateway_common import resolve_company
+
 
 @frappe.whitelist()
 def get_all_roles() -> dict:
@@ -94,6 +97,8 @@ def create_staff_user(
     Returns:
         Created staff user details
     """
+    # Creating a user with roles is the most powerful thing this API does: owners only
+    require_manager()
     try:
         # Validate user permissions
         if frappe.session.user == "Guest":
@@ -129,6 +134,9 @@ def create_staff_user(
         if not frappe.db.exists("Company", company):
             frappe.throw(_("The company '{0}' does not exist. Please check the company name and try again, or contact your administrator if you believe this is an error.").format(company), frappe.ValidationError)
         
+        # The company must be one the caller belongs to: naming another business's company is refused
+        company = resolve_company(company)
+
         # Check if user already exists
         if frappe.db.exists("User", email):
             frappe.throw(_("A user with the email '{0}' already exists. Please use a different email address or contact your administrator to reset the existing account.").format(email), frappe.ValidationError)
@@ -145,6 +153,7 @@ def create_staff_user(
         
         # Validate roles
         if roles:
+            require_roles_held(roles)
             valid_roles = validate_roles(roles)
             if not valid_roles:
                 invalid_roles = [r for r in roles if not frappe.db.exists("Role", r) or frappe.db.get_value("Role", r, "disabled")]
@@ -375,6 +384,9 @@ def assign_roles_to_staff(
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
+    # Only a business owner may manage staff
+    require_manager()
+
     # Validate user exists
     if not frappe.db.exists("User", user_email):
         frappe.throw(_("User {0} does not exist").format(user_email))
@@ -398,6 +410,7 @@ def assign_roles_to_staff(
     valid_roles = validate_roles(roles)
     if not valid_roles:
         frappe.throw(_("One or more roles are invalid"))
+    require_roles_held(roles)
     
     # Get user document
     user_doc = frappe.get_doc("User", user_email)
@@ -640,6 +653,9 @@ def update_staff_user(
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
+    # Only a business owner may manage staff
+    require_manager()
+
     # Validate user exists
     if not frappe.db.exists("User", user_email):
         frappe.throw(_("User {0} does not exist").format(user_email))
@@ -713,6 +729,9 @@ def remove_roles_from_staff(
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
+    # Only a business owner may manage staff
+    require_manager()
+
     # Validate user exists
     if not frappe.db.exists("User", user_email):
         frappe.throw(_("User {0} does not exist").format(user_email))
@@ -769,6 +788,9 @@ def disable_staff_user(user_email: str) -> dict:
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
+    # Only a business owner may manage staff
+    require_manager()
+
     # Validate user exists
     if not frappe.db.exists("User", user_email):
         frappe.throw(_("User {0} does not exist").format(user_email))
@@ -805,6 +827,9 @@ def enable_staff_user(user_email: str) -> dict:
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
+    # Only a business owner may manage staff
+    require_manager()
+
     # Validate user exists
     if not frappe.db.exists("User", user_email):
         frappe.throw(_("User {0} does not exist").format(user_email))

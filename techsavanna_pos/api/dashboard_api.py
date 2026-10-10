@@ -15,6 +15,7 @@ from frappe.utils import flt, nowdate, getdate, add_days, add_months, get_first_
 from frappe.query_builder import DocType, functions as fn
 from pypika.terms import Case
 
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 from techsavanna_pos.api.profit_calc import summarize_profit
 
 
@@ -43,6 +44,8 @@ def _build_base_filters(
     filters = {}
     
     if company:
+        # Refuse a company the caller does not belong to
+        company = resolve_company(company)
         filters["company"] = company
     else:
         company = _get_default_company()
