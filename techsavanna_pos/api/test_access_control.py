@@ -45,6 +45,9 @@ class AccessCase(unittest.TestCase):
 			patch.object(frappe, "db", db, create=True),
 			patch.object(frappe, "log_error", create=True),
 			patch(
+				"frappe.translate.get_all_translations", return_value={}
+			),  # messages are not translated in tests
+			patch(
 				"techsavanna_pos.api.payment_gateway_common.get_user_companies", return_value=set(companies)
 			),
 		]
@@ -329,7 +332,12 @@ class TestOnlyYourOwnCompany(AccessCase):
 		self.assert_refused(customer_api.remove_customer_credit_limit(customer="CUST-1", company="Shop B"))
 
 	def test_dashboard(self):
-		self.assert_refused(dashboard_api.get_dashboard_metrics(company="Shop B"))
+		# explicit dates, so the call does not read the system timezone from the database first
+		self.assert_refused(
+			dashboard_api.get_dashboard_metrics(
+				company="Shop B", period="custom", from_date="2026-01-01", to_date="2026-01-31"
+			)
+		)
 
 	def test_dashboard_filters_for_the_callers_own_company(self):
 		filters, company = dashboard_api._build_base_filters("Shop A")

@@ -83,6 +83,9 @@ class HeldSalesCase(unittest.TestCase):
 
 		stack = [
 			patch.object(frappe, "session", frappe._dict(user=user)),
+			patch(
+				"frappe.translate.get_all_translations", return_value={}
+			),  # messages are not translated in tests
 			patch.object(frappe, "db", db, create=True),
 			patch(
 				"techsavanna_pos.api.payment_gateway_common.get_user_companies", return_value=set(companies)
