@@ -15,6 +15,7 @@ import erpnext
 import re
 
 from techsavanna_pos.api.etims_optional import relax_etims_mandatory
+from techsavanna_pos.api.access_control import require_catalogue_role
 
 
 @frappe.whitelist()
@@ -77,6 +78,8 @@ def create_product(
     Returns:
         Created product details
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     try:
         # Validate user permissions
         if frappe.session.user == "Guest":
@@ -978,6 +981,8 @@ def update_product(
     Returns:
         Updated product details
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     # Validate user permissions
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1083,6 +1088,8 @@ def delete_product(item_code: str) -> Dict:
     Returns:
         Success message
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     # Validate user permissions
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1293,6 +1300,8 @@ def set_product_price(
     Returns:
         Success message
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     # Validate user permissions
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1392,6 +1401,8 @@ def bulk_create_products(products: List[Dict], company: str = None) -> Dict:
     Returns:
         Summary of created products
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     # Validate user permissions
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1547,6 +1558,8 @@ def bulk_update_prices(price_updates: List[Dict], price_list: str, currency: str
     Returns:
         Summary of updated prices
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1654,6 +1667,8 @@ def create_product_variant(
     Returns:
         Created variant details
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1754,6 +1769,8 @@ def bulk_import_products(products_data: str, company: str = None) -> Dict:
     Returns:
         Import summary
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1789,6 +1806,8 @@ def bulk_import_opening_stock(
     Returns:
         Stock reconciliation document details
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1885,6 +1904,8 @@ def create_price_list(
     Returns:
         Created price list details
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -2027,6 +2048,8 @@ def update_price_list(
     Returns:
         Updated price list details
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -2160,6 +2183,8 @@ def delete_price_list(price_list_name: str) -> Dict:
     Returns:
         Success message
     """
+    # Prices and the product catalogue: only roles the frontend gives the price screens
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     

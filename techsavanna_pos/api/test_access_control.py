@@ -9,6 +9,8 @@ right guard (an open call with no rate limit, a staff or role change with no own
 """
 
 import ast
+import importlib
+import inspect
 import os
 import types
 import unittest
@@ -29,7 +31,7 @@ from techsavanna_pos.api import (
 )
 
 OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manager")
-CASHIER_ROLES = ("Sales User", "Accounts User")
+CASHIER_ROLES = ("Sales User",)
 
 
 class AccessCase(unittest.TestCase):
@@ -307,7 +309,8 @@ class TestOnlyYourOwnCompany(AccessCase):
 	"""Naming another business's company in the request is refused, and nothing is read."""
 
 	def setUp(self):
-		self.as_user("till@shop-a.test", roles=CASHIER_ROLES, companies=("Shop A",))
+		# A sales manager passes the role checks (credit limits need one), so only the company is in question
+		self.as_user("manager@shop-a.test", roles=("Sales Manager", "Sales User"), companies=("Shop A",))
 		get_all = patch.object(frappe, "get_all", create=True)
 		self.get_all = get_all.start()
 		self.addCleanup(get_all.stop)
@@ -346,6 +349,153 @@ class TestOnlyYourOwnCompany(AccessCase):
 
 	def test_suppliers(self):
 		self.assert_refused(supplier_api.get_suppliers(company="Shop B"))
+
+
+# The sensitive calls and the check each one must make first. The roles behind each check are
+# copied from the frontend's role table, so the server and the screens agree.
+SENSITIVE_CALLS = {
+	"require_catalogue_role": {
+		"product_api": [
+			"create_product",
+			"update_product",
+			"delete_product",
+			"set_product_price",
+			"bulk_update_prices",
+			"bulk_create_products",
+			"bulk_import_products",
+			"bulk_import_opening_stock",
+			"create_price_list",
+			"update_price_list",
+			"delete_price_list",
+			"create_product_variant",
+		],
+	},
+	"require_stock_role": {
+		"inventory_api": [
+			"create_stock_entry",
+			"create_material_issue",
+			"create_material_receipt",
+			"create_material_transfer",
+			"create_stock_reconciliation",
+			"update_stock_entry",
+			"submit_stock_entry",
+			"cancel_stock_entry",
+		],
+	},
+	"require_stock_count_role": {"inventory_api": ["create_multi_level_stock_reconciliation"]},
+	"require_credit_role": {"customer_api": ["set_customer_credit_limit", "remove_customer_credit_limit"]},
+	"require_loyalty_role": {"loyalty": ["create_loyalty_program", "assign_loyalty_program"]},
+	"require_manager": {
+		"inventory_api": [
+			"create_inventory_discount_rule",
+			"update_inventory_discount_rule",
+			"delete_inventory_discount_rule",
+		]
+	},
+}
+
+
+class TestRoleSets(AccessCase):
+	"""Which roles each kind of change takes, read from the frontend's role table."""
+
+	def allowed(self, check, roles):
+		self.as_user("someone@shop-a.test", roles=roles)
+		try:
+			check()
+		except frappe.PermissionError:
+			return False
+		return True
+
+	def test_a_cashier_may_do_none_of_them(self):
+		for name in SENSITIVE_CALLS:
+			with self.subTest(check=name):
+				self.assertFalse(self.allowed(getattr(access_control, name), CASHIER_ROLES))
+
+	def test_the_all_role_never_grants_anything(self):
+		# Frappe gives every user the "All" role, so it must not count as a manager role
+		for name in SENSITIVE_CALLS:
+			with self.subTest(check=name):
+				self.assertFalse(self.allowed(getattr(access_control, name), ("All", "Guest")))
+
+	def test_the_owner_may_do_all_of_them(self):
+		for name in SENSITIVE_CALLS:
+			with self.subTest(check=name):
+				self.assertTrue(self.allowed(getattr(access_control, name), ("System Manager",)))
+
+	def test_a_guest_is_refused_with_a_sign_in_error(self):
+		self.as_user("Guest", roles=())
+		for name in SENSITIVE_CALLS:
+			with self.subTest(check=name), self.assertRaises(frappe.AuthenticationError):
+				getattr(access_control, name)()
+
+	def test_prices_and_stock_are_separate_jobs(self):
+		prices, stock = access_control.require_catalogue_role, access_control.require_stock_role
+		self.assertTrue(self.allowed(prices, ("Sales Manager",)))
+		self.assertFalse(self.allowed(stock, ("Sales Manager",)))
+		self.assertTrue(self.allowed(stock, ("Stock User",)))
+		self.assertFalse(self.allowed(prices, ("Stock User",)))
+
+	def test_a_stock_user_may_move_stock_but_not_start_a_stock_count(self):
+		self.assertTrue(self.allowed(access_control.require_stock_role, ("Stock User",)))
+		self.assertFalse(self.allowed(access_control.require_stock_count_role, ("Stock User",)))
+		self.assertTrue(self.allowed(access_control.require_stock_count_role, ("Stock Manager",)))
+
+	def test_credit_limits_follow_the_frontends_credit_screen(self):
+		credit = access_control.require_credit_role
+		for role in ("Sales Manager", "Accounts Manager", "Accounts User"):
+			self.assertTrue(self.allowed(credit, (role,)), role)
+		for role in ("Sales User", "Stock Manager", "Purchase Manager"):
+			self.assertFalse(self.allowed(credit, (role,)), role)
+
+	def test_loyalty_programs_are_for_owners_and_accountants(self):
+		loyalty_check = access_control.require_loyalty_role
+		self.assertTrue(self.allowed(loyalty_check, ("Accounts Manager",)))
+		self.assertFalse(self.allowed(loyalty_check, ("Sales Manager",)))
+
+	def test_the_refusal_names_what_was_refused_and_who_may(self):
+		self.as_user("till@shop-a.test", roles=CASHIER_ROLES)
+		with self.assertRaises(frappe.PermissionError) as refused:
+			access_control.require_credit_role()
+		self.assertIn("credit limits", str(refused.exception))
+		self.assertIn("Sales Manager", str(refused.exception))
+
+
+class TestSensitiveCallsRefuseACashier(AccessCase):
+	"""Each call refuses a cashier before doing anything. Runs where the module can be imported."""
+
+	def test_every_sensitive_call_refuses_a_cashier(self):
+		self.as_user("till@shop-a.test", roles=CASHIER_ROLES)
+		skipped = []
+		with (
+			patch.object(frappe, "new_doc", create=True) as new_doc,
+			patch.object(frappe, "get_doc", create=True) as get_doc,
+		):
+			for modules in SENSITIVE_CALLS.values():
+				for module_name, names in modules.items():
+					try:
+						module = importlib.import_module(f"techsavanna_pos.api.{module_name}")
+					except ImportError:  # these older modules need ERPNext, which is only on a full bench
+						skipped.append(module_name)
+						continue
+					for name in names:
+						# Call the function itself, past Frappe's argument-type wrapper: the check runs first
+						function = inspect.unwrap(getattr(module, name))
+						arguments = {
+							parameter.name: "x"
+							for parameter in inspect.signature(function).parameters.values()
+							if parameter.default is inspect.Parameter.empty
+							and parameter.kind not in (parameter.VAR_POSITIONAL, parameter.VAR_KEYWORD)
+						}
+						with (
+							self.subTest(call=f"{module_name}.{name}"),
+							self.assertRaises(frappe.PermissionError),
+						):
+							function(**arguments)
+		new_doc.assert_not_called()
+		get_doc.assert_not_called()
+		self.db.set_value.assert_not_called()
+		if skipped:
+			self.skipTest(f"ran the rest; not importable without ERPNext: {sorted(set(skipped))}")
 
 
 class TestGuardsAreNotForgotten(unittest.TestCase):
@@ -423,6 +573,25 @@ class TestGuardsAreNotForgotten(unittest.TestCase):
 				elif "require_manager(" not in found[name]:
 					unguarded.append(f"{filename}:{name}")
 		self.assertEqual(unguarded, [])
+
+	def test_every_sensitive_call_makes_its_check_first(self):
+		missing = []
+		for check, modules in SENSITIVE_CALLS.items():
+			for module_name, names in modules.items():
+				found = {node.name: source for node, _d, source in self.functions(f"{module_name}.py")}
+				for name in names:
+					source = found.get(name)
+					if source is None:
+						missing.append(f"{module_name}.{name} (not found)")
+						continue
+					call = source.find(f"{check}()")
+					risky = [
+						source.find(word) for word in ("frappe.db", "frappe.get_", "frappe.new_doc", "try:")
+					]
+					risky = [position for position in risky if position != -1]
+					if call == -1 or (risky and call > min(risky)):
+						missing.append(f"{module_name}.{name} (needs {check}() before it touches anything)")
+		self.assertEqual(missing, [])
 
 	def test_every_role_change_checks_the_role_is_theirs_to_change(self):
 		found = {node.name: source for node, _d, source in self.functions("role_api.py")}

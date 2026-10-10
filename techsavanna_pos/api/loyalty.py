@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from frappe.utils import now_datetime, nowdate, cint, getdate, flt
+from techsavanna_pos.api.access_control import require_loyalty_role
 
 
 @frappe.whitelist(allow_guest=False)
@@ -35,6 +36,8 @@ def create_loyalty_program(
     :param expiry_duration: Points expiry duration in days (optional)
     :return: Success or failure message with program details
     """
+    # Loyalty programs: only roles the frontend gives the loyalty settings screen
+    require_loyalty_role()
     try:
         # Get logged-in user's company (required for isolation)
         if not company:
@@ -396,6 +399,8 @@ def assign_loyalty_program(customer_id, loyalty_program_name, company=None):
     :param company: Company name (optional, defaults to logged-in user's company)
     :return: Success or failure message
     """
+    # Loyalty programs: only roles the frontend gives the loyalty settings screen
+    require_loyalty_role()
     try:
         # Get logged-in user's company (required for isolation)
         if not company:

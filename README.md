@@ -39,6 +39,7 @@ To run them yourself before pushing (from the repository root):
 
 ```bash
 pip install ruff==0.8.1 pyyaml "frappe @ git+https://github.com/frappe/frappe.git@version-15"
+pip install --no-deps "erpnext @ git+https://github.com/frappe/erpnext.git@version-15"
 python .github/scripts/check_changed_files.py origin/main
 python .github/scripts/run_unit_tests.py
 ```

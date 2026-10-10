@@ -18,6 +18,7 @@ from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_d
     get_applicable_inventory_discount,
 )
 from techsavanna_pos.api.product_seeding import ensure_fiscal_year_exists
+from techsavanna_pos.api.access_control import require_manager, require_stock_count_role, require_stock_role
 
 
 @frappe.whitelist()
@@ -222,6 +223,8 @@ def create_stock_entry(
     Returns:
         dict: Created stock entry details
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     try:
         # Parse items
         if isinstance(items, str):
@@ -411,6 +414,8 @@ def create_material_receipt(
     Returns:
         dict: Created stock entry details
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     return create_stock_entry(
         stock_entry_type="Material Receipt",
         items=items,
@@ -442,6 +447,8 @@ def create_material_issue(
     Returns:
         dict: Created stock entry details
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     return create_stock_entry(
         stock_entry_type="Material Issue",
         items=items,
@@ -475,6 +482,8 @@ def create_material_transfer(
     Returns:
         dict: Created stock entry details
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     return create_stock_entry(
         stock_entry_type="Material Transfer",
         items=items,
@@ -570,6 +579,8 @@ def create_stock_reconciliation(
     Returns:
         dict: Created stock reconciliation details
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     try:
         # Parse items
         if isinstance(items, str):
@@ -1785,6 +1796,8 @@ def create_inventory_discount_rule(
     naming_series: str = None,
 ) -> Dict:
     """Create an inventory discount rule (item, batch, or item group)."""
+    # Discount rules change what customers pay: business owners only
+    require_manager()
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1842,6 +1855,8 @@ def update_inventory_discount_rule(
     description: str = None,
 ) -> Dict:
     """Update an inventory discount rule."""
+    # Discount rules change what customers pay: business owners only
+    require_manager()
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1894,6 +1909,8 @@ def update_inventory_discount_rule(
 @frappe.whitelist()
 def delete_inventory_discount_rule(name: str) -> Dict:
     """Delete an inventory discount rule."""
+    # Discount rules change what customers pay: business owners only
+    require_manager()
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -2447,6 +2464,8 @@ def update_stock_entry(
     Returns:
         dict: Updated stock entry details
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     try:
         if not frappe.db.exists("Stock Entry", stock_entry_name):
             return {
@@ -2596,6 +2615,8 @@ def cancel_stock_entry(
     Returns:
         dict: Cancellation result
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     try:
         if not frappe.db.exists("Stock Entry", stock_entry_name):
             return {
@@ -2657,6 +2678,8 @@ def submit_stock_entry(
     Returns:
         dict: Submission result
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     try:
         if not frappe.db.exists("Stock Entry", stock_entry_name):
             return {
@@ -2736,6 +2759,8 @@ def create_multi_level_stock_reconciliation(
     Returns:
         dict: Created stock reconciliation details
     """
+    # Starting a stock count: only roles the frontend gives that screen
+    require_stock_count_role()
     try:
         # Get company if not provided
         if not company:

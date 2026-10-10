@@ -20,6 +20,37 @@ from frappe import _
 
 MANAGER_ROLE = "System Manager"
 
+# Who may do the sensitive everyday jobs. These are copied from the frontend's role table
+# (src/config/roleAccessConfig.js in the Murzak-PoS-Frontend repository) so the server and the screens
+# agree. "All" is left out on purpose: Frappe gives that role to every user, including cashiers.
+CATALOGUE_ROLES = frozenset(
+	{"System Manager", "Sales Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
+)
+STOCK_ROLES = frozenset(
+	{
+		"System Manager",
+		"Purchase Manager",
+		"Stock Manager",
+		"Stock User",
+		"Item Manager",
+		"Agriculture Manager",
+	}
+)
+STOCK_COUNT_ROLES = frozenset(
+	{"System Manager", "Purchase Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
+)
+CREDIT_ROLES = frozenset(
+	{
+		"System Manager",
+		"Sales Manager",
+		"Accounts Manager",
+		"Accounts User",
+		"Delivery Manager",
+		"Agent Manager",
+	}
+)
+LOYALTY_ROLES = frozenset({"System Manager", "Accounts Manager"})
+
 
 def require_manager() -> None:
 	"""Refuse anyone who is not signed in, or is not a business owner (System Manager) or the Administrator."""
@@ -81,3 +112,44 @@ def require_role_manageable(role_name: str) -> None:
 		return
 
 	frappe.throw(_("This role belongs to another business."), frappe.PermissionError)
+
+
+def require_any_role(roles, action: str) -> None:
+	"""Refuse anyone who holds none of `roles`. The Administrator always passes."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
+	if user == "Administrator":
+		return
+	if not set(roles) & set(frappe.get_roles(user)):
+		frappe.throw(
+			_("Your role cannot {0}. It takes one of these roles: {1}.").format(
+				action, ", ".join(sorted(roles))
+			),
+			frappe.PermissionError,
+		)
+
+
+def require_catalogue_role() -> None:
+	"""Changing prices, the product list, or importing products in bulk."""
+	require_any_role(CATALOGUE_ROLES, _("change prices or the product catalogue"))
+
+
+def require_stock_role() -> None:
+	"""Stock entries, material receipts, issues and transfers, and stock reconciliation."""
+	require_any_role(STOCK_ROLES, _("change stock"))
+
+
+def require_stock_count_role() -> None:
+	"""Starting a multi-level stock reconciliation."""
+	require_any_role(STOCK_COUNT_ROLES, _("start a stock count"))
+
+
+def require_credit_role() -> None:
+	"""Setting or removing a customer's credit limit."""
+	require_any_role(CREDIT_ROLES, _("change customer credit limits"))
+
+
+def require_loyalty_role() -> None:
+	"""Creating a loyalty program or assigning one to customers."""
+	require_any_role(LOYALTY_ROLES, _("manage loyalty programs"))

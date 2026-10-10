@@ -9,6 +9,7 @@ from frappe.utils import flt
 
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 from typing import Optional, Dict, List
+from techsavanna_pos.api.access_control import require_credit_role
 
 
 @frappe.whitelist()
@@ -707,6 +708,8 @@ def set_customer_credit_limit(
     Returns:
         dict: Operation result with credit limit details
     """
+    # Credit limits: only roles the frontend gives the credit screen
+    require_credit_role()
     try:
         # Refuse a company the caller does not belong to
         company = resolve_company(company)
@@ -1126,6 +1129,8 @@ def remove_customer_credit_limit(customer: str, company: str) -> Dict:
     Returns:
         dict: Operation result
     """
+    # Credit limits: only roles the frontend gives the credit screen
+    require_credit_role()
     try:
         # Refuse a company the caller does not belong to
         company = resolve_company(company)
