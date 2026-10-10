@@ -598,28 +598,51 @@ def register_user(
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=30, seconds=10 * 60)
-def login_user(email: str, password: str) -> Dict:
+def login_user(email: str, password: str, otp: Optional[str] = None) -> Dict:
     """Login user and generate OAuth Bearer Token
     
     Args:
         email: User email
         password: User password
+        otp: 6-digit authenticator code, for users who turned on two-step sign-in
         
     Returns:
-        User details and OAuth Bearer Token
+        User details and OAuth Bearer Token, or {"two_factor_required": True}
+        when the account needs a code first
     """
+    from techsavanna_pos.api.two_factor_api import (
+        check_not_locked,
+        check_sign_in_code,
+        clear_failures,
+        note_failure,
+    )
+
+    # Refuse while the account is locked after repeated failures
+    check_not_locked(email)
+
     # Authenticate user
     user = frappe.auth.LoginManager()
-    user.authenticate(user=email, pwd=password)
-    
-    print(f'\nUser : {user}\n')
+    try:
+        user.authenticate(user=email, pwd=password)
+    except frappe.AuthenticationError:
+        note_failure(email)
+        raise
     
     if not user.user:
+        note_failure(email)
         frappe.throw(_("Invalid email or password"), frappe.AuthenticationError)
     
     # Check if user is enabled
     if not frappe.db.get_value("User", user.user, "enabled"):
         frappe.throw(_("User account is disabled"), frappe.AuthenticationError)
+
+    # Two-step sign-in: ask for the code, or count a wrong one as a failure
+    code_reply = check_sign_in_code(user.user, otp)
+    if code_reply:
+        if otp:
+            note_failure(email)
+        return code_reply
+    clear_failures(email)
     
     # Get or generate API keys
     api_key = frappe.db.get_value("User", user.user, "api_key")
@@ -1201,7 +1224,7 @@ def change_password(old_password: str, new_password: str) -> Dict:
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=30, seconds=10 * 60)
-def loginuser(identifier: str, password: str):
+def loginuser(identifier: str, password: str, otp: Optional[str] = None):
     """
     Login user using email or username and generate OAuth Bearer Token.
     Does not generate API Key - User needs to be system manager
@@ -1229,9 +1252,29 @@ def loginuser(identifier: str, password: str):
                 "message": _("Invalid login credentials or user disabled")
             }
 
+        from techsavanna_pos.api.two_factor_api import (
+            check_not_locked,
+            check_sign_in_code,
+            clear_failures,
+            note_failure,
+        )
+
+        check_not_locked(identifier)
+
         # Authenticate password
         login_manager = frappe.auth.LoginManager()
-        login_manager.authenticate(user=user_name, pwd=password)
+        try:
+            login_manager.authenticate(user=user_name, pwd=password)
+        except frappe.AuthenticationError:
+            note_failure(identifier)
+            raise
+
+        code_reply = check_sign_in_code(user_name, otp)
+        if code_reply:
+            if otp:
+                note_failure(identifier)
+            return code_reply
+        clear_failures(identifier)
 
         # Get existing API key (do not generate new key)
         api_key = frappe.db.get_value("User", user_name, "api_key")
