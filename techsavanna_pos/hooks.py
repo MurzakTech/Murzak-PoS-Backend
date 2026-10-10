@@ -175,8 +175,12 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-	# Removes held bills (open tabs) that were abandoned more than 30 days ago
-	"daily": ["techsavanna_pos.api.held_sales_api.purge_old_held_sales"],
+	"daily": [
+		# Removes held bills (open tabs) that were abandoned more than 30 days ago
+		"techsavanna_pos.api.held_sales_api.purge_old_held_sales",
+		# Removes kitchen and bar tickets from more than 90 days ago
+		"techsavanna_pos.api.kitchen_api.purge_old_tickets",
+	],
 }
 
 # Testing
