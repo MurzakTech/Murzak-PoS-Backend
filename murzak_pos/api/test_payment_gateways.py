@@ -482,7 +482,7 @@ class TestOnePromptPerPayment(unittest.TestCase):
 		statuses = statuses or {}
 		docs = docs or {}
 		if not lock_free:
-			frappe.cache().set("murzak_pos:stk_lock:Shop A:POS1-0", 1, nx=True)
+			frappe.cache().set(frappe.cache().make_key("murzak_pos:stk_lock:Shop A:POS1-0"), 1, nx=True)
 		with (
 			patch.object(mpesa_api, "resolve_company", return_value="Shop A"),
 			patch.object(frappe, "get_all", return_value=earlier_rows),

@@ -98,7 +98,7 @@ def get_access_token(company: str, settings=None, force_refresh: bool = False) -
 	cache_key = _token_cache_key(settings)
 
 	if not force_refresh:
-		cached = frappe.cache().get_value(cache_key)
+		cached = frappe.cache().get_value(cache_key, expires=True)
 		if cached:
 			return cached
 

@@ -63,7 +63,7 @@ def get_token(settings, force_refresh: bool = False) -> str:
 	"""Pesapal tokens last five minutes; keep one for four."""
 	cache_key = f"murzak_pos:gateway_token:{settings.name}"
 	if not force_refresh:
-		cached = frappe.cache().get_value(cache_key)
+		cached = frappe.cache().get_value(cache_key, expires=True)
 		if cached:
 			return cached
 

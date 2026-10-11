@@ -12,36 +12,37 @@ class TestMpesaAPI(FrappeTestCase):
 	def setUp(self):
 		"""Set up test data"""
 		# Create test company
-		if not frappe.db.exists("Company", "_Test Company"):
+		if not frappe.db.exists("Company", "Murzak Test Company"):
 			company = frappe.new_doc("Company")
-			company.company_name = "_Test Company"
-			company.abbr = "TC"
+			company.company_name = "Murzak Test Company"
+			company.abbr = "MTC"
 			company.default_currency = "KES"
 			company.country = "Kenya"
+			company.chart_of_accounts = "Standard"
 			company.insert(ignore_permissions=True)
 		
 		# Create test account
-		if not frappe.db.exists("Account", "Cash - TC"):
+		if not frappe.db.exists("Account", "Cash - MTC"):
 			account = frappe.new_doc("Account")
 			account.account_name = "Cash"
-			account.company = "_Test Company"
-			account.parent_account = "Current Assets - TC"
+			account.company = "Murzak Test Company"
+			account.parent_account = "Current Assets - MTC"
 			account.account_type = "Cash"
 			account.insert(ignore_permissions=True)
 		
 		# Create test MPESA Settings
-		if frappe.db.exists("MPESA Settings", {"company": "_Test Company"}):
-			frappe.delete_doc("MPESA Settings", {"company": "_Test Company"}, force=True, ignore_permissions=True)
+		if frappe.db.exists("MPESA Settings", {"company": "Murzak Test Company"}):
+			frappe.delete_doc("MPESA Settings", {"company": "Murzak Test Company"}, force=True, ignore_permissions=True)
 		
 		settings = frappe.new_doc("MPESA Settings")
-		settings.company = "_Test Company"
+		settings.company = "Murzak Test Company"
 		settings.environment = "Sandbox"
 		settings.shortcode = "174379"
 		settings.shortcode_type = "Paybill"
 		settings.consumer_key = "test_consumer_key"
 		settings.consumer_secret = "test_consumer_secret"
 		settings.passkey = "test_passkey"
-		settings.payment_account = "Cash - TC"
+		settings.payment_account = "Cash - MTC"
 		settings.stk_callback_url = "https://test.com/stk_callback"
 		settings.is_active = 1
 		settings.insert(ignore_permissions=True)
@@ -65,7 +66,7 @@ class TestMpesaAPI(FrappeTestCase):
 		}
 		
 		result = initiate_stk_push_payment(
-			company="_Test Company",
+			company="Murzak Test Company",
 			phone_number="254712345678",
 			amount=100.00,
 			reference="TEST-001"
@@ -80,36 +81,36 @@ class TestMpesaAPI(FrappeTestCase):
 		from murzak_pos.api.mpesa_api import register_mpesa_settings
 		
 		# Delete existing settings
-		frappe.db.delete("MPESA Settings", {"company": "_Test Company"})
+		frappe.db.delete("MPESA Settings", {"company": "Murzak Test Company"})
 		frappe.db.commit()
 		
 		result = register_mpesa_settings(
-			company="_Test Company",
+			company="Murzak Test Company",
 			environment="Sandbox",
 			shortcode="174379",
 			shortcode_type="Paybill",
 			consumer_key="new_key",
 			consumer_secret="new_secret",
 			passkey="new_passkey",
-			payment_account="Cash - TC",
+			payment_account="Cash - MTC",
 			stk_callback_url="https://test.com/callback"
 		)
 		
 		self.assertTrue(result["success"])
-		self.assertEqual(result["settings"]["company"], "_Test Company")
+		self.assertEqual(result["settings"]["company"], "Murzak Test Company")
 		
 		# Verify settings were created
-		settings = frappe.get_doc("MPESA Settings", {"company": "_Test Company"})
+		settings = frappe.get_doc("MPESA Settings", {"company": "Murzak Test Company"})
 		self.assertEqual(settings.environment, "Sandbox")
 	
 	def test_get_mpesa_settings_api(self):
 		"""Test get MPESA settings API"""
 		from murzak_pos.api.mpesa_api import get_mpesa_settings
 		
-		result = get_mpesa_settings(company="_Test Company")
+		result = get_mpesa_settings(company="Murzak Test Company")
 		
 		self.assertTrue(result["success"])
-		self.assertEqual(result["settings"]["company"], "_Test Company")
+		self.assertEqual(result["settings"]["company"], "Murzak Test Company")
 		# Verify sensitive fields are masked
 		self.assertEqual(result["settings"]["consumer_key"], "***")
 		self.assertEqual(result["settings"]["consumer_secret"], "***")
@@ -120,7 +121,7 @@ class TestMpesaAPI(FrappeTestCase):
 		
 		# Create test transaction
 		transaction = frappe.new_doc("MPESA Transaction Log")
-		transaction.company = "_Test Company"
+		transaction.company = "Murzak Test Company"
 		transaction.transaction_type = "STK Push"
 		transaction.phone_number = "254712345678"
 		transaction.amount = 100.00
@@ -130,7 +131,7 @@ class TestMpesaAPI(FrappeTestCase):
 		transaction.insert(ignore_permissions=True)
 		frappe.db.commit()
 		
-		result = get_transactions(company="_Test Company")
+		result = get_transactions(company="Murzak Test Company")
 		
 		self.assertTrue(result["success"])
 		self.assertGreaterEqual(len(result["transactions"]), 1)
@@ -142,7 +143,7 @@ class TestMpesaAPI(FrappeTestCase):
 		
 		# Create test transaction
 		transaction = frappe.new_doc("MPESA Transaction Log")
-		transaction.company = "_Test Company"
+		transaction.company = "Murzak Test Company"
 		transaction.transaction_type = "STK Push"
 		transaction.phone_number = "254712345678"
 		transaction.amount = 100.00
@@ -166,7 +167,7 @@ class TestMpesaAPI(FrappeTestCase):
 		
 		# Create test transaction
 		transaction = frappe.new_doc("MPESA Transaction Log")
-		transaction.company = "_Test Company"
+		transaction.company = "Murzak Test Company"
 		transaction.transaction_type = "STK Push"
 		transaction.phone_number = "254712345678"
 		transaction.amount = 100.00
@@ -206,7 +207,7 @@ class TestMpesaAPI(FrappeTestCase):
 	def tearDown(self):
 		"""Clean up test data"""
 		frappe.set_user("Administrator")
-		frappe.db.delete("MPESA Transaction Log", {"company": "_Test Company"})
-		frappe.db.delete("MPESA Settings", {"company": "_Test Company"})
+		frappe.db.delete("MPESA Transaction Log", {"company": "Murzak Test Company"})
+		frappe.db.delete("MPESA Settings", {"company": "Murzak Test Company"})
 		frappe.db.commit()
 

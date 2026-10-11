@@ -24,36 +24,37 @@ class TestMpesaClient(FrappeTestCase):
 	def setUp(self):
 		"""Set up test data"""
 		# Create test company
-		if not frappe.db.exists("Company", "_Test Company"):
+		if not frappe.db.exists("Company", "Murzak Test Company"):
 			company = frappe.new_doc("Company")
-			company.company_name = "_Test Company"
-			company.abbr = "TC"
+			company.company_name = "Murzak Test Company"
+			company.abbr = "MTC"
 			company.default_currency = "KES"
 			company.country = "Kenya"
+			company.chart_of_accounts = "Standard"
 			company.insert(ignore_permissions=True)
 		
 		# Create test account
-		if not frappe.db.exists("Account", "Cash - TC"):
+		if not frappe.db.exists("Account", "Cash - MTC"):
 			account = frappe.new_doc("Account")
 			account.account_name = "Cash"
-			account.company = "_Test Company"
-			account.parent_account = "Current Assets - TC"
+			account.company = "Murzak Test Company"
+			account.parent_account = "Current Assets - MTC"
 			account.account_type = "Cash"
 			account.insert(ignore_permissions=True)
 		
 		# Create test MPESA Settings
-		if frappe.db.exists("MPESA Settings", {"company": "_Test Company"}):
-			frappe.delete_doc("MPESA Settings", {"company": "_Test Company"}, force=True, ignore_permissions=True)
+		if frappe.db.exists("MPESA Settings", {"company": "Murzak Test Company"}):
+			frappe.delete_doc("MPESA Settings", {"company": "Murzak Test Company"}, force=True, ignore_permissions=True)
 		
 		settings = frappe.new_doc("MPESA Settings")
-		settings.company = "_Test Company"
+		settings.company = "Murzak Test Company"
 		settings.environment = "Sandbox"
 		settings.shortcode = "174379"
 		settings.shortcode_type = "Paybill"
 		settings.consumer_key = "test_consumer_key"
 		settings.consumer_secret = "test_consumer_secret"
 		settings.passkey = "test_passkey"
-		settings.payment_account = "Cash - TC"
+		settings.payment_account = "Cash - MTC"
 		settings.stk_callback_url = "https://test.com/stk_callback"
 		settings.is_active = 1
 		settings.insert(ignore_permissions=True)
@@ -98,12 +99,12 @@ class TestMpesaClient(FrappeTestCase):
 		mock_response.raise_for_status = MagicMock()
 		mock_get.return_value = mock_response
 		
-		token = get_access_token("_Test Company")
+		token = get_access_token("Murzak Test Company")
 		
 		self.assertEqual(token, "test_access_token_123")
 		
 		# A second call uses the cached token instead of signing in again
-		self.assertEqual(get_access_token("_Test Company"), "test_access_token_123")
+		self.assertEqual(get_access_token("Murzak Test Company"), "test_access_token_123")
 		self.assertEqual(mock_get.call_count, 1)
 	
 	@patch('murzak_pos.api.mpesa_client.requests.get')
@@ -116,7 +117,7 @@ class TestMpesaClient(FrappeTestCase):
 		mock_get.return_value = mock_response
 		
 		with self.assertRaises(MpesaAuthenticationError):
-			get_access_token("_Test Company")
+			get_access_token("Murzak Test Company")
 	
 	@patch('murzak_pos.api.mpesa_client.requests.get')
 	@patch('murzak_pos.api.mpesa_client.requests.post')
@@ -144,7 +145,7 @@ class TestMpesaClient(FrappeTestCase):
 		mock_post.return_value = mock_stk_response
 		
 		result = initiate_stk_push(
-			company="_Test Company",
+			company="Murzak Test Company",
 			phone_number="254712345678",
 			amount=100.00,
 			reference="TEST-001",
@@ -165,7 +166,7 @@ class TestMpesaClient(FrappeTestCase):
 		"""Test STK Push with invalid phone number"""
 		with self.assertRaises(MpesaClientError):
 			initiate_stk_push(
-				company="_Test Company",
+				company="Murzak Test Company",
 				phone_number="0712345678",  # Invalid format
 				amount=100.00,
 				reference="TEST-001"
@@ -177,7 +178,7 @@ class TestMpesaClient(FrappeTestCase):
 		"""Test successful STK status query"""
 		# Create test transaction
 		transaction = frappe.new_doc("MPESA Transaction Log")
-		transaction.company = "_Test Company"
+		transaction.company = "Murzak Test Company"
 		transaction.transaction_type = "STK Push"
 		transaction.phone_number = "254712345678"
 		transaction.amount = 100.00
@@ -208,7 +209,7 @@ class TestMpesaClient(FrappeTestCase):
 		mock_query_response.raise_for_status = MagicMock()
 		mock_post.return_value = mock_query_response
 		
-		result = query_stk_status("_Test Company", "test_checkout_123")
+		result = query_stk_status("Murzak Test Company", "test_checkout_123")
 
 		self.assertEqual(result["result_code"], 0)
 
@@ -218,7 +219,7 @@ class TestMpesaClient(FrappeTestCase):
 	
 	def tearDown(self):
 		"""Clean up test data"""
-		frappe.db.delete("MPESA Transaction Log", {"company": "_Test Company"})
-		frappe.db.delete("MPESA Settings", {"company": "_Test Company"})
+		frappe.db.delete("MPESA Transaction Log", {"company": "Murzak Test Company"})
+		frappe.db.delete("MPESA Settings", {"company": "Murzak Test Company"})
 		frappe.db.commit()
 
