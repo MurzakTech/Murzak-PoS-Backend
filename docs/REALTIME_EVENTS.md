@@ -39,7 +39,7 @@ A user never receives another business's messages, and one cashier never receive
 | Simulated M-Pesa callback, event reaches the cashier who started it | Delivered 2 ms after the callback finished |
 | A second signed-in user at the same time | Received nothing |
 | Kitchen ticket created, then marked Ready | Both staff users received both messages |
-| 50 clients connected, 30 events sent | All 50 received all 30 |
-| Socket server stopped | The sale and the payment complete normally (the message is only a nudge) |
+| 50 clients connected, 30 events sent over 15 seconds | All 50 received all 30. (The plan's 10-minute run is still to do on a production-like server) |
+| Socket server stopped, simulated payment callback | The payment was recorded as Success as usual (the message is only a nudge) |
 
 One staging limit worth knowing: staging runs Frappe's single-process development web server, which dropped 12 of 50 connections that all opened in the same instant. Opened 150 ms apart, all 50 connected. Production runs several worker processes; a client should also reconnect by itself.
