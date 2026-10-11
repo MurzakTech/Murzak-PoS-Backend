@@ -22,6 +22,25 @@ The app used to be called `techsavanna_pos`. It is now `murzak_pos`. A Frappe ap
 | You can sign in to the server as the user that owns `~/frappe-bench` | |
 | The pull request that renames the app is **merged** | The steps pull it from `main` |
 
+## Which sites are affected
+
+Checked on the live server on 11 October 2026. This bench holds seven sites, and **two** have the app installed:
+
+| Site | What it is | What to do |
+|---|---|---|
+| `api.pos.murzaktech.tech` | The live POS | Move it (steps 2 to 6) |
+| `savanna-test.local` | A test copy | Move it the same way, or delete it first if it is no longer needed |
+
+The other sites (`erp.murzaktech.tech`, `erp.mystylecarhire.com`, `matatuke.murzaktech.tech`, `shipstack.murzaktech.tech`) do not use the app. The folder rename and the Python change in step 4 are bench-wide, so a site that has the app and is **not** moved will stop loading. In the steps below, "SITE" means each of the two sites in turn, and steps 2, 3, 5 and 6 are run once per site.
+
+Before starting, check that no other app on the bench refers to the old name. This command only reads, and should print nothing:
+
+```bash
+grep -rl techsavanna ~/frappe-bench/apps/murzak_custom ~/frappe-bench/apps/matatuke_api ~/frappe-bench/apps/logistics_core ~/frappe-bench/apps/csf_ke 2>/dev/null
+```
+
+(`newsite.murzaktech.tech` cannot connect to its database, which is unrelated to this move but worth looking at.)
+
 ## Steps
 
 Run these on the live server, one at a time. `SITE` below means `api.pos.murzaktech.tech`.
@@ -64,7 +83,7 @@ bench --site SITE backup --with-files
 ls -la sites/SITE/private/backups/
 ```
 
-Copy the newest files in that folder (the `.sql.gz` database file and the two `.tar` files) to another computer. **Do not continue until you have done this.**
+Copy the newest files in that folder (the `.sql.gz` database file and the two `.tar` files) to another computer. **Do not continue until you have done this.** On 11 October 2026 the server had no scheduled backups at all and the newest was from 12 September, so this backup is the only safety net. Do it for both sites.
 
 ### 3. Stop the shop traffic
 
@@ -92,7 +111,7 @@ rm -f sites/assets/techsavanna_pos
 cat sites/apps.txt                 # must now list murzak_pos and no techsavanna_pos
 ```
 
-### 5. Update the database
+### 5. Update the database (once per site)
 
 The script is in `docs/cutover/rename_in_database.sql`. It changes the 8 kinds of rows listed in step 1 inside one transaction (all or nothing), and running it twice changes nothing the second time.
 
@@ -103,7 +122,7 @@ bench --site SITE mariadb < apps/murzak_pos/docs/cutover/rename_in_database.sql
 
 No output means success. An error message means nothing was changed; send it to the developers.
 
-### 6. Let Frappe catch up, then switch everything back on
+### 6. Let Frappe catch up, then switch everything back on (migrate once per site)
 
 ```bash
 bench --site SITE migrate
