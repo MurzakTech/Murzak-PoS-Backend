@@ -108,6 +108,7 @@ class KitchenCase(unittest.TestCase):
 
 		stack = [
 			patch.object(frappe, "session", frappe._dict(user=user)),
+			patch("frappe.translate.get_all_translations", return_value={}),  # messages are not translated in tests
 			patch.object(frappe, "db", db, create=True),
 			patch.object(frappe, "get_roles", return_value=list(roles)),
 			patch.object(frappe.utils, "today", return_value="2026-10-10"),
