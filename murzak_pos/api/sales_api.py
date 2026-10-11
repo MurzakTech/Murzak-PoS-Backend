@@ -3180,22 +3180,7 @@ def close_pos_opening_entry(
             else _("POS Opening Entry closed successfully"),
             "data": {
                 "outcome": "closing" if queued else "closed",
-                "closing_entry": {
-                    "name": closing_entry.name,
-                    "pos_opening_entry": closing_entry.pos_opening_entry,
-                    "pos_profile": closing_entry.pos_profile,
-                    "company": closing_entry.company,
-                    "user": closing_entry.user,
-                    "status": closing_entry.status,
-                    "posting_date": str(closing_entry.posting_date),
-                    "period_start_date": str(closing_entry.period_start_date),
-                    "period_end_date": str(closing_entry.period_end_date),
-                    "grand_total": flt(closing_entry.grand_total),
-                    "net_total": flt(closing_entry.net_total),
-                    "total_quantity": flt(closing_entry.total_quantity),
-                    "total_taxes_and_charges": flt(closing_entry.total_taxes_and_charges),
-                    "docstatus": closing_entry.docstatus,
-                },
+                "closing_entry": _closing_entry_summary(closing_entry),
                 "opening_entry": {
                     "name": opening_entry.name,
                     "status": opening_entry.status,
@@ -3251,6 +3236,33 @@ def _as_administrator():
     finally:
         for key, value in saved.items():
             setattr(frappe.local, key, value)
+
+
+def _closing_entry_summary(closing_entry) -> dict:
+    """
+    The closing entry as the till shows it.
+
+    ERPNext keeps tax per account in the closing entry's `taxes` table and has no single "total taxes"
+    field, so the total is added up here. (Reading a field that is not there made every shift close
+    report a failure after the shift had in fact closed.)
+    """
+    taxes = closing_entry.get("taxes") or []
+    return {
+        "name": closing_entry.name,
+        "pos_opening_entry": closing_entry.pos_opening_entry,
+        "pos_profile": closing_entry.pos_profile,
+        "company": closing_entry.company,
+        "user": closing_entry.user,
+        "status": closing_entry.status,
+        "posting_date": str(closing_entry.posting_date),
+        "period_start_date": str(closing_entry.period_start_date),
+        "period_end_date": str(closing_entry.period_end_date),
+        "grand_total": flt(closing_entry.grand_total),
+        "net_total": flt(closing_entry.net_total),
+        "total_quantity": flt(closing_entry.total_quantity),
+        "total_taxes_and_charges": sum(flt(row.amount) for row in taxes),
+        "docstatus": closing_entry.docstatus,
+    }
 
 
 def _latest_closing(opening_entry_name: str) -> dict | None:
