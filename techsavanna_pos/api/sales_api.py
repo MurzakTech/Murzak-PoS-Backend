@@ -3185,7 +3185,7 @@ def _as_administrator():
             setattr(frappe.local, key, value)
 
 
-def _latest_closing(opening_entry_name: str) -> Optional[Dict]:
+def _latest_closing(opening_entry_name: str) -> dict | None:
     """The shift's most recent closing entry that is not cancelled, or None."""
     rows = frappe.get_all(
         "POS Closing Entry",
@@ -3197,7 +3197,7 @@ def _latest_closing(opening_entry_name: str) -> Optional[Dict]:
     return rows[0] if rows else None
 
 
-def _closing_outcome(opening_entry, outcome: str, message: str, success: bool = True) -> Dict:
+def _closing_outcome(opening_entry, outcome: str, message: str, success: bool = True) -> dict:
     """Answer a close request that needed no new closing entry.
     outcome: already_closed, closed, closing (still running in the background) or failed."""
     return {
