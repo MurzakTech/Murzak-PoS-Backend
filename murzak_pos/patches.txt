@@ -11,3 +11,4 @@ murzak_pos.patches.reconcile_stock_reconciliation_workflow_states
 murzak_pos.patches.add_offline_sale_fields
 murzak_pos.patches.backfill_supplier_company
 murzak_pos.patches.backfill_price_list_company
+murzak_pos.patches.create_alert_settings

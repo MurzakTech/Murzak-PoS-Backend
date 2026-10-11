@@ -317,6 +317,14 @@ def create_company(
     except Exception:
         frappe.log_error("Onboarding VAT Setup", frappe.get_traceback())
 
+    # Alert settings with the defaults; the person creating the business is the first to be told
+    try:
+        from murzak_pos.api.alerts import ensure_alert_settings
+
+        ensure_alert_settings(company.name, frappe.db.get_value("User", frappe.session.user, "email"))
+    except Exception:
+        frappe.log_error("Onboarding Alert Settings", frappe.get_traceback())
+
     frappe.db.set_single_value("System Settings", "country", company.country)
     frappe.db.set_single_value("System Settings", "setup_complete", 1)
     frappe.db.commit()

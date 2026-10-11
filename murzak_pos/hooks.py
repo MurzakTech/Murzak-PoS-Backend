@@ -167,6 +167,8 @@ doc_events = {
 	"MPESA Transaction Log": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
 	"POS Gateway Transaction": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
 	"Kitchen Ticket": {"on_update": "murzak_pos.api.realtime_events.on_kitchen_ticket_update"},
+	# A summary email when a shift is closed (api/alerts.py)
+	"POS Closing Entry": {"on_submit": "murzak_pos.api.alerts.queue_shift_summary"},
 	"POS Profile": {
 		"validate": "murzak_pos.api.vat_setup.validate_pos_profile",
 		"on_update": "murzak_pos.overrides.mpesa_integration.on_pos_profile_update",
@@ -185,6 +187,10 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
+	"hourly": [
+		# Expiry, low-stock and unsent-invoice alerts for every business that has them switched on
+		"murzak_pos.api.alerts.run_hourly_alerts",
+	],
 	"daily": [
 		# Removes held bills (open tabs) that were abandoned more than 30 days ago
 		"murzak_pos.api.held_sales_api.purge_old_held_sales",
