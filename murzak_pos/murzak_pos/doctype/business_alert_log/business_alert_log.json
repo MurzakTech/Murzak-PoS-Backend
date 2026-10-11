@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-11 20:30:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "alert_type",
+  "reference",
+  "sent_at",
+  "subject",
+  "summary",
+  "dedupe_key"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "alert_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Alert",
+   "options": "Expiry\nLow stock\nShift summary\nUnsent eTIMS",
+   "reqd": 1
+  },
+  {
+   "description": "The day, or the closing entry, this alert is about.",
+   "fieldname": "reference",
+   "fieldtype": "Data",
+   "label": "About"
+  },
+  {
+   "fieldname": "sent_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Sent at"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject"
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Small Text",
+   "label": "Summary"
+  },
+  {
+   "description": "Business, alert and day (or closing entry) together. It is unique, so the same alert cannot be recorded, and so sent, twice.",
+   "fieldname": "dedupe_key",
+   "fieldtype": "Data",
+   "label": "Key",
+   "length": 140,
+   "read_only": 1,
+   "reqd": 1,
+   "unique": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-11 20:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Murzak POS",
+ "name": "Business Alert Log",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "subject"
+}

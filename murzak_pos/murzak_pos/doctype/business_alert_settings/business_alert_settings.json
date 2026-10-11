@@ -1,0 +1,144 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:company",
+ "creation": "2026-10-11 20:30:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "enabled",
+  "who_section",
+  "email_recipients",
+  "sms_numbers",
+  "alerts_section",
+  "alert_expiry",
+  "alert_low_stock",
+  "alert_shift_summary",
+  "alert_unsent_etims",
+  "timing_section",
+  "expiry_window_long",
+  "expiry_window_short",
+  "send_hour"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "1",
+   "description": "Switch off to stop every alert for this business.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Alerts on"
+  },
+  {
+   "fieldname": "who_section",
+   "fieldtype": "Section Break",
+   "label": "Who is told"
+  },
+  {
+   "description": "Email addresses, separated by commas or new lines.",
+   "fieldname": "email_recipients",
+   "fieldtype": "Small Text",
+   "label": "Email addresses"
+  },
+  {
+   "description": "Optional. Phone numbers for a short text message, separated by commas. Needs SMS set up on the server.",
+   "fieldname": "sms_numbers",
+   "fieldtype": "Small Text",
+   "label": "SMS numbers"
+  },
+  {
+   "fieldname": "alerts_section",
+   "fieldtype": "Section Break",
+   "label": "Which alerts"
+  },
+  {
+   "default": "1",
+   "fieldname": "alert_expiry",
+   "fieldtype": "Check",
+   "label": "Stock nearing expiry (daily)"
+  },
+  {
+   "default": "1",
+   "fieldname": "alert_low_stock",
+   "fieldtype": "Check",
+   "label": "Items at or below reorder level (daily)"
+  },
+  {
+   "default": "1",
+   "fieldname": "alert_shift_summary",
+   "fieldtype": "Check",
+   "label": "Shift summary when a shift is closed"
+  },
+  {
+   "default": "1",
+   "fieldname": "alert_unsent_etims",
+   "fieldtype": "Check",
+   "label": "Invoices not yet sent to KRA"
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "Timing"
+  },
+  {
+   "default": "30",
+   "description": "Stock expiring within this many days is listed.",
+   "fieldname": "expiry_window_long",
+   "fieldtype": "Int",
+   "label": "Expiry window (days)"
+  },
+  {
+   "default": "7",
+   "description": "Stock expiring within this many days is marked urgent.",
+   "fieldname": "expiry_window_short",
+   "fieldtype": "Int",
+   "label": "Urgent expiry window (days)"
+  },
+  {
+   "default": "7",
+   "description": "Hour of the day (0 to 23, server time) from which the daily alerts are sent.",
+   "fieldname": "send_hour",
+   "fieldtype": "Int",
+   "label": "Daily alerts from hour"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-11 20:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Murzak POS",
+ "name": "Business Alert Settings",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "company"
+}

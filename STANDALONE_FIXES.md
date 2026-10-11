@@ -1,6 +1,6 @@
-# TechSavanna POS - Standalone App Fixes
+# Murzak POS - Standalone App Fixes
 
-This document tracks the changes made to remove `savanna_pos` dependencies from `techsavanna_pos`, making it a standalone app.
+This document tracks the changes made to remove `savanna_pos` dependencies from `murzak_pos`, making it a standalone app.
 
 ## Date: 2026-01-07
 
@@ -21,86 +21,86 @@ This document tracks the changes made to remove `savanna_pos` dependencies from 
 **Commands for Server**:
 ```bash
 cd /path/to/frappe-bench
-./apps/techsavanna_pos/remove_etims_slade360_fields.sh your-site-name
+./apps/murzak_pos/remove_etims_slade360_fields.sh your-site-name
 ```
 
 ---
 
 ### Issue 2: Inventory Discount Rule Import Error
-**Error**: `No module named 'savanna_pos'` when calling `techsavanna_pos.api.inventory_api.bulk_get_inventory_discounts`
+**Error**: `No module named 'savanna_pos'` when calling `murzak_pos.api.inventory_api.bulk_get_inventory_discounts`
 
 **Root Cause**: 
 - `inventory_api.py` imported `get_applicable_inventory_discount` from `savanna_pos`
 - `sales_api.py` also had same dependency
 
 **Fix Applied**:
-- Created `Inventory Discount Rule` DocType in `techsavanna_pos`:
-  - `techsavanna_pos/techsavanna_pos/doctype/inventory_discount_rule/`
+- Created `Inventory Discount Rule` DocType in `murzak_pos`:
+  - `murzak_pos/murzak_pos/doctype/inventory_discount_rule/`
 - Updated imports in:
-  - `techsavanna_pos/api/inventory_api.py`
-  - `techsavanna_pos/api/sales_api.py`
-- Both now use: `from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_discount_rule import get_applicable_inventory_discount`
+  - `murzak_pos/api/inventory_api.py`
+  - `murzak_pos/api/sales_api.py`
+- Both now use: `from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_rule import get_applicable_inventory_discount`
 
 **Verification**:
 ```bash
-bench --site site-name execute techsavanna_pos.api.inventory_api.bulk_get_inventory_discounts --kwargs '{"company":"Company Name"}' --args '[[]]'
+bench --site site-name execute murzak_pos.api.inventory_api.bulk_get_inventory_discounts --kwargs '{"company":"Company Name"}' --args '[[]]'
 # Should return: {"success": true, "data": [], "message": "Discount lookup completed"}
 ```
 
 ---
 
 ### Issue 3: Onboarding API Dependencies
-**Affected Endpoint**: `techsavanna_pos.api.onboarding_api.complete_onboarding`
+**Affected Endpoint**: `murzak_pos.api.onboarding_api.complete_onboarding`
 
 **Dependencies Removed**:
 - Line 1412: `from savanna_pos.savanna_pos.apis.auth_api import assign_all_business_roles`
-  - **Fixed**: Changed to `from techsavanna_pos.api.auth_api import assign_all_business_roles`
+  - **Fixed**: Changed to `from murzak_pos.api.auth_api import assign_all_business_roles`
   
 - Line 1443: `from savanna_pos.savanna_pos.apis.warehouse_api import set_default_warehouse_for_company`
-  - **Fixed**: Changed to `from techsavanna_pos.api.warehouse_api import set_default_warehouse_for_company`
+  - **Fixed**: Changed to `from murzak_pos.api.warehouse_api import set_default_warehouse_for_company`
 
-**Note**: The required functions already existed in `techsavanna_pos` — only imports needed updating.
+**Note**: The required functions already existed in `murzak_pos` — only imports needed updating.
 
 ---
 
 ### Issue 4: Auth API Dependencies ✅ **FIXED**
 **Affected Endpoints**: 
-- `techsavanna_pos.api.auth_api.register_user`
-- `techsavanna_pos.api.auth_api.get_user_context`
-- `techsavanna_pos.api.auth.register_user`
-- `techsavanna_pos.api.auth.get_user_context`
+- `murzak_pos.api.auth_api.register_user`
+- `murzak_pos.api.auth_api.get_user_context`
+- `murzak_pos.api.auth.register_user`
+- `murzak_pos.api.auth.get_user_context`
 
 **Dependencies Removed**:
 
 **auth_api.py**:
 - Line 303: `from savanna_pos.savanna_pos.apis.verification_api import verify_email_code`
-  - **Fixed**: Changed to `from techsavanna_pos.api.verification_api import verify_email_code`
+  - **Fixed**: Changed to `from murzak_pos.api.verification_api import verify_email_code`
   
 - Line 320: `from savanna_pos.savanna_pos.apis.verification_api import verify_phone_code`
-  - **Fixed**: Changed to `from techsavanna_pos.api.verification_api import verify_phone_code`
+  - **Fixed**: Changed to `from murzak_pos.api.verification_api import verify_phone_code`
   
 - Lines 388, 396: `from savanna_pos.savanna_pos.apis.verification_api import check_verification_status`
-  - **Fixed**: Changed to `from techsavanna_pos.api.verification_api import check_verification_status`
+  - **Fixed**: Changed to `from murzak_pos.api.verification_api import check_verification_status`
   
 - Line 653: `from savanna_pos.savanna_pos.apis.warehouse_api import get_default_warehouse_for_company`
-  - **Fixed**: Changed to `from techsavanna_pos.api.warehouse_api import get_default_warehouse_for_company`
+  - **Fixed**: Changed to `from murzak_pos.api.warehouse_api import get_default_warehouse_for_company`
   
 - Line 694: `from savanna_pos.savanna_pos.apis.sales_api import _get_or_create_pos_profile`
-  - **Fixed**: Changed to `from techsavanna_pos.api.sales_api import _get_or_create_pos_profile`
+  - **Fixed**: Changed to `from murzak_pos.api.sales_api import _get_or_create_pos_profile`
 
 **auth.py** (same imports, same fixes applied)
 
-**Note**: All verification and warehouse helper functions already existed in `techsavanna_pos` — only imports needed updating.
+**Note**: All verification and warehouse helper functions already existed in `murzak_pos` — only imports needed updating.
 
 ---
 
 ### Issue 5: Product API - Global Product Seeding ✅ **FIXED**
-**Affected Endpoint**: `techsavanna_pos.api.product_api.seed_global_products`
+**Affected Endpoint**: `murzak_pos.api.product_api.seed_global_products`
 
 **Dependency Removed**:
 - Line 2102: `from savanna_pos.savanna_pos.setup.seed_global_products import seed_global_products`
   - **Fixed**: Made optional with graceful fallback
-  - Now tries `savanna_pos` first (backward compatibility), then `techsavanna_pos`, then shows helpful error
+  - Now tries `savanna_pos` first (backward compatibility), then `murzak_pos`, then shows helpful error
   - Feature works with or without `savanna_pos` installed
 
 **Implementation**:
@@ -110,7 +110,7 @@ try:
     from savanna_pos.savanna_pos.setup.seed_global_products import seed_global_products
 except ImportError:
     try:
-        from techsavanna_pos.setup.seed_global_products import seed_global_products
+        from murzak_pos.setup.seed_global_products import seed_global_products
     except ImportError:
         # Returns helpful error if neither available
         frappe.throw("Global product seeding module is not available...")
@@ -120,8 +120,8 @@ except ImportError:
 **File**: `account_provisioning_api.py`
 
 **Documentation Updated**:
-- Line 362: Changed docstring example from `savanna_pos.apis...` to `techsavanna_pos.api...`
-- Line 694: Changed docstring example from `savanna_pos.apis...` to `techsavanna_pos.api...`
+- Line 362: Changed docstring example from `savanna_pos.apis...` to `murzak_pos.api...`
+- Line 694: Changed docstring example from `savanna_pos.apis...` to `murzak_pos.api...`
 
 ---
 
@@ -138,7 +138,7 @@ When deploying to a server without `savanna_pos`:
 1. **Run the eTims cleanup script**:
    ```bash
    cd /path/to/frappe-bench
-   ./apps/techsavanna_pos/remove_etims_slade360_fields.sh production-site-name
+   ./apps/murzak_pos/remove_etims_slade360_fields.sh production-site-name
    ```
 
 2. **Run migrate to install new DocTypes**:
@@ -155,7 +155,7 @@ When deploying to a server without `savanna_pos`:
 4. **Verify key endpoints work**:
    ```bash
    # Test inventory discounts
-   bench --site production-site-name execute techsavanna_pos.api.inventory_api.bulk_get_inventory_discounts --kwargs '{"company":"Your Company"}' --args '[[]]'
+   bench --site production-site-name execute murzak_pos.api.inventory_api.bulk_get_inventory_discounts --kwargs '{"company":"Your Company"}' --args '[[]]'
    
    # Test product seeding
    # (call via API with proper payload)
@@ -166,14 +166,14 @@ When deploying to a server without `savanna_pos`:
 ## Files Modified
 
 ### Core API Files
-- `techsavanna_pos/api/inventory_api.py` - Updated imports for discount rules
-- `techsavanna_pos/api/sales_api.py` - Updated imports for discount rules  
-- `techsavanna_pos/api/onboarding_api.py` - Updated imports for auth/warehouse functions
-- `techsavanna_pos/api/auth_api.py` - Updated all imports for verification, warehouse, and POS profile helpers
-- `techsavanna_pos/api/auth.py` - Updated all imports for verification, warehouse, and POS profile helpers
+- `murzak_pos/api/inventory_api.py` - Updated imports for discount rules
+- `murzak_pos/api/sales_api.py` - Updated imports for discount rules  
+- `murzak_pos/api/onboarding_api.py` - Updated imports for auth/warehouse functions
+- `murzak_pos/api/auth_api.py` - Updated all imports for verification, warehouse, and POS profile helpers
+- `murzak_pos/api/auth.py` - Updated all imports for verification, warehouse, and POS profile helpers
 
 ### New DocTypes Added
-- `techsavanna_pos/techsavanna_pos/doctype/inventory_discount_rule/`
+- `murzak_pos/murzak_pos/doctype/inventory_discount_rule/`
   - `__init__.py`
   - `inventory_discount_rule.py`
   - `inventory_discount_rule.json`
@@ -187,13 +187,13 @@ When deploying to a server without `savanna_pos`:
 
 ## Testing Notes
 
-All fixes have been tested on local `master-pos` site with both `savanna_pos` and `techsavanna_pos` installed. The fixes ensure `techsavanna_pos` endpoints work independently without requiring `savanna_pos` to be installed.
+All fixes have been tested on local `master-pos` site with both `savanna_pos` and `murzak_pos` installed. The fixes ensure `murzak_pos` endpoints work independently without requiring `savanna_pos` to be installed.
 
 ---
 
 ## 🎉 Current Status: 100% STANDALONE!
 
-**✅ Fully Standalone**: `techsavanna_pos` is now completely independent of `savanna_pos`!
+**✅ Fully Standalone**: `murzak_pos` is now completely independent of `savanna_pos`!
 
 ### All Endpoints Working Without savanna_pos:
 - ✅ Product seeding (`create_seed_item`)
@@ -210,7 +210,7 @@ All fixes have been tested on local `master-pos` site with both `savanna_pos` an
 ### Verification
 ```bash
 # Search for any savanna_pos imports in production code
-grep -r "from savanna_pos\." apps/techsavanna_pos/techsavanna_pos/
+grep -r "from savanna_pos\." apps/murzak_pos/murzak_pos/
 # Result: No matches found in production code! ✅
 
 # Only references are:
@@ -221,8 +221,8 @@ grep -r "from savanna_pos\." apps/techsavanna_pos/techsavanna_pos/
 
 ### Issue 7: Fiscal Year Auto-Creation ✅ **NEW FEATURE**
 **Affected Endpoints**: 
-- `techsavanna_pos.api.product_seeding.create_seed_item`
-- `techsavanna_pos.api.inventory_api.create_stock_entry`
+- `murzak_pos.api.product_seeding.create_seed_item`
+- `murzak_pos.api.inventory_api.create_stock_entry`
 
 **Problem**: Stock Entries fail when a Fiscal Year doesn't exist for the company/posting date.
 
@@ -232,25 +232,25 @@ grep -r "from savanna_pos\." apps/techsavanna_pos/techsavanna_pos/
 - Adds the company to an existing Fiscal Year if needed
 
 **Files Modified**:
-- `techsavanna_pos/api/product_seeding.py` - Added `ensure_fiscal_year_exists()` function
-- `techsavanna_pos/api/inventory_api.py` - Uses `ensure_fiscal_year_exists()` before creating stock entries
+- `murzak_pos/api/product_seeding.py` - Added `ensure_fiscal_year_exists()` function
+- `murzak_pos/api/inventory_api.py` - Uses `ensure_fiscal_year_exists()` before creating stock entries
 
 **Usage**:
 ```python
-from techsavanna_pos.api.product_seeding import ensure_fiscal_year_exists
+from murzak_pos.api.product_seeding import ensure_fiscal_year_exists
 fiscal_year = ensure_fiscal_year_exists("Company Name")  # Auto-creates if needed
 ```
 
 ---
 
 ### Issue 8: Added Standalone Hooks ✅ **NEW**
-**Purpose**: Ensure `techsavanna_pos` has its own doc_events hooks for Item and Stock Entry.
+**Purpose**: Ensure `murzak_pos` has its own doc_events hooks for Item and Stock Entry.
 
 **Files Modified**:
-- `techsavanna_pos/hooks.py` - Added Item.validate and Stock Entry.on_submit hooks
-- `techsavanna_pos/overrides/item.py` - NEW: Lightweight Item validation (no eTIMS)
-- `techsavanna_pos/overrides/stock_entry.py` - NEW: Stock Entry hooks for logging
-- `techsavanna_pos/overrides/__init__.py` - Updated to export all override modules
+- `murzak_pos/hooks.py` - Added Item.validate and Stock Entry.on_submit hooks
+- `murzak_pos/overrides/item.py` - NEW: Lightweight Item validation (no eTIMS)
+- `murzak_pos/overrides/stock_entry.py` - NEW: Stock Entry hooks for logging
+- `murzak_pos/overrides/__init__.py` - Updated to export all override modules
 
 ---
 

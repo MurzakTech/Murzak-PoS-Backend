@@ -1,0 +1,225 @@
+# Copyright (c) 2024, Murzak POS and Contributors
+# See license.txt
+
+import frappe
+import unittest
+from unittest.mock import patch, MagicMock
+from frappe.tests.utils import FrappeTestCase
+from murzak_pos.api.mpesa_client import (
+    generate_stk_password,
+    generate_timestamp,
+    get_access_token,
+    initiate_stk_push,
+    query_stk_status,
+    MpesaClientError,
+    MpesaAuthenticationError
+)
+from murzak_pos.api.mpesa_constants import (
+    DARAJASANDBOX_BASE_URL,
+    OAUTH_TOKEN_ENDPOINT
+)
+
+
+class TestMpesaClient(FrappeTestCase):
+	def setUp(self):
+		"""Set up test data"""
+		# Create test company
+		if not frappe.db.exists("Company", "Murzak Test Company"):
+			company = frappe.new_doc("Company")
+			company.company_name = "Murzak Test Company"
+			company.abbr = "MTC"
+			company.default_currency = "KES"
+			company.country = "Kenya"
+			company.chart_of_accounts = "Standard"
+			company.insert(ignore_permissions=True)
+		
+		# Create test account
+		if not frappe.db.exists("Account", "Cash - MTC"):
+			account = frappe.new_doc("Account")
+			account.account_name = "Cash"
+			account.company = "Murzak Test Company"
+			account.parent_account = "Current Assets - MTC"
+			account.account_type = "Cash"
+			account.insert(ignore_permissions=True)
+		
+		# Create test MPESA Settings
+		if frappe.db.exists("MPESA Settings", {"company": "Murzak Test Company"}):
+			frappe.delete_doc("MPESA Settings", {"company": "Murzak Test Company"}, force=True, ignore_permissions=True)
+		
+		settings = frappe.new_doc("MPESA Settings")
+		settings.company = "Murzak Test Company"
+		settings.environment = "Sandbox"
+		settings.shortcode = "174379"
+		settings.shortcode_type = "Paybill"
+		settings.consumer_key = "test_consumer_key"
+		settings.consumer_secret = "test_consumer_secret"
+		settings.passkey = "test_passkey"
+		settings.payment_account = "Cash - MTC"
+		settings.stk_callback_url = "https://test.com/stk_callback"
+		settings.is_active = 1
+		settings.insert(ignore_permissions=True)
+		frappe.db.commit()
+	
+	def test_generate_timestamp(self):
+		"""Test timestamp generation"""
+		timestamp = generate_timestamp()
+		
+		self.assertEqual(len(timestamp), 14)  # YYYYMMDDHHmmss
+		self.assertTrue(timestamp.isdigit())
+	
+	def test_generate_stk_password(self):
+		"""Test STK password generation"""
+		shortcode = "174379"
+		passkey = "test_passkey"
+		timestamp = "20231219102036"
+		
+		password = generate_stk_password(shortcode, passkey, timestamp)
+		
+		# Should be Base64 encoded
+		self.assertIsInstance(password, str)
+		self.assertGreater(len(password), 0)
+		
+		# Verify it's Base64 decodable
+		import base64
+		try:
+			decoded = base64.b64decode(password).decode()
+			self.assertEqual(decoded, f"{shortcode}{passkey}{timestamp}")
+		except Exception:
+			self.fail("Generated password is not valid Base64")
+	
+	@patch('murzak_pos.api.mpesa_client.requests.get')
+	def test_get_access_token_success(self, mock_get):
+		"""Test successful OAuth token retrieval"""
+		# Mock successful response
+		mock_response = MagicMock()
+		mock_response.json.return_value = {
+			"access_token": "test_access_token_123",
+			"expires_in": "3600"
+		}
+		mock_response.raise_for_status = MagicMock()
+		mock_get.return_value = mock_response
+		
+		token = get_access_token("Murzak Test Company")
+		
+		self.assertEqual(token, "test_access_token_123")
+		
+		# A second call uses the cached token instead of signing in again
+		self.assertEqual(get_access_token("Murzak Test Company"), "test_access_token_123")
+		self.assertEqual(mock_get.call_count, 1)
+	
+	@patch('murzak_pos.api.mpesa_client.requests.get')
+	def test_get_access_token_authentication_error(self, mock_get):
+		"""Test OAuth token retrieval with invalid credentials"""
+		# Mock 401 response
+		mock_response = MagicMock()
+		mock_response.status_code = 401
+		mock_response.raise_for_status.side_effect = Exception("401 Unauthorized")
+		mock_get.return_value = mock_response
+		
+		with self.assertRaises(MpesaAuthenticationError):
+			get_access_token("Murzak Test Company")
+	
+	@patch('murzak_pos.api.mpesa_client.requests.get')
+	@patch('murzak_pos.api.mpesa_client.requests.post')
+	def test_initiate_stk_push_success(self, mock_post, mock_get):
+		"""Test successful STK Push initiation"""
+		# Mock OAuth token response
+		mock_token_response = MagicMock()
+		mock_token_response.json.return_value = {
+			"access_token": "test_token",
+			"expires_in": "3600"
+		}
+		mock_token_response.raise_for_status = MagicMock()
+		mock_get.return_value = mock_token_response
+		
+		# Mock STK Push response
+		mock_stk_response = MagicMock()
+		mock_stk_response.json.return_value = {
+			"MerchantRequestID": "test_merchant_123",
+			"CheckoutRequestID": "test_checkout_123",
+			"ResponseCode": "0",
+			"ResponseDescription": "Success",
+			"CustomerMessage": "Success"
+		}
+		mock_stk_response.raise_for_status = MagicMock()
+		mock_post.return_value = mock_stk_response
+		
+		result = initiate_stk_push(
+			company="Murzak Test Company",
+			phone_number="254712345678",
+			amount=100.00,
+			reference="TEST-001",
+			description="Test payment"
+		)
+		
+		self.assertEqual(result["response_code"], 0)
+		self.assertEqual(result["merchant_request_id"], "test_merchant_123")
+		self.assertEqual(result["checkout_request_id"], "test_checkout_123")
+		self.assertIn("transaction_id", result)
+		
+		# Verify transaction log was created
+		transaction = frappe.get_doc("MPESA Transaction Log", result["transaction_id"])
+		self.assertEqual(transaction.status, "Pending")
+		self.assertEqual(transaction.amount, 100.00)
+	
+	def test_initiate_stk_push_invalid_phone(self):
+		"""Test STK Push with invalid phone number"""
+		with self.assertRaises(MpesaClientError):
+			initiate_stk_push(
+				company="Murzak Test Company",
+				phone_number="0712345678",  # Invalid format
+				amount=100.00,
+				reference="TEST-001"
+            )
+	
+	@patch('murzak_pos.api.mpesa_client.requests.get')
+	@patch('murzak_pos.api.mpesa_client.requests.post')
+	def test_query_stk_status_success(self, mock_post, mock_get):
+		"""Test successful STK status query"""
+		# Create test transaction
+		transaction = frappe.new_doc("MPESA Transaction Log")
+		transaction.company = "Murzak Test Company"
+		transaction.transaction_type = "STK Push"
+		transaction.phone_number = "254712345678"
+		transaction.amount = 100.00
+		transaction.reference_number = "TEST-001"
+		transaction.status = "Pending"
+		transaction.checkout_request_id = "test_checkout_123"
+		transaction.insert(ignore_permissions=True)
+		frappe.db.commit()
+		
+		# Mock OAuth token response
+		mock_token_response = MagicMock()
+		mock_token_response.json.return_value = {
+			"access_token": "test_token",
+			"expires_in": "3600"
+		}
+		mock_token_response.raise_for_status = MagicMock()
+		mock_get.return_value = mock_token_response
+		
+		# Mock STK Query response
+		mock_query_response = MagicMock()
+		mock_query_response.json.return_value = {
+			"ResultCode": "0",
+			"ResultDesc": "The service request is processed successfully.",
+			"MerchantRequestID": "test_merchant_123",
+			"CheckoutRequestID": "test_checkout_123",
+			"MpesaReceiptNumber": "RCT123456"
+		}
+		mock_query_response.raise_for_status = MagicMock()
+		mock_post.return_value = mock_query_response
+		
+		result = query_stk_status("Murzak Test Company", "test_checkout_123")
+
+		self.assertEqual(result["result_code"], 0)
+
+		# Verify transaction was updated (the receipt number only arrives with the callback)
+		transaction.reload()
+		self.assertEqual(transaction.status, "Success")
+	
+	def tearDown(self):
+		"""Clean up test data"""
+		frappe.db.delete("MPESA Transaction Log", {"company": "Murzak Test Company"})
+		frappe.db.delete("MPESA Settings", {"company": "Murzak Test Company"})
+		frappe.db.commit()
+

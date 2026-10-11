@@ -198,7 +198,7 @@ Then add it to `stock.py` and use it:
 ```javascript
 const createStockTransferRequest = async (requestData) => {
   try {
-    const response = await fetch('/api/method/techsavanna_pos.api.stock.create_stock_transfer_request', {
+    const response = await fetch('/api/method/murzak_pos.api.stock.create_stock_transfer_request', {
       method: 'POST',
       credentials: 'include',
       headers: {

@@ -98,7 +98,7 @@ Complete guide for administrators to configure, deploy, and maintain MPESA payme
 
 **Via API:**
 ```bash
-POST /api/method/techsavanna_pos.api.mpesa_api.register_mpesa_settings
+POST /api/method/murzak_pos.api.mpesa_api.register_mpesa_settings
 {
   "company": "Your Company",
   "environment": "Sandbox",
@@ -108,18 +108,18 @@ POST /api/method/techsavanna_pos.api.mpesa_api.register_mpesa_settings
   "consumer_secret": "your_secret",
   "passkey": "your_passkey",
   "payment_account": "Cash - Your Company",
-  "stk_callback_url": "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.stk_callback"
+  "stk_callback_url": "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.stk_callback"
 }
 ```
 
 ### Step 2: Configure Callback URLs
 
 **Required Callback URLs:**
-- STK Callback: `https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.stk_callback`
-- B2C Result: `https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.b2c_result_callback`
-- B2C Timeout: `https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.b2c_timeout_callback`
-- B2B Result: `https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.b2b_result_callback`
-- B2B Timeout: `https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.b2b_timeout_callback`
+- STK Callback: `https://your-domain.com/api/method/murzak_pos.api.mpesa_api.stk_callback`
+- B2C Result: `https://your-domain.com/api/method/murzak_pos.api.mpesa_api.b2c_result_callback`
+- B2C Timeout: `https://your-domain.com/api/method/murzak_pos.api.mpesa_api.b2c_timeout_callback`
+- B2B Result: `https://your-domain.com/api/method/murzak_pos.api.mpesa_api.b2b_result_callback`
+- B2B Timeout: `https://your-domain.com/api/method/murzak_pos.api.mpesa_api.b2b_timeout_callback`
 
 **Important:**
 - All URLs must be HTTPS
@@ -387,7 +387,7 @@ frappe.log_error("Debug message", "MPESA Debug")
 Use Postman or curl to send test callback:
 
 ```bash
-curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.stk_callback \
+curl -X POST https://your-domain.com/api/method/murzak_pos.api.mpesa_api.stk_callback \
   -H "Content-Type: application/json" \
   -d '{
     "Body": {

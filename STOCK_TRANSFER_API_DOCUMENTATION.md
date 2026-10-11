@@ -49,7 +49,7 @@ This documentation covers all APIs related to stock transfers between warehouses
 All endpoints are relative to your Frappe backend API:
 
 ```
-/api/method/techsavanna_pos.api.stock.<endpoint_name>
+/api/method/murzak_pos.api.stock.<endpoint_name>
 ```
 
 ### Authentication
@@ -58,7 +58,7 @@ All endpoints (except where noted) require authentication. Include session cooki
 
 ```javascript
 // Using fetch with session cookie (automatic)
-fetch('/api/method/techsavanna_pos.api.stock.create_stock_transfer', {
+fetch('/api/method/murzak_pos.api.stock.create_stock_transfer', {
   method: 'POST',
   credentials: 'include',
   headers: {
@@ -68,7 +68,7 @@ fetch('/api/method/techsavanna_pos.api.stock.create_stock_transfer', {
 })
 
 // Using API key
-fetch('/api/method/techsavanna_pos.api.stock.create_stock_transfer', {
+fetch('/api/method/murzak_pos.api.stock.create_stock_transfer', {
   method: 'POST',
   headers: {
     'Authorization': 'token <api_key>:<api_secret>',
@@ -525,7 +525,7 @@ Creates a Material Request for stock transfer. Use this to initiate a transfer r
 
 **Endpoint:** `create_stock_transfer_request`  
 **Method:** `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.create_stock_transfer_request`  
+**URL:** `/api/method/murzak_pos.api.stock.create_stock_transfer_request`  
 **Authentication:** Required
 
 #### Request Body
@@ -567,7 +567,7 @@ Creates a Material Request for stock transfer. Use this to initiate a transfer r
 ```javascript
 const createStockTransferRequest = async (requestData) => {
   try {
-    const response = await fetch('/api/method/techsavanna_pos.api.stock.create_stock_transfer_request', {
+    const response = await fetch('/api/method/murzak_pos.api.stock.create_stock_transfer_request', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -621,7 +621,7 @@ Creates a Stock Entry of type "Material Transfer" to immediately transfer stock 
 
 **Endpoint:** `create_stock_transfer`  
 **Method:** `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.create_stock_transfer`  
+**URL:** `/api/method/murzak_pos.api.stock.create_stock_transfer`  
 **Authentication:** Required (login required, not guest)
 
 #### Request Body
@@ -665,7 +665,7 @@ Creates a Stock Entry of type "Material Transfer" to immediately transfer stock 
 ```javascript
 const createStockTransfer = async (transferData) => {
   try {
-    const response = await fetch('/api/method/techsavanna_pos.api.stock.create_stock_transfer', {
+    const response = await fetch('/api/method/murzak_pos.api.stock.create_stock_transfer', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -719,7 +719,7 @@ Lists all Material Requests of type "Material Transfer" with optional filtering.
 
 **Endpoint:** `list_stock_transfer_requests`  
 **Method:** `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.list_stock_transfer_requests`  
+**URL:** `/api/method/murzak_pos.api.stock.list_stock_transfer_requests`  
 **Authentication:** Required
 
 #### Request Body (Optional Filters)
@@ -764,7 +764,7 @@ Lists all Material Requests of type "Material Transfer" with optional filtering.
 ```javascript
 const listStockTransferRequests = async (filters = {}) => {
   try {
-    const response = await fetch('/api/method/techsavanna_pos.api.stock.list_stock_transfer_requests', {
+    const response = await fetch('/api/method/murzak_pos.api.stock.list_stock_transfer_requests', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -797,7 +797,7 @@ Retrieves detailed information about a specific stock transfer request.
 
 **Endpoint:** `get_stock_transfer_request`  
 **Method:** `GET` / `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.get_stock_transfer_request`  
+**URL:** `/api/method/murzak_pos.api.stock.get_stock_transfer_request`  
 **Authentication:** Required
 
 #### Request Parameters
@@ -847,7 +847,7 @@ Retrieves detailed information about a specific stock transfer request.
 const getStockTransferRequest = async (requestId) => {
   try {
     const response = await fetch(
-      `/api/method/techsavanna_pos.api.stock.get_stock_transfer_request?request_id=${requestId}`,
+      `/api/method/murzak_pos.api.stock.get_stock_transfer_request?request_id=${requestId}`,
       {
         method: 'GET',
         credentials: 'include'
@@ -874,7 +874,7 @@ Approves a stock transfer request (Material Request). Use this when workflow is 
 
 **Endpoint:** `approve_stock_transfer`  
 **Method:** `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.approve_stock_transfer`  
+**URL:** `/api/method/murzak_pos.api.stock.approve_stock_transfer`  
 **Authentication:** Required
 
 #### Request Body
@@ -915,7 +915,7 @@ Approves a stock transfer request (Material Request). Use this when workflow is 
 ```javascript
 const approveStockTransfer = async (requestId, approvedBy, notes = '') => {
   try {
-    const response = await fetch('/api/method/techsavanna_pos.api.stock.approve_stock_transfer', {
+    const response = await fetch('/api/method/murzak_pos.api.stock.approve_stock_transfer', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -952,7 +952,7 @@ Approves a stock transfer request when workflow IS enabled. This version uses wo
 
 **Endpoint:** `approve_stock_transfer_workflow`  
 **Method:** `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.approve_stock_transfer_workflow`  
+**URL:** `/api/method/murzak_pos.api.stock.approve_stock_transfer_workflow`  
 **Authentication:** Required (not guest)
 
 #### Request Body
@@ -992,7 +992,7 @@ Approves a stock transfer request when workflow IS enabled. This version uses wo
 ```javascript
 const approveStockTransferWorkflow = async (requestId, approvedBy, notes = '') => {
   try {
-    const response = await fetch('/api/method/techsavanna_pos.api.stock.approve_stock_transfer_workflow', {
+    const response = await fetch('/api/method/murzak_pos.api.stock.approve_stock_transfer_workflow', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -1022,7 +1022,7 @@ Dispatches stock from the origin warehouse for an approved Material Request. Cre
 
 **Endpoint:** `dispatch_stock`  
 **Method:** `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.dispatch_stock`  
+**URL:** `/api/method/murzak_pos.api.stock.dispatch_stock`  
 **Authentication:** Required
 
 #### Request Body
@@ -1075,7 +1075,7 @@ Dispatches stock from the origin warehouse for an approved Material Request. Cre
 ```javascript
 const dispatchStock = async (dispatchData) => {
   try {
-    const response = await fetch('/api/method/techsavanna_pos.api.stock.dispatch_stock', {
+    const response = await fetch('/api/method/murzak_pos.api.stock.dispatch_stock', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -1119,7 +1119,7 @@ Receives stock at the destination warehouse. Creates a Material Receipt Stock En
 
 **Endpoint:** `receive_stock_destination`  
 **Method:** `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.receive_stock_destination`  
+**URL:** `/api/method/murzak_pos.api.stock.receive_stock_destination`  
 **Authentication:** Required
 
 #### Request Body
@@ -1166,7 +1166,7 @@ Receives stock at the destination warehouse. Creates a Material Receipt Stock En
 ```javascript
 const receiveStockDestination = async (receiveData) => {
   try {
-    const response = await fetch('/api/method/techsavanna_pos.api.stock.receive_stock_destination', {
+    const response = await fetch('/api/method/murzak_pos.api.stock.receive_stock_destination', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -1212,7 +1212,7 @@ Confirms receipt of a stock transfer by processing a Stock Entry. This is an alt
 
 **Endpoint:** `confirm_receive_transfer`  
 **Method:** `POST`  
-**URL:** `/api/method/techsavanna_pos.api.stock.confirm_receive_transfer`  
+**URL:** `/api/method/murzak_pos.api.stock.confirm_receive_transfer`  
 **Authentication:** Guest allowed (but not recommended)
 
 #### Request Parameters
@@ -1249,7 +1249,7 @@ Confirms receipt of a stock transfer by processing a Stock Entry. This is an alt
 const confirmReceiveTransfer = async (stockEntryName) => {
   try {
     const response = await fetch(
-      `/api/method/techsavanna_pos.api.stock.confirm_receive_transfer?stock_entry_name=${stockEntryName}`,
+      `/api/method/murzak_pos.api.stock.confirm_receive_transfer?stock_entry_name=${stockEntryName}`,
       {
         method: 'POST',
         credentials: 'include'
@@ -1410,7 +1410,7 @@ export const useStockTransfer = () => {
 
     try {
       const response = await fetch(
-        '/api/method/techsavanna_pos.api.stock.create_stock_transfer',
+        '/api/method/murzak_pos.api.stock.create_stock_transfer',
         {
           method: 'POST',
           credentials: 'include',
@@ -1451,7 +1451,7 @@ export const useStockTransfer = () => {
 
     try {
       const response = await fetch(
-        '/api/method/techsavanna_pos.api.stock.list_stock_transfer_requests',
+        '/api/method/murzak_pos.api.stock.list_stock_transfer_requests',
         {
           method: 'POST',
           credentials: 'include',
@@ -1649,5 +1649,5 @@ For issues or questions regarding these APIs, please contact your backend develo
 
 **Last Updated:** January 2025  
 **API Version:** 1.0  
-**Module:** techsavanna_pos.api.stock
+**Module:** murzak_pos.api.stock
 

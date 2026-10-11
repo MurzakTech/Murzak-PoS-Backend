@@ -3,7 +3,7 @@
 ## Overview
 Complete API documentation for MPESA payment integration. All endpoints support multitenant operations with company-level data isolation.
 
-**Base URL:** `https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api`
+**Base URL:** `https://your-domain.com/api/method/murzak_pos.api.mpesa_api`
 
 **Authentication:** All endpoints (except callbacks) require authentication via:
 - Session cookie (web interface)
@@ -27,7 +27,7 @@ Complete API documentation for MPESA payment integration. All endpoints support 
 
 Register or update MPESA settings for a company.
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.register_mpesa_settings`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.register_mpesa_settings`
 
 **Authentication:** Required
 
@@ -42,11 +42,11 @@ Register or update MPESA settings for a company.
   "consumer_secret": "your_consumer_secret",
   "passkey": "your_passkey",
   "payment_account": "Cash - Company",
-  "stk_callback_url": "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.stk_callback",
-  "b2c_result_url": "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.b2c_result_callback",
-  "b2c_timeout_url": "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.b2c_timeout_callback",
-  "b2b_result_url": "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.b2b_result_callback",
-  "b2b_timeout_url": "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.b2b_timeout_callback",
+  "stk_callback_url": "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.stk_callback",
+  "b2c_result_url": "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.b2c_result_callback",
+  "b2c_timeout_url": "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.b2c_timeout_callback",
+  "b2b_result_url": "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.b2b_result_callback",
+  "b2b_timeout_url": "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.b2b_timeout_callback",
   "initiator_name": "Initiator Name",
   "initiator_password": "Initiator Password",
   "account_reference_prefix": "INV",
@@ -108,7 +108,7 @@ Register or update MPESA settings for a company.
 
 Retrieve MPESA settings for a company (sensitive fields masked).
 
-**Endpoint:** `GET /api/method/techsavanna_pos.api.mpesa_api.get_mpesa_settings?company=Company Name`
+**Endpoint:** `GET /api/method/murzak_pos.api.mpesa_api.get_mpesa_settings?company=Company Name`
 
 **Authentication:** Required
 
@@ -141,7 +141,7 @@ Retrieve MPESA settings for a company (sensitive fields masked).
 
 Update existing MPESA settings (alias for register_mpesa_settings).
 
-**Endpoint:** `PUT /api/method/techsavanna_pos.api.mpesa_api.update_mpesa_settings`
+**Endpoint:** `PUT /api/method/murzak_pos.api.mpesa_api.update_mpesa_settings`
 
 **Authentication:** Required
 
@@ -155,7 +155,7 @@ Update existing MPESA settings (alias for register_mpesa_settings).
 
 Deactivate MPESA for a company.
 
-**Endpoint:** `DELETE /api/method/techsavanna_pos.api.mpesa_api.deactivate_mpesa_settings?company=Company Name`
+**Endpoint:** `DELETE /api/method/murzak_pos.api.mpesa_api.deactivate_mpesa_settings?company=Company Name`
 
 **Authentication:** Required
 
@@ -183,7 +183,7 @@ Deactivate MPESA for a company.
 
 Initiate STK Push payment request (Customer to Business).
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push_payment`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.initiate_stk_push_payment`
 
 **Authentication:** Required
 
@@ -234,7 +234,7 @@ Initiate STK Push payment request (Customer to Business).
 
 Initiate B2C payment (Business to Customer payout).
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.initiate_b2c_payment`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.initiate_b2c_payment`
 
 **Authentication:** Required
 
@@ -276,7 +276,7 @@ Initiate B2C payment (Business to Customer payout).
 
 Initiate B2B payment (Business to Business transfer).
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.initiate_b2b_payment`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.initiate_b2b_payment`
 
 **Authentication:** Required
 
@@ -318,7 +318,7 @@ Initiate B2B payment (Business to Business transfer).
 
 Check status of STK Push payment.
 
-**Endpoint:** `GET /api/method/techsavanna_pos.api.mpesa_api.check_payment_status`
+**Endpoint:** `GET /api/method/murzak_pos.api.mpesa_api.check_payment_status`
 
 **Authentication:** Required
 
@@ -354,7 +354,7 @@ Check status of STK Push payment.
 
 Get transaction history with filters and pagination.
 
-**Endpoint:** `GET /api/method/techsavanna_pos.api.mpesa_api.get_transactions`
+**Endpoint:** `GET /api/method/murzak_pos.api.mpesa_api.get_transactions`
 
 **Authentication:** Required
 
@@ -398,7 +398,7 @@ Get transaction history with filters and pagination.
 
 Get complete details of a single transaction.
 
-**Endpoint:** `GET /api/method/techsavanna_pos.api.mpesa_api.get_transaction?transaction_id=MPESA-TXN-001`
+**Endpoint:** `GET /api/method/murzak_pos.api.mpesa_api.get_transaction?transaction_id=MPESA-TXN-001`
 
 **Authentication:** Required
 
@@ -456,7 +456,7 @@ These endpoints are called by Daraja (Safaricom) and should not be called direct
 
 ### STK Push Callback
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.stk_callback`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.stk_callback`
 
 **Authentication:** Not required (allow_guest=True)
 
@@ -492,7 +492,7 @@ These endpoints are called by Daraja (Safaricom) and should not be called direct
 
 ### B2C Result Callback
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.b2c_result_callback`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.b2c_result_callback`
 
 **Authentication:** Not required
 
@@ -523,7 +523,7 @@ These endpoints are called by Daraja (Safaricom) and should not be called direct
 
 ### B2C Timeout Callback
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.b2c_timeout_callback`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.b2c_timeout_callback`
 
 **Authentication:** Not required
 
@@ -533,7 +533,7 @@ These endpoints are called by Daraja (Safaricom) and should not be called direct
 
 ### B2B Result Callback
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.b2b_result_callback`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.b2b_result_callback`
 
 **Authentication:** Not required
 
@@ -543,7 +543,7 @@ These endpoints are called by Daraja (Safaricom) and should not be called direct
 
 ### B2B Timeout Callback
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.b2b_timeout_callback`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.b2b_timeout_callback`
 
 **Authentication:** Not required
 
@@ -600,7 +600,7 @@ All errors follow this format:
 import requests
 
 # Register MPESA Settings
-url = "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.register_mpesa_settings"
+url = "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.register_mpesa_settings"
 headers = {
     "Authorization": "token YOUR_API_KEY:YOUR_API_SECRET",
     "Content-Type": "application/json"
@@ -614,13 +614,13 @@ data = {
     "consumer_secret": "your_secret",
     "passkey": "your_passkey",
     "payment_account": "Cash - Your Company",
-    "stk_callback_url": "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.stk_callback"
+    "stk_callback_url": "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.stk_callback"
 }
 response = requests.post(url, json=data, headers=headers)
 print(response.json())
 
 # Initiate STK Push
-url = "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push_payment"
+url = "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.initiate_stk_push_payment"
 data = {
     "company": "Your Company",
     "phone_number": "254712345678",
@@ -639,7 +639,7 @@ const axios = require('axios');
 // Register MPESA Settings
 const registerSettings = async () => {
   const response = await axios.post(
-    'https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.register_mpesa_settings',
+    'https://your-domain.com/api/method/murzak_pos.api.mpesa_api.register_mpesa_settings',
     {
       company: 'Your Company',
       environment: 'Sandbox',
@@ -649,7 +649,7 @@ const registerSettings = async () => {
       consumer_secret: 'your_secret',
       passkey: 'your_passkey',
       payment_account: 'Cash - Your Company',
-      stk_callback_url: 'https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.stk_callback'
+      stk_callback_url: 'https://your-domain.com/api/method/murzak_pos.api.mpesa_api.stk_callback'
     },
     {
       headers: {
@@ -664,7 +664,7 @@ const registerSettings = async () => {
 // Initiate STK Push
 const initiatePayment = async () => {
   const response = await axios.post(
-    'https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push_payment',
+    'https://your-domain.com/api/method/murzak_pos.api.mpesa_api.initiate_stk_push_payment',
     {
       company: 'Your Company',
       phone_number: '254712345678',
@@ -686,7 +686,7 @@ const initiatePayment = async () => {
 
 ```bash
 # Register Settings
-curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.register_mpesa_settings \
+curl -X POST https://your-domain.com/api/method/murzak_pos.api.mpesa_api.register_mpesa_settings \
   -H "Authorization: token YOUR_API_KEY:YOUR_API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
@@ -701,7 +701,7 @@ curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.re
   }'
 
 # Initiate STK Push
-curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push_payment \
+curl -X POST https://your-domain.com/api/method/murzak_pos.api.mpesa_api.initiate_stk_push_payment \
   -H "Authorization: token YOUR_API_KEY:YOUR_API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
@@ -712,7 +712,7 @@ curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.in
   }'
 
 # Get Transactions
-curl -X GET "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.get_transactions?company=Your Company&status=Success" \
+curl -X GET "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.get_transactions?company=Your Company&status=Success" \
   -H "Authorization: token YOUR_API_KEY:YOUR_API_SECRET"
 ```
 

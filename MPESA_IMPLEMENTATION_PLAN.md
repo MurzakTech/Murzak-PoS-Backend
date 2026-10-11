@@ -26,7 +26,7 @@ This document outlines the **Daraja-compliant** implementation plan for adding M
 ### 1.1 Tasks
 
 #### 1.1.1 Create MPESA Settings DocType
-**Location:** `techsavanna_pos/doctype/mpesa_settings/`
+**Location:** `murzak_pos/doctype/mpesa_settings/`
 
 **Required Fields:**
 - `company` (Link to Company) - Required, unique per company
@@ -74,7 +74,7 @@ This document outlines the **Daraja-compliant** implementation plan for adding M
 - Required fields validation
 
 #### 1.1.2 Create MPESA Transaction Log DocType
-**Location:** `techsavanna_pos/doctype/mpesa_transaction_log/`
+**Location:** `murzak_pos/doctype/mpesa_transaction_log/`
 
 **Required Fields:**
 - `company` (Link to Company) - Required
@@ -120,7 +120,7 @@ This document outlines the **Daraja-compliant** implementation plan for adding M
 - Index on `company` and `status` (for queries)
 
 #### 1.1.3 Create Constants Module
-**Location:** `techsavanna_pos/api/mpesa_constants.py`
+**Location:** `murzak_pos/api/mpesa_constants.py`
 
 **Daraja Result Codes:**
 ```python
@@ -201,7 +201,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 ### 2.1 Tasks
 
 #### 2.1.1 Implement OAuth Token Management
-**Location:** `techsavanna_pos/api/mpesa_client.py`
+**Location:** `murzak_pos/api/mpesa_client.py`
 
 **Function:** `get_access_token(company)`
 
@@ -220,7 +220,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Token refresh failures → Log and raise
 
 #### 2.1.2 Implement STK Push Password Generation
-**Location:** `techsavanna_pos/api/mpesa_client.py`
+**Location:** `murzak_pos/api/mpesa_client.py`
 
 **Function:** `generate_stk_password(shortcode, passkey, timestamp)`
 
@@ -232,7 +232,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Return encoded password
 
 #### 2.1.3 Implement STK Push Initiation
-**Location:** `techsavanna_pos/api/mpesa_client.py`
+**Location:** `murzak_pos/api/mpesa_client.py`
 
 **Function:** `initiate_stk_push(company, phone, amount, reference, description)`
 
@@ -273,7 +273,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - API errors → Store error in Transaction Log
 
 #### 2.1.4 Implement STK Push Query
-**Location:** `techsavanna_pos/api/mpesa_client.py`
+**Location:** `murzak_pos/api/mpesa_client.py`
 
 **Function:** `query_stk_status(company, checkout_request_id)`
 
@@ -301,7 +301,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Verification after delayed callback
 
 #### 2.1.5 Create Basic API Endpoint for STK Push
-**Location:** `techsavanna_pos/api/mpesa_api.py`
+**Location:** `murzak_pos/api/mpesa_api.py`
 
 **Function:** `initiate_stk_push()`
 
@@ -311,7 +311,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Call `initiate_stk_push()` from client
 - Return transaction details
 
-**Endpoint:** `POST /api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push`
+**Endpoint:** `POST /api/method/murzak_pos.api.mpesa_api.initiate_stk_push`
 
 **Request:**
 ```json
@@ -358,7 +358,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 ### 3.1 Tasks
 
 #### 3.1.1 Implement B2C Payment
-**Location:** `techsavanna_pos/api/mpesa_client.py`
+**Location:** `murzak_pos/api/mpesa_client.py`
 
 **Function:** `process_b2c_payment(company, phone, amount, reference, remarks)`
 
@@ -387,7 +387,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Return ConversationID
 
 #### 3.1.2 Implement B2B Payment
-**Location:** `techsavanna_pos/api/mpesa_client.py`
+**Location:** `murzak_pos/api/mpesa_client.py`
 
 **Function:** `process_b2b_payment(company, receiver_shortcode, amount, reference, remarks)`
 
@@ -398,7 +398,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Return ConversationID
 
 #### 3.1.3 Implement STK Callback Handler
-**Location:** `techsavanna_pos/api/mpesa_api.py`
+**Location:** `murzak_pos/api/mpesa_api.py`
 
 **Function:** `stk_callback()`
 
@@ -431,7 +431,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Handle delayed callbacks gracefully
 
 #### 3.1.4 Implement B2C Callback Handlers
-**Location:** `techsavanna_pos/api/mpesa_api.py`
+**Location:** `murzak_pos/api/mpesa_api.py`
 
 **Functions:**
 - `b2c_result_callback()` - Handle B2C result
@@ -445,7 +445,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Handle timeout scenarios
 
 #### 3.1.5 Implement B2B Callback Handlers
-**Location:** `techsavanna_pos/api/mpesa_api.py`
+**Location:** `murzak_pos/api/mpesa_api.py`
 
 **Functions:**
 - `b2b_result_callback()` - Handle B2B result
@@ -459,7 +459,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Create payment entry if successful
 
 #### 3.1.6 Implement Payment Entry Creation
-**Location:** `techsavanna_pos/api/mpesa_api.py` (helper function)
+**Location:** `murzak_pos/api/mpesa_api.py` (helper function)
 
 **Function:** `create_payment_entry(transaction, invoice)`
 
@@ -480,7 +480,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Update invoice outstanding amount
 
 #### 3.1.7 Implement Invoice Status Updates
-**Location:** `techsavanna_pos/api/mpesa_api.py` (helper function)
+**Location:** `murzak_pos/api/mpesa_api.py` (helper function)
 
 **Function:** `update_invoice_payment_status(invoice, transaction)`
 
@@ -527,7 +527,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 ### 4.1 Tasks
 
 #### 4.1.1 Settings Management APIs
-**Location:** `techsavanna_pos/api/mpesa_api.py`
+**Location:** `murzak_pos/api/mpesa_api.py`
 
 **Endpoints:**
 - `register_mpesa_settings()` - Register/update settings
@@ -543,7 +543,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Return masked sensitive data in GET
 
 #### 4.1.2 Payment Processing APIs
-**Location:** `techsavanna_pos/api/mpesa_api.py`
+**Location:** `murzak_pos/api/mpesa_api.py`
 
 **Endpoints:**
 - `initiate_stk_push()` - Already implemented, enhance
@@ -558,7 +558,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Return transaction details
 
 #### 4.1.3 Transaction Management APIs
-**Location:** `techsavanna_pos/api/mpesa_api.py`
+**Location:** `murzak_pos/api/mpesa_api.py`
 
 **Endpoints:**
 - `get_transactions(company, status, limit, offset)` - Get history
@@ -571,7 +571,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Return complete transaction details
 
 #### 4.1.4 POS Invoice Integration
-**Location:** `techsavanna_pos/overrides/` or hooks
+**Location:** `murzak_pos/overrides/` or hooks
 
 **Implementation:**
 - Add MPESA to POS Profile payment methods
@@ -586,7 +586,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Add JavaScript for payment initiation
 
 #### 4.1.5 Sales Invoice Integration
-**Location:** `techsavanna_pos/api/` or hooks
+**Location:** `murzak_pos/api/` or hooks
 
 **Implementation:**
 - Add MPESA payment request option
@@ -595,7 +595,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Update Sales Invoice on successful payment
 
 #### 4.1.6 Mode of Payment Setup
-**Location:** `techsavanna_pos/api/mpesa_api.py` (helper function)
+**Location:** `murzak_pos/api/mpesa_api.py` (helper function)
 
 **Function:** `setup_mpesa_mode_of_payment(company)`
 
@@ -640,7 +640,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 ### 5.1 Tasks
 
 #### 5.1.1 Unit Tests
-**Location:** `techsavanna_pos/doctype/mpesa_settings/test_*.py` and `techsavanna_pos/api/test_*.py`
+**Location:** `murzak_pos/doctype/mpesa_settings/test_*.py` and `murzak_pos/api/test_*.py`
 
 **Test Coverage:**
 - OAuth token management
@@ -754,7 +754,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 ### 6.1 Tasks
 
 #### 6.1.1 API Documentation
-**Location:** `techsavanna_pos/docs/MPESA_API_DOCUMENTATION.md`
+**Location:** `murzak_pos/docs/MPESA_API_DOCUMENTATION.md`
 
 **Content:**
 - All API endpoints with examples
@@ -764,7 +764,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Code examples
 
 #### 6.1.2 User Guide
-**Location:** `techsavanna_pos/docs/MPESA_USER_GUIDE.md`
+**Location:** `murzak_pos/docs/MPESA_USER_GUIDE.md`
 
 **Content:**
 - How to register MPESA settings
@@ -774,7 +774,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 - Troubleshooting common issues
 
 #### 6.1.3 Admin Guide
-**Location:** `techsavanna_pos/docs/MPESA_ADMIN_GUIDE.md`
+**Location:** `murzak_pos/docs/MPESA_ADMIN_GUIDE.md`
 
 **Content:**
 - System configuration
@@ -869,7 +869,7 @@ TRANSACTION_TYPE_BUYGOODS = "CustomerBuyGoodsOnline"
 ### A.3 File Structure
 
 ```
-techsavanna_pos/
+murzak_pos/
 ├── api/
 │   ├── mpesa_api.py          # API endpoints
 │   ├── mpesa_client.py       # MPESA API client

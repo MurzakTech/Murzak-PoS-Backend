@@ -1,8 +1,8 @@
-# TechSavanna POS - Standalone Deployment Guide
+# Murzak POS - Standalone Deployment Guide
 
 ## 🎉 Status: 100% Standalone App
 
-`techsavanna_pos` is now completely independent of `savanna_pos` and can be deployed without it.
+`murzak_pos` is now completely independent of `savanna_pos` and can be deployed without it.
 
 ---
 
@@ -12,15 +12,15 @@
 
 #### 1. Deploy the Code
 ```bash
-cd /path/to/frappe-bench/apps/techsavanna_pos
+cd /path/to/frappe-bench/apps/murzak_pos
 git pull origin main  # or your branch
 ```
 
 #### 2. Run the eTims Cleanup Script
 ```bash
 cd /path/to/frappe-bench
-chmod +x apps/techsavanna_pos/remove_etims_slade360_fields.sh
-./apps/techsavanna_pos/remove_etims_slade360_fields.sh your-site-name
+chmod +x apps/murzak_pos/remove_etims_slade360_fields.sh
+./apps/murzak_pos/remove_etims_slade360_fields.sh your-site-name
 ```
 
 **What it does:**
@@ -31,12 +31,12 @@ chmod +x apps/techsavanna_pos/remove_etims_slade360_fields.sh
 
 #### 3. Install/Update the App
 ```bash
-# If techsavanna_pos is already installed
+# If murzak_pos is already installed
 bench --site your-site-name migrate
 bench --site your-site-name clear-cache
 
 # If installing fresh
-bench --site your-site-name install-app techsavanna_pos
+bench --site your-site-name install-app murzak_pos
 ```
 
 #### 4. Restart Services
@@ -53,7 +53,7 @@ sudo systemctl restart frappe-bench-web frappe-bench-workers
 #### 5. Verify Installation
 ```bash
 # Test inventory discounts
-bench --site your-site-name execute techsavanna_pos.api.inventory_api.bulk_get_inventory_discounts \
+bench --site your-site-name execute murzak_pos.api.inventory_api.bulk_get_inventory_discounts \
   --kwargs '{"company":"Your Company Name"}' --args '[[]]'
 
 # Should return: {"success": true, "data": [], "message": "Discount lookup completed"}
@@ -66,8 +66,8 @@ bench --site your-site-name execute techsavanna_pos.api.inventory_api.bulk_get_i
 ### Critical Dependencies Removed (6 Issues)
 
 1. **eTims Slade360 ID Mapping** - Database custom fields removed
-2. **Inventory Discount Rule** - Copied to techsavanna_pos, imports updated
-3. **Onboarding API** - All imports redirected to techsavanna_pos
+2. **Inventory Discount Rule** - Copied to murzak_pos, imports updated
+3. **Onboarding API** - All imports redirected to murzak_pos
 4. **Auth APIs** - Verification, warehouse, and POS profile imports fixed
 5. **Product API** - Global seeding made optional with fallback
 6. **Documentation** - All docstring examples updated
@@ -84,7 +84,7 @@ bench --site your-site-name execute techsavanna_pos.api.inventory_api.bulk_get_i
 - `api/account_provisioning_api.py`
 
 **New DocTypes:**
-- `techsavanna_pos/doctype/inventory_discount_rule/` (complete DocType with controller)
+- `murzak_pos/doctype/inventory_discount_rule/` (complete DocType with controller)
 
 **Scripts:**
 - `remove_etims_slade360_fields.sh` (cleanup script for eTims fields)
@@ -97,7 +97,7 @@ bench --site your-site-name execute techsavanna_pos.api.inventory_api.bulk_get_i
 
 ```bash
 # 1. Product Seeding
-curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.product_seeding.create_seed_item \
+curl -X POST https://your-domain.com/api/method/murzak_pos.api.product_seeding.create_seed_item \
   -H "Content-Type: application/json" \
   -H "Authorization: token YOUR_API_KEY:YOUR_SECRET" \
   -d '{
@@ -113,7 +113,7 @@ curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.product_seed
   }'
 
 # 2. Inventory Discounts
-curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.inventory_api.bulk_get_inventory_discounts \
+curl -X POST https://your-domain.com/api/method/murzak_pos.api.inventory_api.bulk_get_inventory_discounts \
   -H "Content-Type: application/json" \
   -H "Authorization: token YOUR_API_KEY:YOUR_SECRET" \
   -d '{
@@ -122,7 +122,7 @@ curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.inventory_ap
   }'
 
 # 3. User Registration (if using verification)
-curl -X POST https://your-domain.com/api/method/techsavanna_pos.api.auth_api.register_user \
+curl -X POST https://your-domain.com/api/method/murzak_pos.api.auth_api.register_user \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
@@ -151,7 +151,7 @@ All endpoints should return success responses without any `savanna_pos` import e
 bench --site your-site-name clear-cache
 
 # Remove Python cache
-find apps/techsavanna_pos -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null
+find apps/murzak_pos -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null
 
 # Restart
 bench restart
@@ -164,7 +164,7 @@ bench restart
 **Fix:**
 ```bash
 # Run cleanup script again
-./apps/techsavanna_pos/remove_etims_slade360_fields.sh your-site-name
+./apps/murzak_pos/remove_etims_slade360_fields.sh your-site-name
 
 # Or manual cleanup
 bench --site your-site-name execute frappe.db.sql \
@@ -214,10 +214,10 @@ For issues or questions:
 
 ## Maintenance Notes
 
-### When Updating techsavanna_pos
+### When Updating murzak_pos
 
 ```bash
-cd /path/to/frappe-bench/apps/techsavanna_pos
+cd /path/to/frappe-bench/apps/murzak_pos
 git pull origin main
 cd /path/to/frappe-bench
 bench --site your-site-name migrate
@@ -242,7 +242,7 @@ No special monitoring required. All endpoints work exactly as before, just witho
 
 ## Security Considerations
 
-- Email/phone verification still works (now uses techsavanna_pos.api.verification_api)
+- Email/phone verification still works (now uses murzak_pos.api.verification_api)
 - User authentication unchanged
 - API key generation unchanged
 - Role assignment unchanged
@@ -262,6 +262,6 @@ All changes:
 ---
 
 **Last Updated:** 2026-01-07  
-**App Version:** techsavanna_pos (standalone)  
+**App Version:** murzak_pos (standalone)  
 **Tested On:** Frappe v15+, ERPNext v15+
 

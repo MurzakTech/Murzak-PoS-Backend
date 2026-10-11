@@ -5,11 +5,11 @@
 > STK log failed validation before the request was sent, and settings were not limited to the
 > user's company. These are fixed, and Pesapal, PayPal and bank payments were added. See
 > [docs/PAYMENT_GATEWAYS_GUIDE.md](docs/PAYMENT_GATEWAYS_GUIDE.md) for the current design;
-> callbacks now live in `techsavanna_pos/api/payment_callbacks.py`.
+> callbacks now live in `murzak_pos/api/payment_callbacks.py`.
 
 
 ## Project Overview
-Complete multitenant MPESA (Daraja) payment integration for Techsavanna POS system, enabling STK Push, B2C, and B2B payments with automatic reconciliation and invoice updates.
+Complete multitenant MPESA (Daraja) payment integration for Murzak POS system, enabling STK Push, B2C, and B2B payments with automatic reconciliation and invoice updates.
 
 **Status:** ✅ **COMPLETE**  
 **Implementation Date:** 2024  
@@ -133,7 +133,7 @@ Complete multitenant MPESA (Daraja) payment integration for Techsavanna POS syst
 ## File Structure
 
 ```
-techsavanna_pos/
+murzak_pos/
 ├── api/
 │   ├── mpesa_api.py                    # API endpoints
 │   ├── mpesa_client.py                 # Daraja API client
@@ -224,27 +224,27 @@ techsavanna_pos/
 ## API Endpoints Summary
 
 ### Settings Management
-- `POST /api/method/techsavanna_pos.api.mpesa_api.register_mpesa_settings`
-- `GET /api/method/techsavanna_pos.api.mpesa_api.get_mpesa_settings`
-- `PUT /api/method/techsavanna_pos.api.mpesa_api.update_mpesa_settings`
-- `DELETE /api/method/techsavanna_pos.api.mpesa_api.deactivate_mpesa_settings`
+- `POST /api/method/murzak_pos.api.mpesa_api.register_mpesa_settings`
+- `GET /api/method/murzak_pos.api.mpesa_api.get_mpesa_settings`
+- `PUT /api/method/murzak_pos.api.mpesa_api.update_mpesa_settings`
+- `DELETE /api/method/murzak_pos.api.mpesa_api.deactivate_mpesa_settings`
 
 ### Payment Processing
-- `POST /api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push_payment`
-- `POST /api/method/techsavanna_pos.api.mpesa_api.initiate_b2c_payment`
-- `POST /api/method/techsavanna_pos.api.mpesa_api.initiate_b2b_payment`
-- `GET /api/method/techsavanna_pos.api.mpesa_api.check_payment_status`
+- `POST /api/method/murzak_pos.api.mpesa_api.initiate_stk_push_payment`
+- `POST /api/method/murzak_pos.api.mpesa_api.initiate_b2c_payment`
+- `POST /api/method/murzak_pos.api.mpesa_api.initiate_b2b_payment`
+- `GET /api/method/murzak_pos.api.mpesa_api.check_payment_status`
 
 ### Transaction Management
-- `GET /api/method/techsavanna_pos.api.mpesa_api.get_transactions`
-- `GET /api/method/techsavanna_pos.api.mpesa_api.get_transaction`
+- `GET /api/method/murzak_pos.api.mpesa_api.get_transactions`
+- `GET /api/method/murzak_pos.api.mpesa_api.get_transaction`
 
 ### Callbacks (Called by Daraja)
-- `POST /api/method/techsavanna_pos.api.mpesa_api.stk_callback`
-- `POST /api/method/techsavanna_pos.api.mpesa_api.b2c_result_callback`
-- `POST /api/method/techsavanna_pos.api.mpesa_api.b2c_timeout_callback`
-- `POST /api/method/techsavanna_pos.api.mpesa_api.b2b_result_callback`
-- `POST /api/method/techsavanna_pos.api.mpesa_api.b2b_timeout_callback`
+- `POST /api/method/murzak_pos.api.mpesa_api.stk_callback`
+- `POST /api/method/murzak_pos.api.mpesa_api.b2c_result_callback`
+- `POST /api/method/murzak_pos.api.mpesa_api.b2c_timeout_callback`
+- `POST /api/method/murzak_pos.api.mpesa_api.b2b_result_callback`
+- `POST /api/method/murzak_pos.api.mpesa_api.b2b_timeout_callback`
 
 ---
 
@@ -347,7 +347,7 @@ All success criteria have been met:
 - All guides are in `docs/` directory
 
 ### Testing
-- Run tests: `bench --site [site] run-tests --app techsavanna_pos`
+- Run tests: `bench --site [site] run-tests --app murzak_pos`
 - See `MPESA_TESTING_GUIDE.md` for details
 
 ### Troubleshooting

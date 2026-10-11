@@ -1,6 +1,6 @@
 # MPESA Integration Documentation
 
-Complete documentation for the MPESA (Daraja) payment integration in Techsavanna POS.
+Complete documentation for the MPESA (Daraja) payment integration in Murzak POS.
 
 ---
 

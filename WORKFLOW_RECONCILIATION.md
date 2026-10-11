@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains how to reconcile workflow states for Stock Reconciliation documents after deploying the `techsavanna_pos` app.
+This guide explains how to reconcile workflow states for Stock Reconciliation documents after deploying the `murzak_pos` app.
 
 ## When to Run Reconciliation
 
@@ -34,7 +34,7 @@ bench --site [site_name] console
 Then in the console:
 
 ```python
-from techsavanna_pos.patches.reconcile_stock_reconciliation_workflow_states import execute
+from murzak_pos.patches.reconcile_stock_reconciliation_workflow_states import execute
 execute()
 ```
 
@@ -47,7 +47,7 @@ bench --site [site_name] console
 Then:
 
 ```python
-exec(open('apps/techsavanna_pos/techsavanna_pos/patches/reconcile_stock_reconciliation_workflow_states.py').read())
+exec(open('apps/murzak_pos/murzak_pos/patches/reconcile_stock_reconciliation_workflow_states.py').read())
 ```
 
 ### Method 3: As a Standalone Script
@@ -56,7 +56,7 @@ You can also run the script file directly:
 
 ```bash
 cd /path/to/frappe-bench
-bench --site [site_name] console < apps/techsavanna_pos/techsavanna_pos/patches/reconcile_stock_reconciliation_workflow_states.py
+bench --site [site_name] console < apps/murzak_pos/murzak_pos/patches/reconcile_stock_reconciliation_workflow_states.py
 ```
 
 ## What the Script Does
@@ -90,7 +90,7 @@ Before running reconciliation, ensure:
    bench --site [site_name] console
    ```
    ```python
-   exec(open('apps/techsavanna_pos/techsavanna_pos/api/scripts/setup_stock_reconciliation_workflow.py').read())
+   exec(open('apps/murzak_pos/murzak_pos/api/scripts/setup_stock_reconciliation_workflow.py').read())
    ```
 
 2. **Services are running** - If using `bench migrate`, ensure bench services are running:
