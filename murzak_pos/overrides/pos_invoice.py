@@ -13,10 +13,12 @@ def before_submit(doc: Document, method: str = None) -> None:
     # Check if this is a POS invoice and if update_stock needs to be set
     if doc.doctype == "POS Invoice":
         # Always set to 1 - this ensures stock is updated
-        old_value = doc.update_stock
+        old_value = doc.get("update_stock")
         doc.update_stock = 1
-        # Also update in database to ensure it's persisted
-        if doc.name:
+        # Also update in database to ensure it's persisted. Newer ERPNext 15 releases (15.122 for one)
+        # have no update_stock column on POS Invoice at all, because they move stock at shift close,
+        # so only write it where the field exists. Reading or writing it blindly made every POS sale fail.
+        if doc.name and doc.meta.has_field("update_stock"):
             frappe.db.set_value(doc.doctype, doc.name, "update_stock", 1, update_modified=False)
         
         # Log for debugging

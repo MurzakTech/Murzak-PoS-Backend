@@ -18,9 +18,15 @@ class POSInvoice(ERPNextPOSInvoice):
         # Debug logging
         frappe.logger().info(
             f"POS Invoice {self.name}: Custom on_submit called - "
-            f"update_stock={self.update_stock}, docstatus={self.docstatus}"
+            f"update_stock={self.get('update_stock')}, docstatus={self.docstatus}"
         )
         
+        # Some ERPNext 15 releases have no update_stock field on POS Invoice. The sale code and the
+        # before_submit hook set it as a plain attribute, but make sure it is there whichever way the
+        # invoice reached this point, because SalesInvoice.on_submit() reads it.
+        if self.get("update_stock") is None:
+            self.update_stock = 1
+
         # Set default values for Sales Invoice-specific attributes that POS Invoice might not have
         # These are used in make_gle_for_rounding_adjustment() and other methods
         # Use setattr to ensure the attribute exists before calling SalesInvoice.on_submit()
