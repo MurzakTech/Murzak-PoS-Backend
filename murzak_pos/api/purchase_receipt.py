@@ -1,124 +1,151 @@
 import frappe
+from erpnext.controllers.sales_and_purchase_return import make_return_doc
 from frappe import _
-from frappe.utils import nowdate
-from erpnext.stock.utils import get_incoming_rate
-from erpnext.stock.doctype.stock_entry.stock_entry import make_stock_entry
-from erpnext.buying.doctype.purchase_receipt.purchase_receipt import PurchaseReceipt
+from frappe.utils import flt
+
 from murzak_pos.api.access_control import ensure_record_access
+
+
+def _returnable_qty(pr_item) -> float:
+	"""How much of this received line can still be sent back to the supplier."""
+	return flt(pr_item.qty) - flt(pr_item.returned_qty)
+
+
+def _requested_quantities(items) -> dict[str, float]:
+	"""The quantity asked for per item code, after checking each line is sensible."""
+	wanted: dict[str, float] = {}
+	for item in items:
+		if not item.get("item_code"):
+			raise frappe.ValidationError(_("Every returned item needs an item code"))
+		if flt(item.get("qty")) <= 0:
+			raise frappe.ValidationError(_("Return quantity must be greater than zero"))
+		wanted[item["item_code"]] = wanted.get(item["item_code"], 0) + flt(item["qty"])
+	return wanted
+
 
 @frappe.whitelist()
 def reject_return_items(purchase_receipt, items, reason=None):
-    """
-    Reject or return items from Purchase Receipt (GRN)
-    
-    response = {
-        "success": False,
-        "message": "",
-        "data": {},
-        "errors": []
-    }
-    """  
+	"""
+	Send items from a Purchase Receipt (GRN) back to the supplier.
 
-    ensure_record_access("Purchase Receipt", purchase_receipt)
-    try:
-        if not purchase_receipt:
-            raise frappe.ValidationError(_("Purchase Receipt is required"))
-        
-        if not frappe.db.exists("Purchase Receipt", purchase_receipt):
-            raise frappe.DoesNotExistError(_("Purchase Receipt not found"))
+	This creates and submits a standard ERPNext Purchase Return (a Purchase Receipt marked as a return).
+	ERPNext then lowers the stock in the warehouse the goods were received into and updates the Purchase
+	Order, so neither is adjusted by hand here.
 
-        pr = frappe.get_doc("Purchase Receipt", purchase_receipt)
+	Args:
+		purchase_receipt (str): Name of the submitted Purchase Receipt.
+		items (list | str): Lines to return, each like {"item_code": "ITEM-001", "qty": 2}. An optional
+			"warehouse" takes the goods from a different warehouse than the one they were received into.
+		reason (str, optional): Why the goods are going back; saved in the return's remarks.
 
-        if pr.docstatus == 2:
-            raise frappe.ValidationError(_("Purchase Receipt is already cancelled"))
+	Returns:
+		dict: {"success": bool, "message": str, "data": {...}, "errors": [...]}
+			On success, data holds "purchase_receipt", "return_document" and "returned_items".
+	"""
+	ensure_record_access("Purchase Receipt", purchase_receipt)
 
-        if pr.status == "Closed":
-            raise frappe.ValidationError(_("Purchase Receipt is closed and cannot be updated"))
+	response = {"success": False, "message": "", "data": {}, "errors": []}
 
-        if isinstance(items, str):
-            items = frappe.parse_json(items)
+	try:
+		if not purchase_receipt:
+			raise frappe.ValidationError(_("Purchase Receipt is required"))
 
-        return_items = []
-        for item in items:
-            if item["qty"] <= 0:
-                raise frappe.ValidationError(_("Return quantity must be greater than zero"))
+		if not frappe.db.exists("Purchase Receipt", purchase_receipt):
+			raise frappe.DoesNotExistError(_("Purchase Receipt not found"))
 
-            # Check if item exists in Purchase Receipt and validate quantity
-            pr_item = next((x for x in pr.items if x.item_code == item["item_code"]), None)
-            if not pr_item:
-                raise frappe.ValidationError(_("Item {0} not found in Purchase Receipt".format(item["item_code"])))
+		pr = frappe.get_doc("Purchase Receipt", purchase_receipt)
 
-            if pr_item.qty_received <= pr_item.qty_returned + item["qty"]:
-                raise frappe.ValidationError(_("Cannot return more than the received quantity for item {0}".format(item["item_code"])))
+		if pr.docstatus == 2:
+			raise frappe.ValidationError(_("Purchase Receipt is already cancelled"))
 
-            return_items.append({
-                "item_code": item["item_code"],
-                "qty": item["qty"],
-                "warehouse": item.get("warehouse", pr_item.warehouse)
-            })
+		if pr.docstatus == 0:
+			raise frappe.ValidationError(_("Purchase Receipt must be submitted before items can be returned"))
 
-        # Reduce Stock & Create Stock Entry
-        stock_entry = make_stock_entry(
-            purpose="Material Receipt",
-            items=return_items,
-            target_warehouse="Stores - MC",
-            posting_date=nowdate(),
-            reason=reason
-        )
+		if pr.status == "Closed":
+			raise frappe.ValidationError(_("Purchase Receipt is closed and cannot be updated"))
 
-        stock_entry.insert(ignore_permissions=True)
-        stock_entry.submit()
+		if pr.is_return:
+			raise frappe.ValidationError(_("Items cannot be returned from a return"))
 
-        # Update Purchase Receipt line items
-        for item in return_items:
-            for pr_item in pr.items:
-                if pr_item.item_code == item["item_code"]:
-                    pr_item.qty_returned += item["qty"]
+		if isinstance(items, str):
+			items = frappe.parse_json(items)
 
-        pr.save(ignore_permissions=True)
+		if not items:
+			raise frappe.ValidationError(_("Select at least one item to return"))
 
-        # Optionally Update Purchase Order
-        if pr.purchase_order:
-            po = frappe.get_doc("Purchase Order", pr.purchase_order)
-            for item in return_items:
-                po_item = next((x for x in po.items if x.item_code == item["item_code"]), None)
-                if po_item:
-                    po_item.received_qty -= item["qty"]
+		wanted = _requested_quantities(items)
+		warehouses = {item["item_code"]: item.get("warehouse") for item in items if item.get("warehouse")}
 
-            po.save(ignore_permissions=True)
+		# Share each item's quantity across its lines on the receipt, in order, up to what each line can
+		# still give back. Anything left over means more was asked for than was received.
+		to_return: dict[str, float] = {}  # name of the receipt line -> quantity going back
+		for item_code, qty in wanted.items():
+			lines = [line for line in pr.items if line.item_code == item_code]
+			if not lines:
+				raise frappe.ValidationError(_("Item {0} not found in Purchase Receipt").format(item_code))
 
-        # Response - success
-        response.update({
-            "success": True,
-            "message": _("Items returned successfully"),
-            "data": {
-                "purchase_receipt": pr.name,
-                "returned_items": return_items
-            }
-        })
+			remaining = qty
+			for line in lines:
+				take = min(remaining, _returnable_qty(line))
+				if take > 0:
+					to_return[line.name] = take
+					remaining -= take
 
-    # Handle known errors
-    except (
-        frappe.ValidationError,
-        frappe.DoesNotExistError,
-        frappe.PermissionError
-    ) as e:
-        frappe.db.rollback()
-        response.update({
-            "message": str(e),
-            "errors": [str(e)]
-        })
+			if remaining > 0:
+				raise frappe.ValidationError(
+					_("Cannot return more than the received quantity for item {0}").format(item_code)
+				)
 
-    # Handle unexpected errors
-    except Exception as e:
-        frappe.db.rollback()
-        frappe.log_error(
-            title="Reject/Return Items Failed",
-            message=frappe.get_traceback()
-        )
-        response.update({
-            "message": _("Unexpected error occurred while rejecting/returning items"),
-            "errors": [str(e)]
-        })
+		# ERPNext builds the return with every line at its full returnable quantity (as a negative
+		# number). Keep only the lines asked for, at the quantities asked for.
+		return_doc = make_return_doc("Purchase Receipt", pr.name)
+		return_doc.set(
+			"items",
+			[line for line in return_doc.items if line.purchase_receipt_item in to_return],
+		)
 
-    return response
+		returned_items = []
+		for line in return_doc.items:
+			qty = to_return[line.purchase_receipt_item]
+			line.qty = -qty
+			line.received_qty = -qty
+			line.rejected_qty = 0
+			if warehouses.get(line.item_code):
+				line.warehouse = warehouses[line.item_code]
+			returned_items.append({"item_code": line.item_code, "qty": qty, "warehouse": line.warehouse})
+
+		if reason:
+			return_doc.remarks = reason
+
+		return_doc.insert(ignore_permissions=True)
+		return_doc.submit()
+
+		response.update(
+			{
+				"success": True,
+				"message": _("Items returned successfully"),
+				"data": {
+					"purchase_receipt": pr.name,
+					"return_document": return_doc.name,
+					"returned_items": returned_items,
+				},
+			}
+		)
+
+	# Handle known errors
+	except (frappe.ValidationError, frappe.DoesNotExistError, frappe.PermissionError) as e:
+		frappe.db.rollback()
+		response.update({"message": str(e), "errors": [str(e)]})
+
+	# Handle unexpected errors
+	except Exception as e:
+		frappe.db.rollback()
+		frappe.log_error(title="Reject/Return Items Failed", message=frappe.get_traceback())
+		response.update(
+			{
+				"message": _("Unexpected error occurred while rejecting/returning items"),
+				"errors": [str(e)],
+			}
+		)
+
+	return response
