@@ -29,7 +29,7 @@ Checked on the live server on 11 October 2026. This bench holds seven sites, and
 | Site | What it is | What to do |
 |---|---|---|
 | `api.pos.murzaktech.tech` | The live POS | Move it (steps 2 to 6) |
-| `savanna-test.local` | A test copy | Move it the same way, or delete it first if it is no longer needed |
+| `savanna-test.local` | A test copy. **Reviewed on 11 October 2026: empty** (0 users, 0 invoices, 0 items, 0 businesses, no activity ever, not in the web server settings) | Remove it first with `bench drop-site savanna-test.local`; if it is already removed, ignore this row |
 
 The other sites (`erp.murzaktech.tech`, `erp.mystylecarhire.com`, `matatuke.murzaktech.tech`, `shipstack.murzaktech.tech`) do not use the app. The folder rename and the Python change in step 4 are bench-wide, so a site that has the app and is **not** moved will stop loading. In the steps below, "SITE" means each of the two sites in turn, and steps 2, 3, 5 and 6 are run once per site.
 
