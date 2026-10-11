@@ -12,8 +12,9 @@ from typing import Dict, List, Optional
 from frappe.utils import flt, nowdate, getdate, get_first_day, get_last_day
 
 from techsavanna_pos.api.etims_optional import relax_etims_mandatory
-from techsavanna_pos.api.seed_results import readable_seed_error, seed_result_status
 from techsavanna_pos.api.payment_gateway_common import resolve_company
+from techsavanna_pos.api.seed_results import readable_seed_error, seed_result_status
+from techsavanna_pos.api.seed_rules import resolve_uom, starter_product, stock_flag
 
 
 def ensure_fiscal_year_exists(company: str, posting_date: str = None) -> str:
@@ -174,7 +175,7 @@ def seed_products(industry):
     templates = frappe.get_all(
         "Industry Product Template",
         filters={"industry": industry},
-        fields=["item_code", "item_name"]
+        fields=["item_code", "item_name", "item_group", "uom"]
     )
 
     total_products = len(templates)
@@ -189,11 +190,9 @@ def seed_products(industry):
     # Format each template
     products = []
     for tpl in templates:
-        products.append({
-            "sku": tpl.item_code,
-            "name": tpl.item_name,
-            "status": "available"
-        })
+        # sku, name and status as before, plus the unit and whether it is a service,
+        # so the till can price and stock each one properly
+        products.append(starter_product(tpl))
 
     return {
         "status": "success",
@@ -854,6 +853,24 @@ def create_seed_item(company: str = None):
 
 
 
+def _make_uom(name: str, whole_numbers_only: int) -> str:
+    uom = frappe.new_doc("UOM")
+    uom.uom_name = name
+    uom.must_be_whole_number = whole_numbers_only
+    uom.insert(ignore_permissions=True)
+    return uom.name
+
+
+def ensure_uom(requested) -> str:
+    """
+    The name of a unit of measure that exists on this site for what a starter list asks for.
+
+    A list may say "L" or "ml", and a site may already hold that unit as "Litre" or "Millilitre": use the
+    one that is there. A unit nobody has made yet is made, so the product is sold in the unit it should be.
+    """
+    return resolve_uom(requested, lambda name: frappe.db.exists("UOM", name), _make_uom)
+
+
 @frappe.whitelist(methods=["POST"])
 def create_seed_item(company: str = None):
     """
@@ -959,6 +976,7 @@ def create_seed_item(company: str = None):
         items_failed = []
         stock_entry_status = {"created": False, "name": None, "error": None}
         stock_entry_items = []
+        stock_skipped = []  # items given a quantity that keep no stock, so none was recorded
 
         # ----------------------
         # Process each item
@@ -976,13 +994,24 @@ def create_seed_item(company: str = None):
                 item_price = flt(row.get("item_price"))
                 buying_price = flt(row.get("buying_price")) if row.get("buying_price") else None
                 item_group = row.get("item_group") or "All Item Groups"
-                item_uom = row.get("uom") or "Nos"
+                item_uom = ensure_uom(row.get("uom"))
                 qty = flt(row.get("qty")) if row.get("qty") is not None else None
                 item_warehouse = row.get("warehouse") or default_warehouse
                 basic_rate = flt(row.get("basic_rate")) if row.get("basic_rate") is not None else None
 
                 if not original_item_code or not item_name:
                     raise ValueError(_("Item Code and Item Name are required"))
+
+                # Services (a haircut, a car wash) keep no stock, so they can be sold at any time.
+                # The till says which are services; for a till that does not, the starter list decides.
+                template_group = None
+                if row.get("is_stock_item") in (None, "") and product_industry:
+                    template_group = frappe.db.get_value(
+                        "Industry Product Template",
+                        {"industry": product_industry, "item_code": original_item_code},
+                        "item_group",
+                    )
+                keeps_stock = stock_flag(row.get("is_stock_item"), template_group)
 
                 # Prefix item code with company abbreviation
                 if original_item_code.upper().startswith(f"{company_abbr}-"):
@@ -1006,7 +1035,7 @@ def create_seed_item(company: str = None):
                     "item_name": item_name,
                     "item_group": item_group,
                     "stock_uom": item_uom,
-                    "is_stock_item": 1,
+                    "is_stock_item": keeps_stock,
                     "custom_company": company,
                     "custom_pos_industry": product_industry,
                     "custom_prevent_etims_registration": 1
@@ -1069,8 +1098,10 @@ def create_seed_item(company: str = None):
                         buying_item_price_doc.company = company
                     buying_item_price_doc.insert(ignore_permissions=True)
 
-                # Collect stock entry items
-                if qty is not None and qty > 0 and item_warehouse:
+                # Collect stock entry items (a service has no stock to record)
+                if qty is not None and qty > 0 and not keeps_stock:
+                    stock_skipped.append(item_code)
+                elif qty is not None and qty > 0 and item_warehouse:
                     valuation_rate = basic_rate if basic_rate and basic_rate > 0 else (buying_price if buying_price else 0)
                     stock_entry_items.append({
                         "item_code": item_code,
@@ -1159,6 +1190,7 @@ def create_seed_item(company: str = None):
             "items_failed": items_failed,
             "total_received": len(items),
             "stock_entry": stock_entry_status,
+            "stock_skipped": stock_skipped,
             "note": _("Item codes are automatically prefixed with company abbreviation '{0}' to ensure uniqueness across companies. Format: {0}-{{original_code}}").format(company_abbr)
         }
 
