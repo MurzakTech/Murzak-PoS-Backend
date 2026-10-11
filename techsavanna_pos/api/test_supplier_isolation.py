@@ -60,6 +60,9 @@ class SupplierCase(unittest.TestCase):
 			patch.object(frappe, "log_error", create=True),
 			patch.object(frappe, "logger", create=True),  # there is no log folder outside a real site
 			patch(
+				"frappe.defaults.get_global_default", return_value="Supplier Name"
+			),  # how the site names suppliers
+			patch(
 				"techsavanna_pos.api.payment_gateway_common.get_user_companies", return_value=set(companies)
 			),
 			patch.object(supplier_api, "get_user_companies", return_value=set(companies)),

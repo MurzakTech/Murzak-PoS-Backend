@@ -8,6 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
 
+from techsavanna_pos.api.party_names import name_for_new_record
 from techsavanna_pos.api.payment_gateway_common import get_user_companies, resolve_company
 
 # Every kind of purchase document that names a supplier and a company
@@ -71,6 +72,22 @@ def _visible_supplier_names(company):
         pluck="name",
     )
     return own | set(ownerless)
+
+
+def _supplier_name_taken_by_this_business(supplier_name: str, company, exclude: str = None) -> bool:
+    """Whether the business already has a supplier with this display name (another business's does not count)."""
+    visible = _visible_supplier_names(company)
+    if visible is None:  # the Administrator with no company: the whole site is one list
+        filters = {"supplier_name": supplier_name}
+        if exclude:
+            filters["name"] = ["!=", exclude]
+        return bool(frappe.db.exists("Supplier", filters))
+    names = list(visible - {exclude})
+    if not names:
+        return False
+    return bool(
+        frappe.get_all("Supplier", filters={"name": ["in", names], "supplier_name": supplier_name}, limit=1)
+    )
 
 
 def _ensure_supplier_visible(name: str) -> None:
@@ -293,11 +310,18 @@ def create_supplier(
         if not supplier_name or not supplier_name.strip():
             frappe.throw(_("Supplier name is required. Please provide a name for this supplier."), frappe.ValidationError)
         
-        # Check if supplier already exists
-        existing = frappe.db.exists("Supplier", {"supplier_name": supplier_name})
-        
-        if existing:
-            frappe.throw(_("A supplier with the name '{0}' already exists. Please use a different name or update the existing supplier.").format(supplier_name), frappe.ValidationError)
+        # The supplier belongs to one company, so other businesses never see it. That company also decides
+        # what counts as a duplicate: only the business's own suppliers do.
+        owner_company = _caller_company(company)
+        already_exists = _("A supplier with the name '{0}' already exists. Please use a different name or update the existing supplier.").format(supplier_name)
+        if _supplier_name_taken_by_this_business(supplier_name, owner_company):
+            frappe.throw(already_exists, frappe.ValidationError)
+
+        # Frappe allows a supplier name only once on the whole site. If another business already uses it,
+        # this business's record carries its company code ("Bidco - SHB").
+        record_name = name_for_new_record("Supplier", supplier_name, owner_company)
+        if record_name != supplier_name and frappe.db.exists("Supplier", record_name):
+            frappe.throw(already_exists, frappe.ValidationError)
         
         # Validate supplier type
         if supplier_type not in ["Company", "Individual"]:
@@ -317,12 +341,9 @@ def create_supplier(
         if default_currency and not frappe.db.exists("Currency", default_currency):
             frappe.throw(_("The currency '{0}' does not exist. Please select a valid currency from the list.").format(default_currency), frappe.ValidationError)
         
-        # The supplier belongs to one company, so other businesses never see it
-        owner_company = _caller_company(company)
-
         # Create supplier
         supplier = frappe.new_doc("Supplier")
-        supplier.supplier_name = supplier_name
+        supplier.supplier_name = record_name
         if owner_company and _has_company_field():
             supplier.custom_company = owner_company
         supplier.supplier_type = supplier_type
@@ -344,9 +365,12 @@ def create_supplier(
         # Set HTTP status code for successful creation
         frappe.local.response["http_status_code"] = 201
         
+        message = _("Supplier created successfully")
+        if record_name != supplier_name:
+            message = _("Supplier created as '{0}'. Each business keeps its own suppliers, so your company code was added to the name.").format(record_name)
         return {
             "success": True,
-            "message": _("Supplier created successfully"),
+            "message": message,
             "name": supplier.name,
             "supplier_name": supplier.supplier_name,
         }
@@ -430,8 +454,9 @@ def update_supplier(
         if supplier_name:
             if not supplier_name.strip():
                 frappe.throw(_("Supplier name cannot be empty. Please provide a valid supplier name."), frappe.ValidationError)
-            # Check if new name already exists (excluding current supplier)
-            existing = frappe.db.exists("Supplier", {"supplier_name": supplier_name, "name": ["!=", name]})
+            # Check if the business already has another supplier with this name (other businesses' do not count)
+            owner = frappe.db.get_value("Supplier", name, "custom_company") if _has_company_field() else None
+            existing = _supplier_name_taken_by_this_business(supplier_name, owner or _caller_company(None), exclude=name)
             if existing:
                 frappe.throw(_("A supplier with the name '{0}' already exists. Please use a different name.").format(supplier_name), frappe.ValidationError)
             supplier.supplier_name = supplier_name
