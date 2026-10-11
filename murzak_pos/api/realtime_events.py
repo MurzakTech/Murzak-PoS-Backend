@@ -49,6 +49,18 @@ def kitchen_message(doc) -> dict:
 	}
 
 
+def held_message(company, held_id, warehouse, action) -> dict:
+	"""What a screen is told about a held bill. Only which bill changed, never what is on it."""
+	return {
+		"kind": "held",
+		"doctype": "POS Held Sale",
+		"action": action,
+		"held_id": held_id,
+		"warehouse": warehouse or None,
+		"company": company,
+	}
+
+
 def users_of_company(company: str) -> list[str]:
 	"""Enabled users who work for a business: by their company field, a company permission or a default."""
 	if not company:
@@ -75,6 +87,15 @@ def payment_recipients(doc) -> list[str]:
 def send(message: dict, users: list[str]) -> None:
 	for user in users:
 		frappe.publish_realtime(EVENT, message=message, user=user, after_commit=True)
+
+
+def notify_held_sale(company, held_id, warehouse, action) -> None:
+	"""A held bill was saved ("saved") or taken off the list ("removed"): tell the business's tills."""
+	try:
+		send(held_message(company, held_id, warehouse, action), users_of_company(company))
+	except Exception:
+		# A message that cannot be sent must never undo or block a held bill
+		frappe.log_error("Realtime held sale message", frappe.get_traceback())
 
 
 def _status_changed(doc) -> bool:
