@@ -24,6 +24,7 @@ from erpnext.stock.get_item_details import get_item_details
 import frappe
 from frappe.model.document import Document
 from frappe.exceptions import ValidationError
+from techsavanna_pos.api.access_control import require_stock_role
 
 
 
@@ -861,6 +862,8 @@ def create_stock_receipt(grn_no):
     """
     Apply GRN to inventory by creating a Stock Entry for the received items.
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     try:
         # Fetch the GRN document
         grn = frappe.get_doc("Purchase Receipt", grn_no)

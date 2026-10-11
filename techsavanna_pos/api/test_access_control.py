@@ -381,8 +381,33 @@ SENSITIVE_CALLS = {
 			"submit_stock_entry",
 			"cancel_stock_entry",
 		],
+		"stock": [
+			"create_stock_entry",
+			"create_stock_entry_old",
+			"create_stock_adjustment",
+			"create_stock_receipt",
+			"add_stock_count_items",
+		],
+		# applying a goods-received note to stock
+		"purchase": ["create_stock_receipt"],
 	},
-	"require_stock_count_role": {"inventory_api": ["create_multi_level_stock_reconciliation"]},
+	"require_stock_count_role": {
+		"inventory_api": ["create_multi_level_stock_reconciliation"],
+		"stock": ["start_stock_count", "complete_stock_count"],
+	},
+	"require_transfer_role": {
+		"stock": [
+			"create_stock_transfer",
+			"create_stock_transfer_request",
+			"submit_stock_transfer_request",
+			"approve_stock_transfer",
+			"approve_stock_transfer_workflow",
+			"dispatch_stock",
+			"receive_stock_destination",
+			"cancel_stock_transfer_request",
+			"confirm_receive_transfer",
+		],
+	},
 	"require_credit_role": {"customer_api": ["set_customer_credit_limit", "remove_customer_credit_limit"]},
 	"require_loyalty_role": {"loyalty": ["create_loyalty_program", "assign_loyalty_program"]},
 	"require_manager": {
@@ -434,6 +459,19 @@ class TestRoleSets(AccessCase):
 		self.assertFalse(self.allowed(stock, ("Sales Manager",)))
 		self.assertTrue(self.allowed(stock, ("Stock User",)))
 		self.assertFalse(self.allowed(prices, ("Stock User",)))
+
+	def test_stock_transfers_follow_the_frontends_transfer_screens(self):
+		transfer = access_control.require_transfer_role
+		for role in ("Stock Manager", "Stock User", "System Manager"):
+			self.assertTrue(self.allowed(transfer, (role,)), role)
+		# these may enter stock entries, but the frontend does not give them the transfer screens
+		for role in ("Purchase Manager", "Item Manager", "Sales Manager", "Sales User"):
+			self.assertFalse(self.allowed(transfer, (role,)), role)
+
+	def test_a_purchase_manager_may_still_apply_a_goods_received_note_to_stock(self):
+		# the frontend lets Purchase Managers create goods-received notes, so they must keep working
+		self.assertTrue(self.allowed(access_control.require_stock_role, ("Purchase Manager",)))
+		self.assertFalse(self.allowed(access_control.require_stock_role, ("Purchase User",)))
 
 	def test_a_stock_user_may_move_stock_but_not_start_a_stock_count(self):
 		self.assertTrue(self.allowed(access_control.require_stock_role, ("Stock User",)))

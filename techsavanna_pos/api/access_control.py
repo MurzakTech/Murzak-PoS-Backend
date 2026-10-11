@@ -50,6 +50,7 @@ CREDIT_ROLES = frozenset(
 	}
 )
 LOYALTY_ROLES = frozenset({"System Manager", "Accounts Manager"})
+TRANSFER_ROLES = frozenset({"System Manager", "Stock Manager", "Stock User"})
 
 
 def require_manager() -> None:
@@ -153,3 +154,8 @@ def require_credit_role() -> None:
 def require_loyalty_role() -> None:
 	"""Creating a loyalty program or assigning one to customers."""
 	require_any_role(LOYALTY_ROLES, _("manage loyalty programs"))
+
+
+def require_transfer_role() -> None:
+	"""Moving stock between stores: requesting, approving, dispatching and receiving a transfer."""
+	require_any_role(TRANSFER_ROLES, _("move stock between stores"))
