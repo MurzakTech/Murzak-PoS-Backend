@@ -5,9 +5,10 @@ Tests for closing and cancelling a POS shift that need no database: who may do i
 that the step run as Administrator always hands the signed-in user's session back intact.
 """
 
+import contextlib
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import frappe
 
@@ -97,6 +98,58 @@ class TestAsAdministrator(unittest.TestCase):
 			raise RuntimeError("merge failed")
 		self.assert_restored()
 
+
+
+class TestCloseOutcomes(unittest.TestCase):
+	"""A close that needs no new closing entry: already closed, still closing, or failed before."""
+
+	def close(self, opening_status="Open", closings=(), after_retry=None, reloaded_status=None):
+		opening = MagicMock(docstatus=1, status=opening_status, company="Shop A", user="cashier@shop-a.test")
+		opening.name = "POS-OPE-1"
+		if reloaded_status:
+			opening.reload.side_effect = lambda: setattr(opening, "status", reloaded_status)
+		closing_doc = MagicMock()
+		rows = [list(closings)] + ([list(after_retry)] if after_retry is not None else [])
+		with (
+			patch.object(frappe.db, "exists", return_value=True, create=True),
+			patch.object(frappe.db, "commit", create=True),
+			patch.object(frappe, "get_doc", side_effect=lambda doctype, name: opening if doctype == "POS Opening Entry" else closing_doc),
+			patch.object(frappe, "get_all", side_effect=lambda *a, **k: rows[0] if len(rows) == 1 else rows.pop(0)),
+			patch.object(sales_api, "_ensure_can_manage_shift"),
+			patch.object(sales_api, "_as_administrator", return_value=contextlib.nullcontext()) as admin,
+		):
+			result = sales_api.close_pos_opening_entry("POS-OPE-1")
+		return result, closing_doc, admin
+
+	def test_already_closed_shift_is_reported_as_closed(self):
+		result, closing_doc, _ = self.close(opening_status="Closed")
+		self.assertTrue(result["success"])
+		self.assertEqual(result["data"]["outcome"], "already_closed")
+		closing_doc.submit.assert_not_called()
+
+	def test_close_running_in_background_is_not_started_twice(self):
+		queued = frappe._dict(name="POS-CLO-1", status="Queued", docstatus=1, error_message=None)
+		result, closing_doc, _ = self.close(closings=[queued])
+		self.assertTrue(result["success"])
+		self.assertEqual(result["data"]["outcome"], "closing")
+		closing_doc.retry.assert_not_called()
+		closing_doc.submit.assert_not_called()
+
+	def test_failed_close_is_retried_with_full_rights(self):
+		failed = frappe._dict(name="POS-CLO-1", status="Failed", docstatus=1, error_message="x")
+		done = frappe._dict(name="POS-CLO-1", status="Submitted", docstatus=1, error_message=None)
+		result, closing_doc, admin = self.close(closings=[failed], after_retry=[done], reloaded_status="Closed")
+		closing_doc.retry.assert_called_once()
+		admin.assert_called_once()
+		self.assertTrue(result["success"])
+		self.assertEqual(result["data"]["outcome"], "closed")
+
+	def test_failed_again_says_why(self):
+		failed = frappe._dict(name="POS-CLO-1", status="Failed", docstatus=1, error_message="Stock is negative")
+		result, _, _ = self.close(closings=[failed], after_retry=[failed])
+		self.assertFalse(result["success"])
+		self.assertEqual(result["data"]["outcome"], "failed")
+		self.assertIn("Stock is negative", result["message"])
 
 if __name__ == "__main__":
 	unittest.main()

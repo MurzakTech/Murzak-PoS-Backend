@@ -2963,6 +2963,7 @@ def get_pos_opening_entry(name: str) -> Dict:
                 "period_start_date": str(opening_entry.period_start_date),
                 "period_end_date": str(opening_entry.period_end_date) if opening_entry.period_end_date else None,
                 "pos_closing_entry": opening_entry.pos_closing_entry,
+                "closing": _latest_closing(opening_entry.name),
                 "docstatus": opening_entry.docstatus,
                 "balance_details": [
                     {
@@ -3013,6 +3014,14 @@ def close_pos_opening_entry(
         opening_entry = frappe.get_doc("POS Opening Entry", pos_opening_entry)
         _ensure_can_manage_shift(opening_entry)
         
+        # Closed already (an earlier click, another screen, or a background close that finished)
+        if opening_entry.status == "Closed":
+            return _closing_outcome(
+                opening_entry,
+                "already_closed",
+                _("This shift is already closed."),
+            )
+
         # Check if opening entry is open
         if opening_entry.status != "Open":
             return {
@@ -3033,11 +3042,30 @@ def close_pos_opening_entry(
                 "error_type": "validation_error",
             }
         
-        # Import the function to create closing entry from opening entry
-        from erpnext.accounts.doctype.pos_closing_entry.pos_closing_entry import (
-            make_closing_entry_from_opening,
-        )
-        
+        # A close already submitted for this shift is either still running in the background
+        # (never start a second one: both would merge the same receipts) or failed there
+        # (retry that one instead of making another)
+        latest = _latest_closing(opening_entry.name)
+        if latest and latest["docstatus"] == 1:
+            if latest["status"] == "Failed":
+                closing_doc = frappe.get_doc("POS Closing Entry", latest["name"])
+                with _as_administrator():
+                    closing_doc.retry()
+                frappe.db.commit()
+                latest = _latest_closing(opening_entry.name)
+            if latest["status"] in ("Queued", "Failed"):
+                return _closing_outcome(
+                    opening_entry,
+                    "closing" if latest["status"] == "Queued" else "failed",
+                    _("This shift is being closed in the background. It can take a minute.")
+                    if latest["status"] == "Queued"
+                    else _("Closing this shift failed: {0}").format(latest["error_message"] or _("no reason given")),
+                    success=latest["status"] == "Queued",
+                )
+            opening_entry.reload()
+            if opening_entry.status == "Closed":
+                return _closing_outcome(opening_entry, "closed", _("Till closed. The shift has ended."))
+
         # A failed earlier attempt leaves an unsubmitted closing entry behind; remove it so
         # the shift is closed from one fresh entry with every receipt up to now
         for draft in frappe.get_all(
@@ -3046,6 +3074,10 @@ def close_pos_opening_entry(
             pluck="name",
         ):
             frappe.delete_doc("POS Closing Entry", draft, ignore_permissions=True)
+
+        from erpnext.accounts.doctype.pos_closing_entry.pos_closing_entry import (
+            make_closing_entry_from_opening,
+        )
 
         # Create the closing entry
         closing_entry = make_closing_entry_from_opening(opening_entry)
@@ -3070,11 +3102,16 @@ def close_pos_opening_entry(
         
         # Reload to get updated status
         closing_entry.reload()
+        opening_entry.reload()
+        queued = closing_entry.status == "Queued"
         
         return {
             "success": True,
-            "message": _("POS Opening Entry closed successfully"),
+            "message": _("This shift is being closed in the background. It can take a minute.")
+            if queued
+            else _("POS Opening Entry closed successfully"),
             "data": {
+                "outcome": "closing" if queued else "closed",
                 "closing_entry": {
                     "name": closing_entry.name,
                     "pos_opening_entry": closing_entry.pos_opening_entry,
@@ -3146,6 +3183,32 @@ def _as_administrator():
     finally:
         for key, value in saved.items():
             setattr(frappe.local, key, value)
+
+
+def _latest_closing(opening_entry_name: str) -> dict | None:
+    """The shift's most recent closing entry that is not cancelled, or None."""
+    rows = frappe.get_all(
+        "POS Closing Entry",
+        filters={"pos_opening_entry": opening_entry_name, "docstatus": ["<", 2]},
+        fields=["name", "status", "docstatus", "error_message"],
+        order_by="creation desc",
+        limit=1,
+    )
+    return rows[0] if rows else None
+
+
+def _closing_outcome(opening_entry, outcome: str, message: str, success: bool = True) -> dict:
+    """Answer a close request that needed no new closing entry.
+    outcome: already_closed, closed, closing (still running in the background) or failed."""
+    return {
+        "success": success,
+        "message": message,
+        "data": {
+            "outcome": outcome,
+            "closing_entry": _latest_closing(opening_entry.name),
+            "opening_entry": {"name": opening_entry.name, "status": opening_entry.status},
+        },
+    }
 
 
 def _shift_error(action: str, name: str, e: Exception) -> Dict:
