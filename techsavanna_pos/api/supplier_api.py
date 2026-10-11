@@ -8,7 +8,107 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
 
-from techsavanna_pos.api.payment_gateway_common import resolve_company
+from techsavanna_pos.api.party_names import name_for_new_record
+from techsavanna_pos.api.payment_gateway_common import get_user_companies, resolve_company
+
+# Every kind of purchase document that names a supplier and a company
+PURCHASE_DOCUMENTS = ("Purchase Order", "Purchase Receipt", "Purchase Invoice")
+
+
+def _has_company_field() -> bool:
+    """Whether Supplier has the field that says which company owns it (added by a migration)."""
+    return frappe.db.has_column("Supplier", "custom_company")
+
+
+def _caller_company(company: str = None):
+    """
+    The company the caller acts for: the one named (it must be theirs) or their own.
+
+    The Administrator, who belongs to no business, may have none; that means "no isolation".
+    """
+    if company:
+        return resolve_company(company)
+    if frappe.session.user == "Administrator":
+        return None
+    return resolve_company(None)
+
+
+def _transacted_suppliers(company: str) -> set:
+    """Suppliers that the company has a live (not cancelled) purchase document with."""
+    names = set()
+    for doctype in PURCHASE_DOCUMENTS:
+        names.update(
+            frappe.get_all(
+                doctype,
+                filters={"company": company, "docstatus": ["!=", 2]},
+                pluck="supplier",
+                distinct=True,
+            )
+        )
+    names.discard(None)
+    names.discard("")
+    return names
+
+
+def _visible_supplier_names(company):
+    """
+    The suppliers a company may see, or None for no limit (the Administrator with no company).
+
+    Its own suppliers, plus any supplier with no owner yet (made before suppliers belonged to a
+    company) that the company has bought from. Before the migration adds the owner field, only the
+    second rule applies.
+    """
+    if company is None:
+        return None
+    bought_from = _transacted_suppliers(company)
+    if not _has_company_field():
+        return bought_from
+    own = set(frappe.get_all("Supplier", filters={"custom_company": company}, pluck="name"))
+    if not bought_from:
+        return own
+    ownerless = frappe.get_all(
+        "Supplier",
+        filters={"name": ["in", list(bought_from)], "custom_company": ["is", "not set"]},
+        pluck="name",
+    )
+    return own | set(ownerless)
+
+
+def _supplier_name_taken_by_this_business(supplier_name: str, company, exclude: str = None) -> bool:
+    """Whether the business already has a supplier with this display name (another business's does not count)."""
+    visible = _visible_supplier_names(company)
+    if visible is None:  # the Administrator with no company: the whole site is one list
+        filters = {"supplier_name": supplier_name}
+        if exclude:
+            filters["name"] = ["!=", exclude]
+        return bool(frappe.db.exists("Supplier", filters))
+    names = list(visible - {exclude})
+    if not names:
+        return False
+    return bool(
+        frappe.get_all("Supplier", filters={"name": ["in", names], "supplier_name": supplier_name}, limit=1)
+    )
+
+
+def _ensure_supplier_visible(name: str) -> None:
+    """Refuse a supplier that belongs to another business. A supplier that does not exist is left for the call to report."""
+    user = frappe.session.user
+    if user == "Administrator" or not frappe.db.exists("Supplier", name):
+        return
+    if user == "Guest":
+        frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
+
+    companies = get_user_companies()
+    owner = frappe.db.get_value("Supplier", name, "custom_company") if _has_company_field() else None
+    if owner:
+        if owner in companies:
+            return
+    elif companies and any(
+        frappe.db.exists(doctype, {"supplier": name, "company": ["in", list(companies)], "docstatus": ["!=", 2]})
+        for doctype in PURCHASE_DOCUMENTS
+    ):
+        return  # an older supplier with no owner, which the caller's business has bought from
+    frappe.throw(_("This supplier belongs to another business."), frappe.PermissionError)
 
 
 @frappe.whitelist()
@@ -43,11 +143,15 @@ def get_suppliers(
     - Set filter_by_company_transactions=False (default) to return all suppliers.
     """
     try:
-        # A company named in the request must be one the caller belongs to
-        if company:
-            company = resolve_company(company)
+        # A company named in the request must be one the caller belongs to; with none named, the caller's own
+        company = _caller_company(company)
+        visible = _visible_supplier_names(company)
+        if visible is not None and not visible:
+            return {"success": True, "data": [], "count": 0}
 
         filters = {}
+        if visible is not None:
+            filters["name"] = ["in", list(visible)]
         
         if not disabled:
             filters["disabled"] = 0
@@ -88,39 +192,9 @@ def get_suppliers(
         
         # If company is specified and filtering is enabled, filter suppliers that have transactions with that company
         if company and filter_by_company_transactions:
-            # Get suppliers that have purchase invoices or purchase orders for this company
-            PurchaseInvoice = DocType("Purchase Invoice")
-            PurchaseOrder = DocType("Purchase Order")
-            
-            # Get suppliers from Purchase Invoices
-            pi_suppliers = (
-                frappe.qb.from_(PurchaseInvoice)
-                .select(PurchaseInvoice.supplier)
-                .where(PurchaseInvoice.company == company)
-                .where(PurchaseInvoice.docstatus != 2)
-                .distinct()
-                .run(as_dict=True)
-            )
-            
-            # Get suppliers from Purchase Orders
-            po_suppliers = (
-                frappe.qb.from_(PurchaseOrder)
-                .select(PurchaseOrder.supplier)
-                .where(PurchaseOrder.company == company)
-                .where(PurchaseOrder.docstatus != 2)
-                .distinct()
-                .run(as_dict=True)
-            )
-            
-            # Combine both lists and get unique supplier names
-            company_supplier_names = set()
-            for s in pi_suppliers:
-                if s.supplier:
-                    company_supplier_names.add(s.supplier)
-            for s in po_suppliers:
-                if s.supplier:
-                    company_supplier_names.add(s.supplier)
-            
+            # Suppliers the company has purchase orders, receipts or invoices with
+            company_supplier_names = _transacted_suppliers(company)
+
             # Filter suppliers to only those that have transactions with the company
             if company_supplier_names:
                 suppliers = [s for s in suppliers if s.name in company_supplier_names]
@@ -153,6 +227,7 @@ def get_supplier_details(name: str) -> dict:
         dict: Supplier details
     """
     try:
+        _ensure_supplier_visible(name)
         supplier = frappe.get_doc("Supplier", name)
         
         # Get outstanding amount
@@ -208,9 +283,10 @@ def create_supplier(
     default_currency: str = None,
     supplier_type: str = "Company",
     is_internal_supplier: bool = False,
+    company: str = None,
 ) -> dict:
     """
-    Create a new supplier.
+    Create a new supplier. It belongs to the caller's company, or to `company` if named (it must be theirs).
     
     Args:
         supplier_name: Name of the supplier
@@ -220,6 +296,7 @@ def create_supplier(
         default_currency: Default currency (optional)
         supplier_type: Supplier type - "Company" or "Individual" (default: "Company")
         is_internal_supplier: Whether this is an internal supplier (default: False)
+        company: Company that owns the supplier (optional, defaults to the caller's company)
     
     Returns:
         dict: Created supplier details
@@ -233,11 +310,18 @@ def create_supplier(
         if not supplier_name or not supplier_name.strip():
             frappe.throw(_("Supplier name is required. Please provide a name for this supplier."), frappe.ValidationError)
         
-        # Check if supplier already exists
-        existing = frappe.db.exists("Supplier", {"supplier_name": supplier_name})
-        
-        if existing:
-            frappe.throw(_("A supplier with the name '{0}' already exists. Please use a different name or update the existing supplier.").format(supplier_name), frappe.ValidationError)
+        # The supplier belongs to one company, so other businesses never see it. That company also decides
+        # what counts as a duplicate: only the business's own suppliers do.
+        owner_company = _caller_company(company)
+        already_exists = _("A supplier with the name '{0}' already exists. Please use a different name or update the existing supplier.").format(supplier_name)
+        if _supplier_name_taken_by_this_business(supplier_name, owner_company):
+            frappe.throw(already_exists, frappe.ValidationError)
+
+        # Frappe allows a supplier name only once on the whole site. If another business already uses it,
+        # this business's record carries its company code ("Bidco - SHB").
+        record_name = name_for_new_record("Supplier", supplier_name, owner_company)
+        if record_name != supplier_name and frappe.db.exists("Supplier", record_name):
+            frappe.throw(already_exists, frappe.ValidationError)
         
         # Validate supplier type
         if supplier_type not in ["Company", "Individual"]:
@@ -259,7 +343,9 @@ def create_supplier(
         
         # Create supplier
         supplier = frappe.new_doc("Supplier")
-        supplier.supplier_name = supplier_name
+        supplier.supplier_name = record_name
+        if owner_company and _has_company_field():
+            supplier.custom_company = owner_company
         supplier.supplier_type = supplier_type
         supplier.supplier_group = supplier_group
         supplier.is_internal_supplier = 1 if is_internal_supplier else 0
@@ -279,9 +365,12 @@ def create_supplier(
         # Set HTTP status code for successful creation
         frappe.local.response["http_status_code"] = 201
         
+        message = _("Supplier created successfully")
+        if record_name != supplier_name:
+            message = _("Supplier created as '{0}'. Each business keeps its own suppliers, so your company code was added to the name.").format(record_name)
         return {
             "success": True,
-            "message": _("Supplier created successfully"),
+            "message": message,
             "name": supplier.name,
             "supplier_name": supplier.supplier_name,
         }
@@ -358,14 +447,16 @@ def update_supplier(
         if not frappe.db.exists("Supplier", name):
             frappe.throw(_("The supplier '{0}' does not exist. Please check the supplier name and try again.").format(name), frappe.ValidationError)
         
+        _ensure_supplier_visible(name)
         supplier = frappe.get_doc("Supplier", name)
         
         # Validate supplier name if provided
         if supplier_name:
             if not supplier_name.strip():
                 frappe.throw(_("Supplier name cannot be empty. Please provide a valid supplier name."), frappe.ValidationError)
-            # Check if new name already exists (excluding current supplier)
-            existing = frappe.db.exists("Supplier", {"supplier_name": supplier_name, "name": ["!=", name]})
+            # Check if the business already has another supplier with this name (other businesses' do not count)
+            owner = frappe.db.get_value("Supplier", name, "custom_company") if _has_company_field() else None
+            existing = _supplier_name_taken_by_this_business(supplier_name, owner or _caller_company(None), exclude=name)
             if existing:
                 frappe.throw(_("A supplier with the name '{0}' already exists. Please use a different name.").format(supplier_name), frappe.ValidationError)
             supplier.supplier_name = supplier_name

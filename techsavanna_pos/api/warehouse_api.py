@@ -7,6 +7,9 @@ import frappe
 from frappe import _
 from frappe.query_builder import DocType
 
+from techsavanna_pos.api.access_control import ensure_record_access
+from techsavanna_pos.api.payment_gateway_common import resolve_company
+
 
 def is_staff_user(user_email: str = None) -> bool:
     """Check if a user is a staff user (has custom_company field set)
@@ -118,6 +121,10 @@ def create_warehouse(
     Returns:
         dict: Created warehouse details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", parent_warehouse)
     try:
         # Validate company exists
         if not frappe.db.exists("Company", company):
@@ -275,6 +282,10 @@ def list_warehouses(
     Returns:
         dict: List of warehouses with main_depot and is_default flags
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", parent_warehouse)
     try:
         # Check if custom_is_main_depot field exists in Warehouse doctype
         meta = frappe.get_meta("Warehouse")
@@ -420,6 +431,7 @@ def get_warehouse_details(name: str) -> dict:
     Returns:
         dict: Warehouse details with main_depot flag
     """
+    ensure_record_access("Warehouse", name)
     try:
         # For staff users, check if they have access to this warehouse
         allowed_warehouses = get_allowed_warehouses_for_user()
@@ -546,6 +558,8 @@ def update_warehouse(
     Returns:
         dict: Update result
     """
+    ensure_record_access("Warehouse", name)
+    ensure_record_access("Warehouse", parent_warehouse)
     try:
         # For staff users, check if they have access to this warehouse
         allowed_warehouses = get_allowed_warehouses_for_user()
@@ -669,6 +683,7 @@ def assign_warehouses_to_staff(
         invalid_warehouses = []
         valid_warehouses = []
         for warehouse in warehouses:
+            ensure_record_access("Warehouse", warehouse)
             if frappe.db.exists("Warehouse", warehouse):
                 valid_warehouses.append(warehouse)
             else:
@@ -831,6 +846,7 @@ def get_warehouse_staff(warehouse: str) -> dict:
     Returns:
         dict: List of assigned staff members
     """
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not frappe.db.exists("Warehouse", warehouse):
             return {
@@ -902,6 +918,7 @@ def remove_warehouse_from_staff(
     Returns:
         dict: Removal result
     """
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Find and delete the user permission
         permission = frappe.db.exists(
@@ -1123,6 +1140,10 @@ def set_default_warehouse(company: str, warehouse: str) -> dict:
     Returns:
         dict: Operation result
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not frappe.db.exists("Company", company):
             return {
@@ -1177,6 +1198,9 @@ def get_default_warehouse(company: str) -> dict:
     Returns:
         dict: Default warehouse details or None
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Company", company):
             return {

@@ -9,6 +9,8 @@ from frappe.query_builder import DocType, functions as fn
 from erpnext.accounts.utils import get_balance_on
 
 from erpnext.accounts.report.profit_and_loss_statement.profit_and_loss_statement import execute
+from techsavanna_pos.api.access_control import ensure_record_access
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 
@@ -27,6 +29,10 @@ def inventory_summary_report(
     Returns:
         dict: Inventory summary data by warehouse
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -103,6 +109,10 @@ def inventory_movement_report(
     Returns:
         dict: Inventory movement data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -183,6 +193,10 @@ def stock_aging_report(
     Returns:
         dict: Stock aging data with movement rates
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -334,6 +348,10 @@ def inventory_value_report(
     Returns:
         dict: Inventory value data by warehouse
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -415,6 +433,10 @@ def sales_analytics_report(
     Returns:
         dict: Aggregated sales analytics data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -640,6 +662,10 @@ def export_sales_analytics_report(
     Returns:
         dict: Export file information or error
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get the report data
         result = sales_analytics_report(
@@ -693,6 +719,10 @@ def inventory_value_by_category_report(
     Returns:
         dict: Inventory value by category data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -814,6 +844,10 @@ def inventory_cost_method_comparison_report(
     Returns:
         dict: Comparison data for different cost methods
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -922,6 +956,10 @@ def inventory_value_trends_report(
     Returns:
         dict: Inventory value trends data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1065,6 +1103,10 @@ def inventory_turnover_report(
     Returns:
         dict: Inventory turnover data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1214,6 +1256,10 @@ def inventory_days_on_hand_report(
     Returns:
         dict: Days on hand data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1390,6 +1436,10 @@ def inventory_movement_patterns_report(
     Returns:
         dict: Movement patterns data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1551,6 +1601,10 @@ def inventory_obsolescence_risk_report(
     Returns:
         dict: Obsolescence risk data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1717,6 +1771,10 @@ def inventory_aging_recommendations_report(
     Returns:
         dict: Aging recommendations data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1854,6 +1912,10 @@ def inventory_accuracy_report(
     Returns:
         dict: Inventory accuracy data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1971,6 +2033,10 @@ def inventory_variance_report(
     Returns:
         dict: Variance analysis data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -2095,6 +2161,10 @@ def inventory_adjustment_trends_report(
     Returns:
         dict: Adjustment trends data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -2224,6 +2294,11 @@ def inventory_transfer_efficiency_report(
     Returns:
         dict: Transfer efficiency metrics
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", from_warehouse)
+    ensure_record_access("Warehouse", to_warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -2371,6 +2446,10 @@ def grn_list_report(
     Returns:
         dict: List of GRNs with pagination metadata
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -2517,6 +2596,7 @@ def grn_detail_report(grn_no: str) -> Dict:
     Returns:
         dict: Detailed GRN information including items, PO linkage, and stock status
     """
+    ensure_record_access("Purchase Receipt", grn_no)
     try:
         if not grn_no:
             return {
@@ -2656,9 +2736,14 @@ def get_profit_and_loss(**kwargs):
         or None
     )
 
+    # Refuse a company the caller does not belong to
+    requested_company = kwargs.get("company")
+    if requested_company:
+        requested_company = resolve_company(requested_company)
+
     # Build filters with correct keys for financial_statements.py ===
     filters = frappe._dict({
-        "company": kwargs.get("company") or frappe.defaults.get_user_default("Company"),
+        "company": requested_company or frappe.defaults.get_user_default("Company"),
         "period_start_date": period_start_date,
         "period_end_date": period_end_date,
         "from_date": period_start_date,

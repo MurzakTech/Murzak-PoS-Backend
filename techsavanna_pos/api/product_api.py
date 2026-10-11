@@ -15,7 +15,15 @@ import erpnext
 import re
 
 from techsavanna_pos.api.etims_optional import relax_etims_mandatory
-from techsavanna_pos.api.access_control import require_catalogue_role
+from techsavanna_pos.api.access_control import ensure_record_access, require_catalogue_role
+from techsavanna_pos.api.business_lists import (
+    OWNER_FIELD as PRICE_LIST_OWNER_FIELD,
+    caller_company,
+    ensure_price_list_changeable,
+    visible_price_list_names,
+)
+from techsavanna_pos.api.party_names import name_for_new_record
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 PRESCRIPTION_FIELD = "custom_prescription_only"
@@ -92,6 +100,9 @@ def create_product(
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Validate user permissions
         if frappe.session.user == "Guest":
@@ -376,6 +387,11 @@ def get_products(
         List of products with pagination info
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
+    ensure_record_access("Price List", price_list)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -805,6 +821,9 @@ def get_product_details(item_code: str, company: str = None) -> Dict:
         Detailed product information
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1005,6 +1024,10 @@ def update_product(
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1115,6 +1138,7 @@ def delete_product(item_code: str) -> Dict:
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    ensure_record_access("Item", item_code)
     # Validate user permissions
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1146,6 +1170,7 @@ def enable_product(item_code: str) -> Dict:
         Success message
     """
     # Validate user permissions
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1177,6 +1202,7 @@ def add_barcode(item_code: str, barcode: str) -> Dict:
         Success message
     """
     # Validate user permissions
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1217,6 +1243,7 @@ def remove_barcode(item_code: str, barcode: str) -> Dict:
         Success message
     """
     # Validate user permissions
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1253,6 +1280,10 @@ def get_product_price(item_code: str, price_list: str = None, company: str = Non
         Product price information
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Price List", price_list)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1328,6 +1359,10 @@ def set_product_price(
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Price List", price_list)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1391,6 +1426,10 @@ def get_stock_quantity(item_code: str, company: str = None, warehouse: str = Non
         Stock quantity information
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1429,6 +1468,9 @@ def bulk_create_products(products: List[Dict], company: str = None) -> Dict:
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1585,6 +1627,10 @@ def bulk_update_prices(price_updates: List[Dict], price_list: str, currency: str
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Price List", price_list)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1694,6 +1740,7 @@ def create_product_variant(
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    ensure_record_access("Item", template_item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1752,6 +1799,7 @@ def get_product_variants(template_item_code: str) -> Dict:
     Returns:
         List of variants
     """
+    ensure_record_access("Item", template_item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1796,6 +1844,9 @@ def bulk_import_products(products_data: str, company: str = None) -> Dict:
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1833,6 +1884,10 @@ def bulk_import_opening_stock(
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1915,33 +1970,49 @@ def create_price_list(
     currency: str,
     selling: bool = True,
     buying: bool = False,
-    enabled: bool = True
+    enabled: bool = True,
+    company: str = None
 ) -> Dict:
-    """Create a new price list
-    
+    """Create a new price list for the caller's business
+
     Args:
         price_list_name: Name of the price list
         currency: Currency code
         selling: Is selling price list (default: True)
         buying: Is buying price list (default: False)
         enabled: Is enabled (default: True)
-        
+        company: Company that owns the list (default: the caller's own; must be one of theirs)
+
     Returns:
-        Created price list details
+        Created price list details. When another business already uses the name, the list is saved
+        as "Name - COMPANY CODE" and the message says so.
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
+    company = caller_company(company)
+    has_owner_field = frappe.db.has_column("Price List", PRICE_LIST_OWNER_FIELD)
+
+    wanted_name = price_list_name
     if frappe.db.exists("Price List", price_list_name):
-        frappe.throw(_("Price List {0} already exists").format(price_list_name))
-    
+        owner = frappe.db.get_value("Price List", price_list_name, PRICE_LIST_OWNER_FIELD) if has_owner_field else None
+        # Refused when this business already has the name, or when it is a shared list. When another
+        # business has it, this business gets its own list under the company code.
+        if not (company and owner and owner != company):
+            frappe.throw(_("Price List {0} already exists").format(price_list_name))
+        price_list_name = name_for_new_record("Price List", price_list_name, company)
+        if frappe.db.exists("Price List", price_list_name):
+            frappe.throw(_("Price List {0} already exists").format(price_list_name))
+
     if not frappe.db.exists("Currency", currency):
         frappe.throw(_("Currency {0} does not exist").format(currency))
     
     price_list = frappe.new_doc("Price List")
     price_list.price_list_name = price_list_name
+    if has_owner_field and company:
+        price_list.set(PRICE_LIST_OWNER_FIELD, company)
     price_list.currency = currency
     price_list.selling = 1 if selling else 0
     price_list.buying = 1 if buying else 0
@@ -1959,7 +2030,13 @@ def create_price_list(
             "buying": price_list.buying,
             "enabled": price_list.enabled
         },
-        "message": _("Price list created successfully")
+        "message": (
+            _("Price list created successfully")
+            if price_list.price_list_name == wanted_name
+            else _("{0} is already used by another business, so this list was saved as {1}").format(
+                wanted_name, price_list.price_list_name
+            )
+        ),
     }
 
 
@@ -1969,11 +2046,13 @@ def get_price_lists(
     buying: bool = None,
     enabled: str = "all",
     page: int = 1,
-    page_size: int = 20
+    page_size: int = 20,
+    company: str = None
 ) -> Dict:
-    """Get price lists with optional filters and pagination
+    """Get the caller's price lists (and the shared ones) with optional filters and pagination
     
     Args:
+        company: Company whose price lists to show (default: the caller's own; must be one of theirs)
         selling: Filter by selling price lists (True/False/None for all)
         buying: Filter by buying price lists (True/False/None for all)
         enabled: Filter by enabled status - "all" (default), "enabled", or "disabled"
@@ -1985,7 +2064,10 @@ def get_price_lists(
     """
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
-    
+
+    # Only this business's price lists and the shared ones (None: the Administrator, no limit)
+    visible = visible_price_list_names(caller_company(company))
+
     # Validate pagination parameters
     page = max(1, cint(page))  # Ensure page is at least 1
     page_size = max(1, min(cint(page_size), 100))  # Ensure page_size is between 1 and 100
@@ -2010,7 +2092,9 @@ def get_price_lists(
         filters["selling"] = 1 if selling else 0
     if buying is not None:
         filters["buying"] = 1 if buying else 0
-    
+    if visible is not None:
+        filters["name"] = ["in", visible]
+
     # Get total count for pagination
     total = frappe.db.count("Price List", filters=filters)
     
@@ -2116,7 +2200,11 @@ def update_price_list(
             price_list_doc = frappe.get_doc("Price List", price_list_match)
         else:
             frappe.throw(_("Price List '{0}' does not exist. Please check the price list name and try again.").format(current_identifier), frappe.ValidationError)
-    
+
+    # Another business's list, or one shared by all, is not the caller's to change
+    ensure_record_access("Price List", price_list_doc.name)
+    ensure_price_list_changeable(price_list_doc.name)
+
     # Handle renaming if new name is provided and different from current
     if new_name and new_name != price_list_doc.price_list_name:
         # Validate new name doesn't already exist
@@ -2215,7 +2303,11 @@ def delete_price_list(price_list_name: str) -> Dict:
     
     if not frappe.db.exists("Price List", price_list_name):
         frappe.throw(_("Price List {0} does not exist").format(price_list_name))
-    
+
+    # Another business's list, or one shared by all, is not the caller's to delete
+    ensure_record_access("Price List", price_list_name)
+    ensure_price_list_changeable(price_list_name)
+
     frappe.delete_doc("Price List", price_list_name, ignore_permissions=True)
     frappe.db.commit()
     
@@ -2761,6 +2853,9 @@ def update_item_group(
     Returns:
         Updated item group details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Please log in to update an item group. Your session has expired or you are not authenticated."), frappe.AuthenticationError)
     
@@ -3219,6 +3314,9 @@ def update_brand(brand_name: str, new_brand_name: str, company: str = None) -> D
     Returns:
         Updated brand details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Please log in to update a brand. Your session has expired or you are not authenticated."), frappe.AuthenticationError)
     
@@ -3595,6 +3693,9 @@ def seed_global_products(company: str = None, products_data: list = None) -> Dic
     Returns:
         Summary of seeding operation
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -3656,6 +3757,7 @@ def set_product_warranty(item_code: str, warranty_period: int, warranty_period_u
     Returns:
         Success message with warranty information
     """
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -3725,6 +3827,7 @@ def get_product_warranty(item_code: str) -> Dict:
     Returns:
         Warranty information (warranty_period is always returned in days)
     """
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     

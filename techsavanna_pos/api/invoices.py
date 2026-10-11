@@ -5,6 +5,8 @@ from frappe import _
 from frappe.utils import flt, cint, nowdate, nowtime, get_datetime, cstr
 from erpnext.stock.doctype.batch.batch import get_batch_qty, get_batch_no
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
+from techsavanna_pos.api.access_control import ensure_record_access
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 try:
     from erpnext.accounts.doctype.pricing_rule.pricing_rule import (
@@ -234,6 +236,7 @@ def validate_cart_items(items, pos_profile=None):
     Returns a list of item dicts where requested quantity exceeds availability.
     This can be used on the front-end for pre-submission checks.
     """
+    ensure_record_access("POS Profile", pos_profile)
     if isinstance(items, str):
         items = json.loads(items)
 
@@ -305,6 +308,7 @@ def update_invoice(data):
         data = json.loads(data) if isinstance(data, str) else data
 
         pos_profile = data.get("pos_profile")
+        ensure_record_access("POS Profile", pos_profile)
         doctype = data.get("doctype", "Sales Invoice")
 
         # Ensure the document type is set
@@ -560,6 +564,10 @@ def submit_invoice(invoice=None, data=None):
         doctype = invoice.get("doctype", "Sales Invoice")
 
         invoice_name = invoice.get("name")
+
+        ensure_record_access("POS Profile", pos_profile)
+        if doctype in ("Sales Invoice", "POS Invoice"):
+            ensure_record_access(doctype, invoice_name)
 
         # Get or create invoice
         if not invoice_name or not frappe.db.exists(doctype, invoice_name):
@@ -967,6 +975,7 @@ def get_returnable_invoices(limit=50):
 @frappe.whitelist()
 def get_invoice_for_return(invoice_name):
     """Get invoice with return tracking - calculates remaining qty for each item."""
+    ensure_record_access("Sales Invoice", invoice_name)
     if not frappe.db.exists("Sales Invoice", invoice_name):
         frappe.throw(_("Invoice {0} does not exist").format(invoice_name))
 
@@ -1026,6 +1035,9 @@ def search_invoices_for_return(
 ):
     """Search for invoices that can be returned with pagination."""
     # Start with base filters
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     filters = {
         "docstatus": 1,
         "is_return": 0,

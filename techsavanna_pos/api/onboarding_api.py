@@ -8,6 +8,8 @@ from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils import now, today
 from erpnext.setup.setup_wizard import setup_wizard
+from techsavanna_pos.api.access_control import ensure_record_access
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 def initialize_site(country="Kenya"):
@@ -580,6 +582,7 @@ def update_company(
     Returns:
         Updated company details
     """
+    ensure_record_access("Warehouse", default_warehouse)
     try:
         # Validate user permissions
         if frappe.session.user == "Guest":
@@ -867,6 +870,11 @@ def create_pos_profile(
         Created POS profile details
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
+    ensure_record_access("Price List", selling_price_list)
     if frappe.session.user == "Guest":
         frappe.throw(
             _("Please log in to create a POS profile. Your session has expired or you need to authenticate first."),
@@ -1077,6 +1085,10 @@ def update_pos_profile(
         Updated POS profile details
     """
     # Validate user permissions
+    ensure_record_access("POS Profile", name)
+    ensure_record_access("POS Profile", profile_name)
+    ensure_record_access("Warehouse", warehouse)
+    ensure_record_access("Price List", selling_price_list)
     if frappe.session.user == "Guest":
         frappe.throw(
             _("Please log in to update a POS profile. Your session has expired or you need to authenticate first."),
@@ -1354,6 +1366,9 @@ def create_etims_settings(
         Created eTIMS settings details
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(
             _("Please log in to configure eTIMS settings. Your session has expired or you need to authenticate first."),

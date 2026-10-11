@@ -24,6 +24,9 @@ from erpnext.stock.get_item_details import get_item_details
 import frappe
 from frappe.model.document import Document
 from frappe.exceptions import ValidationError
+from techsavanna_pos.api.access_control import ensure_record_access, require_stock_role
+from techsavanna_pos.api.business_lists import first_mode_of_payment, mode_of_payment_usable
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 
@@ -110,7 +113,10 @@ def create_purchase_order():
         data = frappe.local.form_dict
 
         company = data.get("company")
+        if company and frappe.db.exists("Company", company):
+            company = resolve_company(company)  # refuse a company the caller does not belong to
         supplier = data.get("supplier")
+        ensure_record_access("Supplier", supplier)
 
         if not company or not frappe.db.exists("Company", company):
             return pos_response(
@@ -651,6 +657,7 @@ def create_grn():
         data = frappe.local.form_dict
         frappe.logger().debug(f"Create GRN: Data received: {data}")
 
+        ensure_record_access("Purchase Order", data.get("lpo_no"))
         if not data.get("lpo_no"):
             return pos_response(
                 status="error",
@@ -693,6 +700,7 @@ def create_grn():
 
         # Proceed with the normal logic for creating the GRN
         lpo_no = data.get("lpo_no")
+        ensure_record_access("Warehouse", data.get("warehouse"))
         warehouse = data.get("warehouse")
         items = data.get("items")
 
@@ -861,6 +869,9 @@ def create_stock_receipt(grn_no):
     """
     Apply GRN to inventory by creating a Stock Entry for the received items.
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
+    ensure_record_access("Purchase Receipt", grn_no)
     try:
         # Fetch the GRN document
         grn = frappe.get_doc("Purchase Receipt", grn_no)
@@ -1012,6 +1023,7 @@ def get_grn_details(grn_no):
     """
     Fetch the GRN details along with the PO linkage.
     """
+    ensure_record_access("Purchase Receipt", grn_no)
     try:
         # Using reference_id as grn_no and doctype as "Purchase Receipt"
         reference_id = grn_no
@@ -1300,6 +1312,8 @@ def create_purchase_invoice(reference_type, reference_name):
     :param reference_name: The name of the Purchase Order or Purchase Receipt
     :return: A dict containing the status and the name of the created Purchase Invoice
     """
+    if reference_type in ['Purchase Order', 'Purchase Receipt']:
+        ensure_record_access(reference_type, reference_name)
     try:
         if reference_type not in ['Purchase Order', 'Purchase Receipt']:
             return {"status": "error", "message": "Invalid reference type. Must be 'Purchase Order' or 'Purchase Receipt'"}
@@ -1430,6 +1444,7 @@ def create_purchase_invoice_from_grn(
             "supplier_invoice_filename": "supplier_invoice.pdf"
         }
     """
+    ensure_record_access("Purchase Receipt", grn_no)
     try:
         # Validate GRN exists
         if not grn_no:
@@ -1621,6 +1636,9 @@ def list_purchase_invoices(
     Example:
         GET /api/method/techsavanna_pos.api.purchase.list_purchase_invoices?page=1&page_size=20&supplier=Supplier%20ABC&status=Unpaid
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         page = int(page) if page else 1
         page_size = min(int(page_size) if page_size else 20, 100)
@@ -2245,6 +2263,7 @@ def create_delivery_note_from_po(purchase_order_name):
     """
     Creates a Delivery Note from a Purchase Order
     """
+    ensure_record_access("Purchase Order", purchase_order_name)
     try:
         # Fetch the Purchase Order document
         purchase_order = frappe.get_doc('Purchase Order', purchase_order_name)
@@ -2327,6 +2346,7 @@ def pay_purchase_invoice(
     Returns:
         dict: Payment Entry details and updated invoice status
     """
+    ensure_record_access("Purchase Invoice", invoice_no)
     try:
         # Validate purchase invoice exists
         if not frappe.db.exists("Purchase Invoice", invoice_no):
@@ -2387,7 +2407,7 @@ def pay_purchase_invoice(
             mode_of_payment = frappe.db.get_value("Company", pi.company, "default_mode_of_payment")
             if not mode_of_payment:
                 # Get first available mode of payment
-                mop = frappe.db.get_value("Mode of Payment", {"enabled": 1}, "name", order_by="name")
+                mop = first_mode_of_payment(pi.company)
                 if not mop:
                     return pos_response(
                         status="error",
@@ -2398,7 +2418,9 @@ def pay_purchase_invoice(
                 mode_of_payment = mop
         
         # Validate mode of payment exists
-        if not frappe.db.exists("Mode of Payment", mode_of_payment):
+        if not frappe.db.exists("Mode of Payment", mode_of_payment) or not mode_of_payment_usable(
+            mode_of_payment, pi.company
+        ):
             return pos_response(
                 status="error",
                 code=POSErrorCode.INVALID_REQUEST,

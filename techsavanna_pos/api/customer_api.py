@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from techsavanna_pos.api.party_names import name_for_new_record
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 from typing import Optional, Dict, List
 from techsavanna_pos.api.access_control import require_credit_role
@@ -115,9 +116,20 @@ def create_customer(
             if not territory:
                 territory = "All Territories"
         
+        # Frappe allows a customer name only once on the whole site. If another business already uses it,
+        # this business's record carries its company code ("Amina Store - SHB").
+        record_name = name_for_new_record("Customer", customer_name, company)
+        if record_name != customer_name and frappe.db.exists("Customer", record_name):
+            return {
+                "success": False,
+                "message": _("Customer '{0}' already exists for company '{1}'").format(customer_name, company),
+                "error_type": "duplicate",
+                "name": record_name,
+            }
+
         # Create customer
         customer = frappe.new_doc("Customer")
-        customer.customer_name = customer_name
+        customer.customer_name = record_name
         customer.customer_type = customer_type
         customer.customer_group = customer_group
         customer.territory = territory
@@ -169,9 +181,12 @@ def create_customer(
                         })
                         customer.save(ignore_permissions=True)
         
+        message = _("Customer created successfully")
+        if record_name != customer_name:
+            message = _("Customer created as '{0}'. Each business keeps its own customers, so your company code was added to the name.").format(record_name)
         return {
             "success": True,
-            "message": _("Customer created successfully"),
+            "message": message,
             "data": {
                 "name": customer.name,
                 "customer_name": customer.customer_name,

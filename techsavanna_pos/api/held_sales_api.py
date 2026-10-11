@@ -14,6 +14,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 MAX_LINES = 300
@@ -133,6 +134,7 @@ def _row(d):
 @frappe.whitelist(methods=["POST"])
 def list_held_sales(company=None, warehouse=None):
 	"""The open bills of a business, oldest first; with `warehouse`, that store's bills and store-less ones."""
+	ensure_record_access("Warehouse", warehouse)
 	company = resolve_company(company)
 	rows = frappe.get_all(
 		"POS Held Sale",
@@ -161,6 +163,7 @@ def save_held_sale(
 	id, payload, company=None, label="", warehouse=None, held_at=None, customer="", item_count=0, total=0
 ):
 	"""Add a bill, or replace the one with the same id. Saving the same bill twice changes nothing."""
+	ensure_record_access("Warehouse", warehouse)
 	company = resolve_company(company)
 
 	try:

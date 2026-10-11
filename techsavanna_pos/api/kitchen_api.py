@@ -16,6 +16,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.held_sales_api import _iso, _to_utc, _utc_now
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
@@ -289,6 +290,7 @@ def send_tickets(tickets, company=None, warehouse=None):
 	Sending a ticket the server already has (the same client_id) returns the ticket it has, with its original
 	number, and creates nothing: the till retries after a dropped connection.
 	"""
+	ensure_record_access("Warehouse", warehouse)
 	company = resolve_company(company)
 	try:
 		clean = _clean_tickets(tickets)
@@ -333,6 +335,7 @@ def list_tickets(company=None, warehouse=None, station=None, statuses=None, sinc
 	Tickets for a station screen, or for a till that wants to know what is ready. Oldest first.
 	With `warehouse`, that store's tickets and tickets sent with no store.
 	"""
+	ensure_record_access("Warehouse", warehouse)
 	company = resolve_company(company)
 	filters = {"company": company}
 	if station:

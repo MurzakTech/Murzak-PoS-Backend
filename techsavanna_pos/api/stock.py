@@ -15,6 +15,8 @@ from frappe.model.workflow import get_workflow_name, apply_workflow
 from techsavanna_pos.api.api_response import pos_response
 from techsavanna_pos.api.error_handler import handle_pos_exception
 from techsavanna_pos.api.constants import POSErrorCode
+from techsavanna_pos.api.access_control import ensure_record_access, require_stock_count_role, require_stock_role, require_transfer_role
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 # logger = logging.getLogger("stock_entry_error_log")
 
@@ -65,6 +67,8 @@ def create_stock_transfer():
     Transfers stock between warehouses
     
     """
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
     try:
         data = frappe.local.form_dict
 
@@ -112,6 +116,8 @@ def create_stock_transfer():
 
         items = []
         for item in data["items"]:
+            ensure_record_access("Warehouse", data.get("from_warehouse"))
+            ensure_record_access("Warehouse", data.get("to_warehouse"))
             items.append({
                 "item_code": item["item_code"],
                 "qty": item["qty"],
@@ -120,6 +126,8 @@ def create_stock_transfer():
             })
 
         # Create Stock Entry
+        # Refuse a company the caller does not belong to
+        resolve_company(data["company"])
         stock_entry = frappe.get_doc({
             "doctype": "Stock Entry",
             "stock_entry_type": "Material Transfer",
@@ -167,6 +175,8 @@ def create_stock_transfer():
 
 @frappe.whitelist(methods=["POST"])
 def create_stock_adjustment():
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     data = frappe.request.get_json()
     validate_stock_adjustment(data)
 
@@ -178,6 +188,8 @@ def create_stock_adjustment():
 
     stock_entry = frappe.new_doc("Stock Entry")
     stock_entry.stock_entry_type = entry_type
+    # Refuse a company the caller does not belong to
+    resolve_company(data["company"])
     stock_entry.company = data["company"]
     stock_entry.posting_date = data.get("posting_date") or nowdate()
     stock_entry.remarks = data.get("remarks")
@@ -191,6 +203,7 @@ def create_stock_adjustment():
         }
 
         if entry_type == "Material Issue":
+            ensure_record_access("Warehouse", data.get("warehouse"))
             row["s_warehouse"] = data["warehouse"]
         else:
             row["t_warehouse"] = data["warehouse"]
@@ -267,9 +280,12 @@ def create_pos_delivery_note():
     check_duplicate(data.get("pos_reference"), "Delivery Note")
 
     dn = frappe.new_doc("Delivery Note")
+    # Refuse a company the caller does not belong to
+    resolve_company(data["company"])
     dn.company = data["company"]
     dn.customer = data["customer"]
     dn.posting_date = data.get("posting_date") or nowdate()
+    ensure_record_access("Warehouse", data.get("warehouse"))
     dn.set_warehouse = data["warehouse"]
     dn.custom_pos_reference = data.get("pos_reference")
 
@@ -330,6 +346,8 @@ def create_stock_receipt():
 
     """
 
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
     try:
         data = frappe.local.form_dict
 
@@ -377,6 +395,9 @@ def create_stock_receipt():
                 }
 
         # Create Stock Entry
+        # Refuse a company the caller does not belong to
+        resolve_company(data["company"])
+        ensure_record_access("Warehouse", data.get("to_warehouse"))
         stock_entry = frappe.get_doc({
             "doctype": "Stock Entry",
             "stock_entry_type": "Material Receipt",
@@ -433,6 +454,7 @@ def get_low_stock_items():
     try:
         data = frappe.local.form_dict
         warehouse = data.get("warehouse")
+        ensure_record_access("Warehouse", warehouse)
 
         conditions = ""
         values = {}
@@ -496,6 +518,8 @@ def get_low_stock_items():
 # Stock Count Session -	Stock Reconciliation (Draft)
 @frappe.whitelist(allow_guest=False)
 def start_stock_count():
+    # Starting or finishing a stock count: only roles the frontend gives that screen
+    require_stock_count_role()
     data = frappe.local.form_dict
 
     required = ["company", "warehouse"]
@@ -506,6 +530,9 @@ def start_stock_count():
     if not frappe.db.exists("Warehouse", data["warehouse"]):
         return {"status": "error", "message": "Invalid warehouse"}
 
+    # Refuse a company the caller does not belong to
+    resolve_company(data["company"])
+    ensure_record_access("Warehouse", data["warehouse"])
     doc = frappe.get_doc({
         "doctype": "Stock Reconciliation",
         "company": data["company"],
@@ -542,6 +569,9 @@ def list_stock_counts():
 # Add Counted Items- # Complete Count - Submit Stock Reconciliation
 @frappe.whitelist(allow_guest=False)
 def add_stock_count_items(count_id):
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
+    ensure_record_access("Stock Reconciliation", count_id)
     data = frappe.local.form_dict
 
     if not frappe.db.exists("Stock Reconciliation", count_id):
@@ -578,6 +608,9 @@ def add_stock_count_items(count_id):
 # Variance Adjustment - Reconcile Stock Count
 @frappe.whitelist(allow_guest=False)
 def complete_stock_count(count_id):
+    # Starting or finishing a stock count: only roles the frontend gives that screen
+    require_stock_count_role()
+    ensure_record_access("Stock Reconciliation", count_id)
     if not frappe.db.exists("Stock Reconciliation", count_id):
         return {"status": "error", "message": "Invalid count session"}
 
@@ -630,6 +663,7 @@ def create_pr_from_po(purchase_order, items=None, submit=1, external_ref=None):
 
     """
 
+    ensure_record_access("Purchase Order", purchase_order)
     response = {
         "success": False,
         "message": "",
@@ -783,6 +817,7 @@ def cancel_purchase_order(purchase_order, force=0, reason=None):
     """
 
 
+    ensure_record_access("Purchase Order", purchase_order)
     try:
         if not purchase_order:
             raise frappe.ValidationError(_("Purchase Order is required"))
@@ -872,6 +907,8 @@ def approve_stock_transfer():
     Approve Stock Transfer Request / Material Request
     """
 
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
     try:
         data = frappe.local.form_dict or {}
 
@@ -992,6 +1029,8 @@ def approve_stock_transfer():
 #Approve Stock Transfer with workflow
 @frappe.whitelist(allow_guest=False)
 def approve_stock_transfer_workflow():
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
     if frappe.request.method != "POST":
         frappe.throw(_("Only POST method is allowed"), PermissionError)
 
@@ -999,6 +1038,7 @@ def approve_stock_transfer_workflow():
         data = frappe.local.form_dict or {}
 
         request_id = data.get("request_id")
+        ensure_record_access("Material Request", request_id)
         approved_by = data.get("approved_by")
         approval_notes = data.get("approval_notes")
 
@@ -1111,6 +1151,8 @@ def dispatch_stock():
     }
     """
 
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
     if frappe.request.method != "POST":
         frappe.throw(_("Only POST allowed"), PermissionError)
 
@@ -1118,6 +1160,8 @@ def dispatch_stock():
         data = frappe.local.form_dict or {}
 
         request_id = data.get("request_id")
+        ensure_record_access("Material Request", request_id)
+        ensure_record_access("Warehouse", data.get("origin_warehouse"))
         origin_warehouse = data.get("origin_warehouse")
         items = data.get("items")
         dispatched_by = data.get("dispatched_by")
@@ -1289,6 +1333,8 @@ def dispatch_stock():
 #Receive Stock at Destination Store Endpoint
 @frappe.whitelist(allow_guest=False)
 def receive_stock_destination():
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
     if frappe.request.method != "POST":
         frappe.throw(_("Only POST allowed"), PermissionError)
 
@@ -1299,6 +1345,8 @@ def receive_stock_destination():
             return error_response("Invalid payload: JSON expected", 400)
 
         request_id = data.get("request_id")
+        ensure_record_access("Material Request", request_id)
+        ensure_record_access("Warehouse", data.get("destination_warehouse"))
         destination_warehouse = data.get("destination_warehouse")
         items = data.get("items")
         received_by = data.get("received_by")
@@ -1466,6 +1514,8 @@ def create_stock_transfer_request():
         "submit": false  // Optional: submit immediately (default: false)
     }
     """
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
     try:
         data = frappe.request.get_json() or frappe.local.form_dict or {}
         
@@ -1491,10 +1541,14 @@ def create_stock_transfer_request():
         
         # Create Material Request
         mr = frappe.new_doc("Material Request")
+        # Refuse a company the caller does not belong to
+        resolve_company(data["company"])
         mr.company = data["company"]
         mr.transaction_date = data.get("transaction_date") or frappe.utils.today()
         mr.material_request_type = "Material Transfer"
+        ensure_record_access("Warehouse", data.get("from_warehouse"))
         mr.set_from_warehouse = data["from_warehouse"]
+        ensure_record_access("Warehouse", data.get("to_warehouse"))
         mr.set_warehouse = data["to_warehouse"]
         mr.schedule_date = data.get("schedule_date") or mr.transaction_date
         
@@ -1568,7 +1622,11 @@ def list_stock_transfer_requests():
             data = {}
 
         # Get logged-in user's company
-        company = data.get("company") or frappe.defaults.get_user_default("Company")
+        # Refuse a company the caller does not belong to
+        company = data.get("company")
+        if company:
+            company = resolve_company(company)
+        company = company or frappe.defaults.get_user_default("Company")
         if not company:
             return {
                 "success": False,
@@ -1676,6 +1734,7 @@ def list_stock_transfer_requests():
 #Get Single Stock Transfer 
 @frappe.whitelist(allow_guest=False)
 def get_stock_transfer_request(request_id: str = None):
+    ensure_record_access("Material Request", request_id)
     if not request_id:
         return error_response("Missing request_id")
 
@@ -1764,6 +1823,8 @@ def submit_stock_transfer_request():
         "request_id": "MAT-MR-2025-00001"
     }
     """
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
     if frappe.request.method != "POST":
         frappe.throw(_("Only POST allowed"))
     
@@ -1830,6 +1891,8 @@ def cancel_stock_transfer_request():
         "reason": "No longer needed"  // Optional
     }
     """
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
     if frappe.request.method != "POST":
         frappe.throw(_("Only POST allowed"))
     
@@ -1910,6 +1973,13 @@ def create_stock_entry_old(
     Create a stock entry for material receipt, issue, or transfer.
     Returns success only if stock balance is updated successfully.
     """
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", from_warehouse)
+    ensure_record_access("Warehouse", to_warehouse)
     try:
         # Parse items if they are provided as a string
         if isinstance(items, str):
@@ -2175,6 +2245,13 @@ def create_stock_entry(
     Returns success only if stock balance is updated successfully.
     """
     
+    # Stock changes: only roles the frontend gives the stock screens
+    require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
+    ensure_record_access("Warehouse", from_warehouse)
+    ensure_record_access("Warehouse", to_warehouse)
     print(f'|Creating a Stock entry.....\n\n')
     try:
         # Parse items if they are provided as a string
@@ -2344,6 +2421,9 @@ def confirm_receive_transfer(stock_entry_name):
     """
     Exposes the stock transfer process as an API.
     """
+    # Moving stock between stores: only roles the frontend gives the stock transfer screens
+    require_transfer_role()
+    ensure_record_access("Stock Entry", stock_entry_name)
     try:
         # Fetch the Stock Entry Document
         stock_entry = frappe.get_doc('Stock Entry', stock_entry_name)
