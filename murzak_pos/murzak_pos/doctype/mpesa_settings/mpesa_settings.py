@@ -8,7 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 
 
-class MpesaSettings(Document):
+class MPESASettings(Document):
 	def validate(self):
 		"""Validate MPESA Settings"""
 		self.validate_company_uniqueness()

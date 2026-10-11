@@ -8,7 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 
 
-class MpesaTransactionLog(Document):
+class MPESATransactionLog(Document):
 	def validate(self):
 		"""Validate MPESA Transaction Log"""
 		self.validate_phone_number()
