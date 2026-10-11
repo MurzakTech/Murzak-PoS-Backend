@@ -126,6 +126,9 @@ def get_dashboard_metrics(
         # Get time series data
         sales_last_30_days = _get_daily_sales_data(filters, warehouse_filter, company)
         monthly_sales = _get_monthly_sales_data(filters, warehouse_filter, company)
+
+        # Sales made as POS Invoices count too (the queries above read Sales Invoices only)
+        _add_pos_invoice_sales(stats, sales_last_30_days, monthly_sales, filters, warehouse_filter, company)
         
         # Get detailed lists
         sales_due = _get_sales_due(filters, company)
@@ -1035,3 +1038,52 @@ def _get_pending_shipments(filters: Dict, company: str) -> List[Dict]:
         })
     
     return formatted_results
+
+
+def _add_pos_invoice_sales(stats, daily, monthly, filters, warehouse_filter, company) -> None:
+    """
+    Add submitted POS Invoices that were not merged into a Sales Invoice to the figures read from
+    Sales Invoices, so a business that sells through POS Invoices sees its sales. A merged POS Invoice is
+    already inside its Sales Invoice, so it is left out here and nothing is counted twice.
+    """
+    from murzak_pos.api.sales_figures import pos_invoice_days
+
+    if not company:
+        return
+    posting_date = filters.get("posting_date")
+    low, high = "1900-01-01", "2999-12-31"
+    if isinstance(posting_date, list) and posting_date[0] == "between":
+        low, high = posting_date[1][0], posting_date[1][1]
+    elif isinstance(posting_date, list) and posting_date[0] == ">=":
+        low = posting_date[1]
+    elif isinstance(posting_date, list) and posting_date[0] == "<=":
+        high = posting_date[1]
+
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    rows = pos_invoice_days(company, low, high, filters.get("owner"), warehouse_filter.get("warehouse"))
+    by_day = {str(item["date"]): item for item in daily}
+    by_month = {item["month"]: item for item in monthly}
+
+    for row in rows:
+        date_text = str(row["posting_date"])
+        gross, net = flt(row["gross"]), flt(row["net"])
+        month = month_names[int(date_text[5:7]) - 1]
+        if row["is_return"]:
+            stats["salesReturns"] = flt(stats.get("salesReturns")) + abs(gross)
+            stats["salesReturnsCount"] = int(stats.get("salesReturnsCount") or 0) + int(row["n"])
+            if date_text in by_day:
+                by_day[date_text]["returns"] = flt(by_day[date_text]["returns"]) + abs(gross)
+            if month in by_month:
+                by_month[month]["returns"] = flt(by_month[month]["returns"]) + abs(gross)
+            continue
+        stats["totalSales"] = flt(stats.get("totalSales")) + gross
+        stats["netSales"] = flt(stats.get("netSales")) + net
+        if date_text in by_day:
+            by_day[date_text]["sales"] = flt(by_day[date_text]["sales"]) + gross
+        if month in by_month:
+            by_month[month]["sales"] = flt(by_month[month]["sales"]) + gross
+            by_month[month]["net"] = flt(by_month[month]["net"]) + net
+        else:
+            entry = {"month": month, "sales": gross, "returns": 0.0, "net": net}
+            monthly.append(entry)
+            by_month[month] = entry

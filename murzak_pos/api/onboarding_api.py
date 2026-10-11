@@ -317,6 +317,14 @@ def create_company(
     except Exception:
         frappe.log_error("Onboarding VAT Setup", frappe.get_traceback())
 
+    # Bind the person who created the business to it, so desk dashboards and reports show only their business
+    try:
+        from murzak_pos.api.staff_api import set_company_permission
+
+        set_company_permission(frappe.session.user, company.name, frappe.session.user)
+    except Exception:
+        frappe.log_error("Onboarding Company Permission", frappe.get_traceback())
+
     # Alert settings with the defaults; the person creating the business is the first to be told
     try:
         from murzak_pos.api.alerts import ensure_alert_settings

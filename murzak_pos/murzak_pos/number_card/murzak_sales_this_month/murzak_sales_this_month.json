@@ -1,0 +1,21 @@
+{
+ "creation": "2026-10-11 21:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "filters_json": "[]",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "Sales This Month",
+ "method": "murzak_pos.api.desk_cards.sales_this_month",
+ "modified": "2026-10-11 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Murzak POS",
+ "name": "Murzak Sales This Month",
+ "owner": "Administrator",
+ "show_percentage_stats": 0,
+ "stats_time_interval": "Daily",
+ "type": "Custom",
+ "color": "#29CD42",
+ "document_type": "Sales Invoice"
+}

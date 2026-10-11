@@ -1,0 +1,349 @@
+{
+ "charts": [
+  {
+   "chart_name": "Murzak Sales Per Day",
+   "label": "Sales Per Day"
+  },
+  {
+   "chart_name": "Murzak Sales By Payment Method",
+   "label": "Sales By Payment Method"
+  },
+  {
+   "chart_name": "Murzak Top 10 Items",
+   "label": "Top 10 Items"
+  },
+  {
+   "chart_name": "Murzak Sales Against Purchases",
+   "label": "Sales Against Purchases"
+  },
+  {
+   "chart_name": "Murzak Stock Value By Warehouse",
+   "label": "Stock Value By Warehouse"
+  }
+ ],
+ "content": "[{\"id\": \"h1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Today</b></span>\", \"col\": 12}}, {\"id\": \"n0\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Murzak Sales Today\", \"col\": 4}}, {\"id\": \"n1\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Murzak Sales This Month\", \"col\": 4}}, {\"id\": \"n2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Murzak Open Shifts\", \"col\": 4}}, {\"id\": \"n3\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Murzak Unpaid Purchase Invoices\", \"col\": 4}}, {\"id\": \"n4\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Murzak Items Below Reorder Level\", \"col\": 4}}, {\"id\": \"n5\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Murzak Batches Expiring Within 30 Days\", \"col\": 4}}, {\"id\": \"n6\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Murzak Unsent eTIMS Invoices\", \"col\": 4}}, {\"id\": \"h2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Charts</b></span>\", \"col\": 12}}, {\"id\": \"c0\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Murzak Sales Per Day\", \"col\": 12}}, {\"id\": \"c1\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Murzak Sales By Payment Method\", \"col\": 12}}, {\"id\": \"c2\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Murzak Top 10 Items\", \"col\": 6}}, {\"id\": \"c3\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Murzak Sales Against Purchases\", \"col\": 6}}, {\"id\": \"c4\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Murzak Stock Value By Warehouse\", \"col\": 6}}, {\"id\": \"h3\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Shortcuts</b></span>\", \"col\": 12}}, {\"id\": \"s0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"POS Profile\", \"col\": 3}}, {\"id\": \"s1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"POS Opening Entry\", \"col\": 3}}, {\"id\": \"s2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"POS Closing Entry\", \"col\": 3}}, {\"id\": \"s3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Item\", \"col\": 3}}, {\"id\": \"s4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Stock Ledger\", \"col\": 3}}, {\"id\": \"s5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Kitchen Ticket\", \"col\": 3}}, {\"id\": \"s6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment settings\", \"col\": 3}}, {\"id\": \"s7\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Business Alert Settings\", \"col\": 3}}, {\"id\": \"h4\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Reports and financial statements</b></span>\", \"col\": 12}}, {\"id\": \"k0\", \"type\": \"card\", \"data\": {\"card_name\": \"Our reports\", \"col\": 6}}, {\"id\": \"k1\", \"type\": \"card\", \"data\": {\"card_name\": \"Financial statements\", \"col\": 6}}]",
+ "creation": "2026-10-11 21:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "retail",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Murzak POS",
+ "links": [
+  {
+   "type": "Card Break",
+   "label": "Our reports",
+   "hidden": 0,
+   "is_query_report": 0,
+   "link_count": 11,
+   "onboard": 0
+  },
+  {
+   "type": "Link",
+   "label": "Sales By Day",
+   "link_type": "Report",
+   "link_to": "Murzak Sales By Day",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Sales By Payment Method",
+   "link_type": "Report",
+   "link_to": "Murzak Sales By Payment Method",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Top Items",
+   "link_type": "Report",
+   "link_to": "Murzak Top Items",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Sales Vs Purchases",
+   "link_type": "Report",
+   "link_to": "Murzak Sales Vs Purchases",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Stock Value By Warehouse",
+   "link_type": "Report",
+   "link_to": "Murzak Stock Value By Warehouse",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Sales Analytics",
+   "link_type": "Report",
+   "link_to": "Murzak Sales Analytics",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Inventory Valuation",
+   "link_type": "Report",
+   "link_to": "Murzak Inventory Valuation",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Stock Ageing",
+   "link_type": "Report",
+   "link_to": "Murzak Stock Ageing",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Expiry",
+   "link_type": "Report",
+   "link_to": "Murzak Expiry",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Low Stock",
+   "link_type": "Report",
+   "link_to": "Murzak Low Stock",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Unsent eTIMS Invoices",
+   "link_type": "Report",
+   "link_to": "Murzak Unsent eTIMS Invoices",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Card Break",
+   "label": "Financial statements",
+   "hidden": 0,
+   "is_query_report": 0,
+   "link_count": 6,
+   "onboard": 0
+  },
+  {
+   "type": "Link",
+   "label": "Profit and Loss Statement",
+   "link_type": "Report",
+   "link_to": "Profit and Loss Statement",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Balance Sheet",
+   "link_type": "Report",
+   "link_to": "Balance Sheet",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Trial Balance",
+   "link_type": "Report",
+   "link_to": "Trial Balance",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "General Ledger",
+   "link_type": "Report",
+   "link_to": "General Ledger",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Accounts Receivable",
+   "link_type": "Report",
+   "link_to": "Accounts Receivable",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Accounts Payable",
+   "link_type": "Report",
+   "link_to": "Accounts Payable",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": ""
+  }
+ ],
+ "modified": "2026-10-11 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Murzak POS",
+ "name": "Murzak POS",
+ "number_cards": [
+  {
+   "label": "Sales Today",
+   "number_card_name": "Murzak Sales Today"
+  },
+  {
+   "label": "Sales This Month",
+   "number_card_name": "Murzak Sales This Month"
+  },
+  {
+   "label": "Open Shifts",
+   "number_card_name": "Murzak Open Shifts"
+  },
+  {
+   "label": "Unpaid Purchase Invoices",
+   "number_card_name": "Murzak Unpaid Purchase Invoices"
+  },
+  {
+   "label": "Items Below Reorder Level",
+   "number_card_name": "Murzak Items Below Reorder Level"
+  },
+  {
+   "label": "Batches Expiring Within 30 Days",
+   "number_card_name": "Murzak Batches Expiring Within 30 Days"
+  },
+  {
+   "label": "Unsent eTIMS Invoices",
+   "number_card_name": "Murzak Unsent eTIMS Invoices"
+  }
+ ],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Sales Manager"
+  }
+ ],
+ "sequence_id": 90.0,
+ "shortcuts": [
+  {
+   "label": "POS Profile",
+   "link_to": "POS Profile",
+   "type": "DocType",
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "POS Opening Entry",
+   "link_to": "POS Opening Entry",
+   "type": "DocType",
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "POS Closing Entry",
+   "link_to": "POS Closing Entry",
+   "type": "DocType",
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "Item",
+   "link_to": "Item",
+   "type": "DocType",
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "Stock Ledger",
+   "link_to": "Stock Ledger",
+   "type": "Report",
+   "doc_view": "",
+   "color": "Grey"
+  },
+  {
+   "label": "Kitchen Ticket",
+   "link_to": "Kitchen Ticket",
+   "type": "DocType",
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "Payment settings",
+   "link_to": "POS Gateway Settings",
+   "type": "DocType",
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "Business Alert Settings",
+   "link_to": "Business Alert Settings",
+   "type": "DocType",
+   "doc_view": "List",
+   "color": "Grey"
+  }
+ ],
+ "title": "Murzak POS"
+}

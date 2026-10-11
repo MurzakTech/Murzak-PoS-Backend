@@ -12,3 +12,4 @@ murzak_pos.patches.add_offline_sale_fields
 murzak_pos.patches.backfill_supplier_company
 murzak_pos.patches.backfill_price_list_company
 murzak_pos.patches.create_alert_settings
+murzak_pos.patches.bind_users_to_their_company

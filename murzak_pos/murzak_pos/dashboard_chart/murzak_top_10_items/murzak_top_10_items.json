@@ -1,0 +1,22 @@
+{
+ "chart_name": "Murzak Top 10 Items",
+ "chart_type": "Report",
+ "creation": "2026-10-11 21:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart",
+ "filters_json": "{}",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "modified": "2026-10-11 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Murzak POS",
+ "name": "Murzak Top 10 Items",
+ "number_of_groups": 0,
+ "owner": "Administrator",
+ "report_name": "Murzak Top Items",
+ "roles": [],
+ "timeseries": 0,
+ "type": "Bar",
+ "use_report_chart": 1
+}
