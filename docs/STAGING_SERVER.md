@@ -93,6 +93,10 @@ bench --site staging.localhost execute murzak_pos.api.<module>.<function> --kwar
 
 ## Things worth knowing
 
+- **eTIMS must be set up before any sale can be tested.** With kenya-compliance installed, a Sales Invoice is refused unless the site has an active eTIMS settings record for the cashier's default company, a Branch named exactly `00` or `01`, and the "Branch" accounting dimension (which kenya-compliance creates only when eTIMS settings are first activated). Every invoice line also needs seven eTIMS item fields. With `TEST_DATA=1`, the setup script runs `deploy/staging/etims_test_setup.py`, which creates the Branch, the dimension, a **placeholder** settings record that is inserted directly (saving it would phone KRA) and points at a dead local port so nothing is ever sent, and a Walk-in Customer. It can be run again at any time.
+- **The till's default sale path may not work on the newest ERPNext.** On ERPNext 15.122 creating a POS Invoice fails with `'POSInvoice' object has no attribute 'update_stock'`. This is recorded in the plan (WS1 requirement 9) and in the risks; check production's ERPNext version before upgrading it.
+- **Live updates need two Nginx rules on the page's own address.** The tested rule is `deploy/nginx/realtime-proxy.conf`; its header explains why.
+
 - **It is not production.** No HTTPS, no backups unless you set them up, passwords you chose. Do not put real customer data on it.
 - **Fetching kenya-compliance.** `bench get-app --resolve-deps` looks for a repository called `navariltd/kenya_compliance`, but the real one is `navariltd/kenya-compliance` (hyphen). The setup script fetches it by its full address; do the same by hand.
 - **Installing the app installs its two required apps first** (ERPNext, then kenya-compliance), as long as they are already in the bench.

@@ -126,6 +126,11 @@ say "7/7 Test data"
 if [ "$TEST_DATA" = 1 ]; then
 	# ERPNext rolls its first-run setup into a sample company; the test suite needs one
 	bench --site "$SITE" execute erpnext.setup.utils.before_tests
+	# Make the site behave like a server with eTIMS set up (a Branch "00", the Branch dimension, a
+	# placeholder settings record that never contacts KRA), so sales can be tested. See the script.
+	(cd sites && SITE="$SITE" ../env/bin/python "$REPO_DIR/deploy/staging/etims_test_setup.py")
+	# ERPNext adds the Branch field to invoices through a background job; run the queue once
+	timeout 600 bench worker --burst --queue long,default,short >/dev/null 2>&1 || true
 fi
 [ "$BUILD_ASSETS" = 1 ] && bench build --app "$APP_NAME"
 bench --site "$SITE" list-apps
