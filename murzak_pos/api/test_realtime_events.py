@@ -81,6 +81,48 @@ class MessageCase(unittest.TestCase):
 		)
 
 
+class HeldMessageCase(unittest.TestCase):
+	def test_held_message_says_only_which_bill_changed(self):
+		message = rt.held_message("Acme", "h_lq3k2x9a", "Main Store - SA", "saved")
+		self.assertEqual(
+			message,
+			{
+				"kind": "held",
+				"doctype": "POS Held Sale",
+				"action": "saved",
+				"held_id": "h_lq3k2x9a",
+				"warehouse": "Main Store - SA",
+				"company": "Acme",
+			},
+		)
+
+	def test_a_bill_with_no_store_has_no_store_in_its_message(self):
+		self.assertIsNone(rt.held_message("Acme", "h_1", "", "removed")["warehouse"])
+		self.assertIsNone(rt.held_message("Acme", "h_1", None, "removed")["warehouse"])
+
+	def test_every_enabled_user_of_the_business_gets_one_message(self):
+		with (
+			patch.object(rt.frappe, "publish_realtime") as publish,
+			patch.object(rt, "users_of_company", return_value=["a@x", "b@x"]) as users,
+		):
+			rt.notify_held_sale("Acme", "h_1", "Main Store - SA", "saved")
+		users.assert_called_once_with("Acme")
+		self.assertEqual(sorted(call.kwargs["user"] for call in publish.call_args_list), ["a@x", "b@x"])
+		for call in publish.call_args_list:
+			self.assertEqual(call.args[0], rt.EVENT)
+			self.assertTrue(call.kwargs["after_commit"])
+			self.assertEqual(call.kwargs["message"]["kind"], "held")
+
+	def test_a_failure_to_send_never_breaks_a_held_bill(self):
+		with (
+			patch.object(rt, "users_of_company", return_value=["a@x"]),
+			patch.object(rt.frappe, "publish_realtime", side_effect=RuntimeError("redis down")),
+			patch.object(rt.frappe, "log_error", MagicMock()) as log_error,
+		):
+			rt.notify_held_sale("Acme", "h_1", None, "saved")  # must not raise
+		log_error.assert_called_once()
+
+
 class RecipientCase(unittest.TestCase):
 	def test_a_payment_goes_to_the_user_who_started_it_alone(self):
 		self.assertEqual(rt.payment_recipients(mpesa_log()), ["cashier@acme.test"])

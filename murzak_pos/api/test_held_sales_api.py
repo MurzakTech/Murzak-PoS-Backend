@@ -91,6 +91,10 @@ class HeldSalesCase(unittest.TestCase):
 				"murzak_pos.api.payment_gateway_common.get_user_companies", return_value=set(companies)
 			),
 		]
+		# The live message is checked in its own tests; here it only has to be seen being asked for
+		notify = patch.object(held_sales_api, "notify_held_sale")
+		self.notify = notify.start()
+		self.addCleanup(notify.stop)
 		for p in stack:
 			p.start()
 			self.addCleanup(p.stop)
@@ -232,6 +236,18 @@ class TestSaveHeldSale(HeldSalesCase):
 		self.get_doc.assert_called_once_with("POS Held Sale", "abc123")
 		self.assertEqual(existing.total, 2000.0)
 
+	def test_the_business_is_told_once_that_the_bill_was_saved(self):
+		self.save(warehouse="Main Store - SA")
+		self.notify.assert_called_once_with("Shop A", "h_1", "Main Store - SA", "saved")
+
+	def test_a_bill_held_with_no_store_is_announced_without_one(self):
+		self.save()
+		self.notify.assert_called_once_with("Shop A", "h_1", None, "saved")
+
+	def test_a_refused_bill_is_not_announced(self):
+		self.save(payload={"cart": [{}] * 301})
+		self.notify.assert_not_called()
+
 	def test_a_retry_that_races_the_first_request_replaces_that_bill(self):
 		racing = FakeDoc(new=True)
 		racing.fail_first_save = frappe.DuplicateEntryError("POS Held Sale", "x")
@@ -337,6 +353,24 @@ class TestDeleteHeldSale(HeldSalesCase):
 
 	def test_a_bill_already_gone_reports_not_deleted_and_is_not_an_error(self):
 		self.assertEqual(self.delete(0), {"success": True, "data": {"id": "h_1", "deleted": False}})
+
+	def test_the_business_is_told_when_this_request_removed_the_bill(self):
+		self.as_user(existing="Main Store - SA", sql=MagicMock(side_effect=[None, [(1,)]]))
+		held_sales_api.delete_held_sale(id="h_1", company="Shop A")
+		self.notify.assert_called_once_with("Shop A", "h_1", "Main Store - SA", "removed")
+		# the store is read before the row is deleted, which is the only time it can be read
+		self.db.get_value.assert_called_once_with(
+			"POS Held Sale", {"company": "Shop A", "held_id": "h_1"}, "warehouse"
+		)
+
+	def test_nobody_is_told_when_the_bill_was_already_gone(self):
+		self.delete(0)
+		self.notify.assert_not_called()
+
+	def test_a_refused_delete_tells_nobody(self):
+		self.as_user()
+		held_sales_api.delete_held_sale(id="", company="Shop A")
+		self.notify.assert_not_called()
 
 	def test_the_delete_is_one_statement_for_this_company_and_id_only(self):
 		self.delete(1)

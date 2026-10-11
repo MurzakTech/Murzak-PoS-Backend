@@ -41,6 +41,10 @@ grep -rl techsavanna ~/frappe-bench/apps/murzak_custom ~/frappe-bench/apps/matat
 
 (`newsite.murzaktech.tech` cannot connect to its database, which is unrelated to this move but worth looking at.)
 
+## Checked on the live server (12 October 2026)
+
+Before the move, the database held: 1 Module Def, 9 DocTypes (the 2 M-Pesa ones missing, see step 6), 10 Custom Fields, 1 Installed Application, 7 Patch Log rows and 2 Scheduled Job Types under the old name. Step 5 changes exactly these rows. No other app on the bench mentions the old name, and no stored payment address contains it.
+
 ## Steps
 
 Run these on the live server, one at a time. `SITE` below means `api.pos.murzaktech.tech`.
@@ -91,6 +95,7 @@ Copy the newest files in that folder (the `.sql.gz` database file and the two `.
 bench --site SITE set-maintenance-mode on
 bench --site SITE disable-scheduler
 sudo supervisorctl stop all        # or however this server stops its workers
+                                   # (if `sudo -n true` fails for this user, skip this line and the matching start in step 6; maintenance mode and `bench restart` are enough)
 ```
 
 ### 4. Rename the folder, pull the new code, and tell Python about it
@@ -133,7 +138,9 @@ bench --site SITE set-maintenance-mode off
 sudo supervisorctl start all       # or bench restart / systemctl, as this server does
 ```
 
-`migrate` should **not** print any line starting `Executing murzak_pos.patches.`. If it does, step 5 did not take effect; stop and ask.
+`migrate` prints exactly **two** lines starting `Executing murzak_pos.patches.`: `create_alert_settings` and `bind_users_to_their_company`. Both are new in this release and are meant to run once. If it prints any other `Executing murzak_pos.patches.` line (one of the seven older patches), step 5 did not take effect; stop and ask.
+
+On this server `migrate` also **recreates the two M-Pesa DocTypes** (MPESA Settings and MPESA Transaction Log). Checked on 12 October 2026: their definitions are missing from the database (the old class names made Frappe delete them on earlier deploys) but their tables exist and are empty, so nothing is lost. M-Pesa still has to be set up for each business afterwards.
 
 ### 7. Payment providers (do not skip)
 
@@ -156,7 +163,8 @@ Sign in on a till and:
 - [ ] Make a small cash sale.
 - [ ] Make a small M-Pesa sale to a phone you control, and confirm the sale completes after you approve it.
 - [ ] Open the held-sales and reports screens.
-- [ ] On the server: `bench --site SITE list-apps` shows `murzak_pos`, and `bench --site SITE mariadb -e "SELECT name FROM tabDocType WHERE name LIKE 'MPESA%'"` lists both MPESA DocTypes.
+- [ ] On the server: `bench --site SITE list-apps` shows `murzak_pos`, and `bench --site SITE mariadb -e "SELECT name FROM tabDocType WHERE name LIKE 'MPESA%'"` lists both MPESA DocTypes (on the live site they are created here, because they were missing before).
+- [ ] Business owners sign in to the Frappe desk and see a **Murzak POS** workspace showing only their own business.
 
 Then deploy once more from GitHub (re-run the failed deploy) to confirm the normal route works from now on.
 
