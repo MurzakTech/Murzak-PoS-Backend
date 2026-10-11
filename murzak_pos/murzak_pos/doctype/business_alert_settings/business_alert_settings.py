@@ -13,6 +13,8 @@ class BusinessAlertSettings(Document):
 		bad = alert_rules.invalid_recipients(self.email_recipients)
 		if bad:
 			frappe.throw(_("These are not valid email addresses: {0}").format(", ".join(bad)))
-		problem = alert_rules.timing_problem(self.expiry_window_long, self.expiry_window_short, self.send_hour)
+		problem = alert_rules.timing_problem(
+			self.expiry_window_long, self.expiry_window_short, self.send_hour
+		)
 		if problem:
 			frappe.throw(_(problem))
