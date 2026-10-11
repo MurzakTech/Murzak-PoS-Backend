@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to remove eTims Slade360 ID Mapping custom fields
 # This fixes the error: "No module named 'frappe.core.doctype.etims_slade360_id_mapping'"
-# when using techsavanna_pos without savanna_pos eTims integration
+# when using murzak_pos without savanna_pos eTims integration
 
 set -e  # Exit on error
 
@@ -69,7 +69,7 @@ fi
 echo ""
 echo "=========================================="
 echo "Fix applied successfully!"
-echo "You can now use techsavanna_pos.api.product_seeding.create_seed_item"
+echo "You can now use murzak_pos.api.product_seeding.create_seed_item"
 echo "without eTims Slade360 ID Mapping errors."
 echo "=========================================="
 

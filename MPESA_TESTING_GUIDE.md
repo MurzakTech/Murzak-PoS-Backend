@@ -55,13 +55,13 @@ bench --site [your-site] clear-cache
 
 ```bash
 # Run all MPESA tests
-bench --site [your-site] run-tests --module techsavanna_pos.api.test_mpesa_client
-bench --site [your-site] run-tests --module techsavanna_pos.api.test_mpesa_api
-bench --site [your-site] run-tests --module techsavanna_pos.techsavanna_pos.doctype.mpesa_settings.test_mpesa_settings
-bench --site [your-site] run-tests --module techsavanna_pos.techsavanna_pos.doctype.mpesa_transaction_log.test_mpesa_transaction_log
+bench --site [your-site] run-tests --module murzak_pos.api.test_mpesa_client
+bench --site [your-site] run-tests --module murzak_pos.api.test_mpesa_api
+bench --site [your-site] run-tests --module murzak_pos.murzak_pos.doctype.mpesa_settings.test_mpesa_settings
+bench --site [your-site] run-tests --module murzak_pos.murzak_pos.doctype.mpesa_transaction_log.test_mpesa_transaction_log
 
 # Run all tests
-bench --site [your-site] run-tests --app techsavanna_pos
+bench --site [your-site] run-tests --app murzak_pos
 ```
 
 ### Test Coverage
@@ -100,7 +100,7 @@ bench --site [your-site] run-tests --app techsavanna_pos
 
 **API Call:**
 ```bash
-curl -X POST http://localhost:8000/api/method/techsavanna_pos.api.mpesa_api.register_mpesa_settings \
+curl -X POST http://localhost:8000/api/method/murzak_pos.api.mpesa_api.register_mpesa_settings \
   -H "Authorization: token YOUR_API_KEY:YOUR_API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
@@ -112,7 +112,7 @@ curl -X POST http://localhost:8000/api/method/techsavanna_pos.api.mpesa_api.regi
     "consumer_secret": "YOUR_SANDBOX_SECRET",
     "passkey": "YOUR_SANDBOX_PASSKEY",
     "payment_account": "Cash - Test Company",
-    "stk_callback_url": "https://your-domain.com/api/method/techsavanna_pos.api.mpesa_api.stk_callback"
+    "stk_callback_url": "https://your-domain.com/api/method/murzak_pos.api.mpesa_api.stk_callback"
   }'
 ```
 
@@ -133,7 +133,7 @@ curl -X POST http://localhost:8000/api/method/techsavanna_pos.api.mpesa_api.regi
 
 **API Call:**
 ```bash
-curl -X POST http://localhost:8000/api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push_payment \
+curl -X POST http://localhost:8000/api/method/murzak_pos.api.mpesa_api.initiate_stk_push_payment \
   -H "Authorization: token YOUR_API_KEY:YOUR_API_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
@@ -162,7 +162,7 @@ curl -X POST http://localhost:8000/api/method/techsavanna_pos.api.mpesa_api.init
 
 **API Call:**
 ```bash
-curl -X GET "http://localhost:8000/api/method/techsavanna_pos.api.mpesa_api.check_payment_status?transaction_id=MPESA-TXN-001" \
+curl -X GET "http://localhost:8000/api/method/murzak_pos.api.mpesa_api.check_payment_status?transaction_id=MPESA-TXN-001" \
   -H "Authorization: token YOUR_API_KEY:YOUR_API_SECRET"
 ```
 

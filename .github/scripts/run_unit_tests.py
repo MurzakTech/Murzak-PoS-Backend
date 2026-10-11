@@ -22,21 +22,21 @@ import tempfile
 import unittest
 
 # Tests that talk to a real database or Redis. They run on a full bench with:
-#   bench --site <site> run-tests --app techsavanna_pos
+#   bench --site <site> run-tests --app murzak_pos
 NEEDS_A_SITE = {
-	"techsavanna_pos/api/test_mpesa_api.py": "uses the database",
-	"techsavanna_pos/api/test_mpesa_client.py": "uses the database",
-	"techsavanna_pos/api/test_payment_gateways.py": "uses the database and Redis",
-	"techsavanna_pos/api/test_pos_shift_close.py": "needs an initialised site",
+	"murzak_pos/api/test_mpesa_api.py": "uses the database",
+	"murzak_pos/api/test_mpesa_client.py": "uses the database",
+	"murzak_pos/api/test_payment_gateways.py": "uses the database and Redis",
+	"murzak_pos/api/test_pos_shift_close.py": "needs an initialised site",
 }
 # The generated doctype tests are FrappeTestCase classes, which create records in a real database
-NEEDS_A_SITE_FOLDERS = ("techsavanna_pos/techsavanna_pos/doctype/",)
+NEEDS_A_SITE_FOLDERS = ("murzak_pos/murzak_pos/doctype/",)
 
 
 def find_tests(root: str) -> tuple[list[str], list[str]]:
 	"""The dotted names of the test modules to run, and the paths skipped because they need a site."""
 	run, skipped = [], []
-	for folder, _dirs, files in os.walk(os.path.join(root, "techsavanna_pos")):
+	for folder, _dirs, files in os.walk(os.path.join(root, "murzak_pos")):
 		for name in sorted(files):
 			if not (name.startswith("test_") and name.endswith(".py")):
 				continue

@@ -12,7 +12,7 @@ def test_pos_invoice_class():
     print(f"Name: {controller.__name__}")
     
     # Check if it's our custom class
-    if "techsavanna_pos" in controller.__module__:
+    if "murzak_pos" in controller.__module__:
         print("✓ Custom POS Invoice class is being used!")
     else:
         print("✗ Custom POS Invoice class is NOT being used - using default ERPNext class")

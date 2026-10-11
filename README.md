@@ -1,6 +1,6 @@
-### Techsavanna POS
+### Murzak POS
 
-Techsavanna POS
+Murzak POS
 
 ### Installation
 
@@ -9,7 +9,7 @@ You can install this app using the [bench](https://github.com/frappe/bench) CLI:
 ```bash
 cd $PATH_TO_YOUR_BENCH
 bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app techsavanna_pos
+bench install-app murzak_pos
 ```
 
 ### Contributing
@@ -17,7 +17,7 @@ bench install-app techsavanna_pos
 This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
 
 ```bash
-cd apps/techsavanna_pos
+cd apps/murzak_pos
 pre-commit install
 ```
 
@@ -44,11 +44,11 @@ python .github/scripts/check_changed_files.py origin/main
 python .github/scripts/run_unit_tests.py
 ```
 
-A few tests need a full bench site (database and Redis) and are skipped by the second check; the list is `NEEDS_A_SITE` in `.github/scripts/run_unit_tests.py`. Run those on a bench with `bench --site <site> run-tests --app techsavanna_pos`.
+A few tests need a full bench site (database and Redis) and are skipped by the second check; the list is `NEEDS_A_SITE` in `.github/scripts/run_unit_tests.py`. Run those on a bench with `bench --site <site> run-tests --app murzak_pos`.
 
 ### Server setup (once)
 
-The website's own web server (Nginx) must send two protections that only a server can send: stopping other websites from showing the till inside their own page, and making browsers always use a secure connection. The steps, which take about 10 minutes, are in [docs/SERVER_SECURITY_SETUP.md](docs/SERVER_SECURITY_SETUP.md), with a checker (`techsavanna_pos/api/scripts/check_security_headers.py`) that confirms they worked.
+The website's own web server (Nginx) must send two protections that only a server can send: stopping other websites from showing the till inside their own page, and making browsers always use a secure connection. The steps, which take about 10 minutes, are in [docs/SERVER_SECURITY_SETUP.md](docs/SERVER_SECURITY_SETUP.md), with a checker (`murzak_pos/api/scripts/check_security_headers.py`) that confirms they worked.
 
 ### License
 

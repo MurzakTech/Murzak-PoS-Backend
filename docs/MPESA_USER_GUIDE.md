@@ -83,7 +83,7 @@ This guide helps end users understand how to use MPESA payments in the POS syste
 
 **Example: Initiate Payment**
 ```bash
-POST /api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push_payment
+POST /api/method/murzak_pos.api.mpesa_api.initiate_stk_push_payment
 {
   "company": "Your Company",
   "phone_number": "254712345678",
@@ -115,7 +115,7 @@ POST /api/method/techsavanna_pos.api.mpesa_api.initiate_stk_push_payment
 
 **Check Status:**
 ```bash
-GET /api/method/techsavanna_pos.api.mpesa_api.check_payment_status?transaction_id=MPESA-TXN-001
+GET /api/method/murzak_pos.api.mpesa_api.check_payment_status?transaction_id=MPESA-TXN-001
 ```
 
 **Response:**
@@ -156,12 +156,12 @@ GET /api/method/techsavanna_pos.api.mpesa_api.check_payment_status?transaction_i
 
 **Get Transaction History:**
 ```bash
-GET /api/method/techsavanna_pos.api.mpesa_api.get_transactions?company=Your Company&status=Success&limit=50
+GET /api/method/murzak_pos.api.mpesa_api.get_transactions?company=Your Company&status=Success&limit=50
 ```
 
 **Get Single Transaction:**
 ```bash
-GET /api/method/techsavanna_pos.api.mpesa_api.get_transaction?transaction_id=MPESA-TXN-001
+GET /api/method/murzak_pos.api.mpesa_api.get_transaction?transaction_id=MPESA-TXN-001
 ```
 
 ---

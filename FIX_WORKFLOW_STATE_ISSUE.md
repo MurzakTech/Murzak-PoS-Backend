@@ -34,7 +34,7 @@ bench --site [your_site_name] console
 Then in the console:
 
 ```python
-exec(open('apps/techsavanna_pos/fix_workflow_on_server.py').read())
+exec(open('apps/murzak_pos/fix_workflow_on_server.py').read())
 ```
 
 ### Option 2: Run Setup Script + Reconciliation
@@ -48,13 +48,13 @@ bench --site [your_site_name] console
 ```
 
 ```python
-exec(open('apps/techsavanna_pos/techsavanna_pos/api/scripts/setup_stock_reconciliation_workflow.py').read())
+exec(open('apps/murzak_pos/murzak_pos/api/scripts/setup_stock_reconciliation_workflow.py').read())
 ```
 
 **Step 2: Reconcile workflow states**
 
 ```python
-from techsavanna_pos.patches.reconcile_stock_reconciliation_workflow_states import execute
+from murzak_pos.patches.reconcile_stock_reconciliation_workflow_states import execute
 execute()
 ```
 

@@ -22,7 +22,7 @@ jobs:
             # Stop at the first failing command, so a failed deploy shows red instead of green
             set -e
 
-            cd ~/frappe-bench/apps/techsavanna_pos
+            cd ~/frappe-bench/apps/murzak_pos
 
             # The server must be on main with no edits of its own; otherwise refuse and say why
             branch="$(git rev-parse --abbrev-ref HEAD)"
@@ -31,7 +31,7 @@ jobs:
               exit 1
             fi
             if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-              echo "::error::Server has uncommitted edits in techsavanna_pos. Commit or discard them on the server, then re-run this deploy."
+              echo "::error::Server has uncommitted edits in murzak_pos. Commit or discard them on the server, then re-run this deploy."
               git status --short --untracked-files=no
               exit 1
             fi
@@ -47,7 +47,7 @@ jobs:
 
             cd ~/frappe-bench
             bench --site api.pos.murzaktech.tech migrate
-            bench build --app techsavanna_pos
+            bench build --app murzak_pos
             bench restart
 
-            echo "Deployed techsavanna_pos $(git -C apps/techsavanna_pos rev-parse --short HEAD) to api.pos.murzaktech.tech"
+            echo "Deployed murzak_pos $(git -C apps/murzak_pos rev-parse --short HEAD) to api.pos.murzaktech.tech"

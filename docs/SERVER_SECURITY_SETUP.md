@@ -77,7 +77,7 @@ sudo nginx -t && sudo systemctl reload nginx
 From any computer with Python 3 (no installation needed), using the checker in this repository:
 
 ```bash
-python3 techsavanna_pos/api/scripts/check_security_headers.py \
+python3 murzak_pos/api/scripts/check_security_headers.py \
     https://pos.murzaktech.tech \
     https://<one-real-shop>.pos.murzaktech.tech \
     https://api.pos.murzaktech.tech
@@ -104,4 +104,4 @@ New shop sites are created from the same template, so if the `include` line is p
 
 Delete the `include` lines (or the whole snippet file), run `sudo nginx -t && sudo systemctl reload nginx`. The framing and file-type protections stop at once. The secure-connection rule keeps working in browsers that already saw it until its time runs out (up to a year, or five minutes if you followed the recommended test first), which is why the test in step 4 is worth doing.
 
-To turn off only the backend's own headers, add `"techsavanna_pos_security_headers": 0` to the site's `site_config.json` and restart the bench. This is rarely needed.
+To turn off only the backend's own headers, add `"murzak_pos_security_headers": 0` to the site's `site_config.json` and restart the bench. This is rarely needed.

@@ -10,7 +10,7 @@ This script:
 
 Run this on your server:
     bench --site [site_name] console
-    >>> exec(open('apps/techsavanna_pos/fix_workflow_on_server.py').read())
+    >>> exec(open('apps/murzak_pos/fix_workflow_on_server.py').read())
 """
 
 import frappe
