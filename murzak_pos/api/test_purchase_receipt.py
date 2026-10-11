@@ -24,13 +24,16 @@ def receipt_line(name, item_code, qty, returned_qty=0, warehouse="Stores - A"):
 	)
 
 
-def return_line(source_line, item_code, warehouse="Stores - A"):
-	"""A line as ERPNext builds it on a new return: linked to the receipt line, quantities negative."""
+def return_line(source_line, item_code, remaining, warehouse="Stores - A"):
+	"""
+	A line as ERPNext builds it on a new return: linked to the receipt line, and holding what can still
+	be returned as a negative number (0 once the line has been fully returned).
+	"""
 	return SimpleNamespace(
 		purchase_receipt_item=source_line,
 		item_code=item_code,
-		qty=-99,
-		received_qty=-99,
+		qty=-remaining,
+		received_qty=-remaining,
 		rejected_qty=1,
 		warehouse=warehouse,
 	)
@@ -63,7 +66,12 @@ class ReturnCase(unittest.TestCase):
 		receipt = SimpleNamespace(
 			name="MAT-PRE-0001", docstatus=docstatus, status=status, is_return=is_return, items=lines
 		)
-		made = FakeReturn([return_line(line.name, line.item_code, line.warehouse) for line in lines])
+		made = FakeReturn(
+			[
+				return_line(line.name, line.item_code, line.qty - line.returned_qty, line.warehouse)
+				for line in lines
+			]
+		)
 
 		db = MagicMock()
 		db.exists.return_value = True
@@ -120,6 +128,18 @@ class ReturnCase(unittest.TestCase):
 
 		response, _made, _db = self.send_back(lines, [{"item_code": "PEN", "qty": 2}])
 		self.assertTrue(response["success"], response)
+
+	def test_a_fully_returned_line_cannot_be_returned_again(self):
+		lines = [receipt_line("r1", "PEN", 10, returned_qty=10)]
+		response, made, _db = self.send_back(lines, [{"item_code": "PEN", "qty": 1}])
+		self.assertFalse(response["success"])
+		self.assertIn("Quantity left to return: 0", response["message"])
+		self.assertFalse(made.inserted)
+
+	def test_the_refusal_says_how_much_can_still_go_back(self):
+		lines = [receipt_line("r1", "PEN", 10, returned_qty=8)]
+		response, _made, _db = self.send_back(lines, [{"item_code": "PEN", "qty": 3}])
+		self.assertIn("Quantity left to return: 2", response["message"])
 
 	def test_the_whole_received_quantity_can_go_back(self):
 		response, made, _db = self.send_back(

@@ -6,11 +6,6 @@ from frappe.utils import flt
 from murzak_pos.api.access_control import ensure_record_access
 
 
-def _returnable_qty(pr_item) -> float:
-	"""How much of this received line can still be sent back to the supplier."""
-	return flt(pr_item.qty) - flt(pr_item.returned_qty)
-
-
 def _requested_quantities(items) -> dict[str, float]:
 	"""The quantity asked for per item code, after checking each line is sensible."""
 	wanted: dict[str, float] = {}
@@ -76,29 +71,39 @@ def reject_return_items(purchase_receipt, items, reason=None):
 		wanted = _requested_quantities(items)
 		warehouses = {item["item_code"]: item.get("warehouse") for item in items if item.get("warehouse")}
 
-		# Share each item's quantity across its lines on the receipt, in order, up to what each line can
-		# still give back. Anything left over means more was asked for than was received.
-		to_return: dict[str, float] = {}  # name of the receipt line -> quantity going back
-		for item_code, qty in wanted.items():
-			lines = [line for line in pr.items if line.item_code == item_code]
-			if not lines:
+		on_receipt = {line.item_code for line in pr.items}
+		for item_code in wanted:
+			if item_code not in on_receipt:
 				raise frappe.ValidationError(_("Item {0} not found in Purchase Receipt").format(item_code))
 
+		# ERPNext builds the return with every line at the quantity that can still go back (as a negative
+		# number, 0 once a line has been fully returned). That is the one reliable source for what is left,
+		# because it counts every earlier return.
+		return_doc = make_return_doc("Purchase Receipt", pr.name)
+
+		# Share each item's quantity across its lines, in order, up to what each line can still give back
+		to_return: dict[str, float] = {}  # name of the receipt line -> quantity going back
+		for item_code, qty in wanted.items():
 			remaining = qty
-			for line in lines:
-				take = min(remaining, _returnable_qty(line))
+			available = 0.0
+			for line in return_doc.items:
+				if line.item_code != item_code:
+					continue
+				can_return = -flt(line.qty)
+				available += can_return
+				take = min(remaining, can_return)
 				if take > 0:
-					to_return[line.name] = take
+					to_return[line.purchase_receipt_item] = take
 					remaining -= take
 
 			if remaining > 0:
 				raise frappe.ValidationError(
-					_("Cannot return more than the received quantity for item {0}").format(item_code)
+					_(
+						"Cannot return more than the received quantity for item {0}. Quantity left to return: {1}"
+					).format(item_code, available)
 				)
 
-		# ERPNext builds the return with every line at its full returnable quantity (as a negative
-		# number). Keep only the lines asked for, at the quantities asked for.
-		return_doc = make_return_doc("Purchase Receipt", pr.name)
+		# Keep only the lines asked for, at the quantities asked for
 		return_doc.set(
 			"items",
 			[line for line in return_doc.items if line.purchase_receipt_item in to_return],
