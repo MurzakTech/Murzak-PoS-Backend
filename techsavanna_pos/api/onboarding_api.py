@@ -8,6 +8,7 @@ from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils import now, today
 from erpnext.setup.setup_wizard import setup_wizard
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -1081,6 +1082,8 @@ def update_pos_profile(
         Updated POS profile details
     """
     # Validate user permissions
+    ensure_record_access("POS Profile", name)
+    ensure_record_access("POS Profile", profile_name)
     if frappe.session.user == "Guest":
         frappe.throw(
             _("Please log in to update a POS profile. Your session has expired or you need to authenticate first."),

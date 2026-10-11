@@ -7,6 +7,7 @@ import frappe
 from frappe import _
 from frappe.query_builder import DocType
 
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -428,6 +429,7 @@ def get_warehouse_details(name: str) -> dict:
     Returns:
         dict: Warehouse details with main_depot flag
     """
+    ensure_record_access("Warehouse", name)
     try:
         # For staff users, check if they have access to this warehouse
         allowed_warehouses = get_allowed_warehouses_for_user()
@@ -554,6 +556,8 @@ def update_warehouse(
     Returns:
         dict: Update result
     """
+    ensure_record_access("Warehouse", name)
+    ensure_record_access("Warehouse", parent_warehouse)
     try:
         # For staff users, check if they have access to this warehouse
         allowed_warehouses = get_allowed_warehouses_for_user()
@@ -677,6 +681,7 @@ def assign_warehouses_to_staff(
         invalid_warehouses = []
         valid_warehouses = []
         for warehouse in warehouses:
+            ensure_record_access("Warehouse", warehouse)
             if frappe.db.exists("Warehouse", warehouse):
                 valid_warehouses.append(warehouse)
             else:
@@ -839,6 +844,7 @@ def get_warehouse_staff(warehouse: str) -> dict:
     Returns:
         dict: List of assigned staff members
     """
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not frappe.db.exists("Warehouse", warehouse):
             return {

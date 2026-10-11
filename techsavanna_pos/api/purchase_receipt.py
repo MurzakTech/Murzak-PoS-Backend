@@ -4,6 +4,7 @@ from frappe.utils import nowdate
 from erpnext.stock.utils import get_incoming_rate
 from erpnext.stock.doctype.stock_entry.stock_entry import make_stock_entry
 from erpnext.buying.doctype.purchase_receipt.purchase_receipt import PurchaseReceipt
+from techsavanna_pos.api.access_control import ensure_record_access
 
 @frappe.whitelist()
 def reject_return_items(purchase_receipt, items, reason=None):
@@ -18,6 +19,7 @@ def reject_return_items(purchase_receipt, items, reason=None):
     }
     """  
 
+    ensure_record_access("Purchase Receipt", purchase_receipt)
     try:
         if not purchase_receipt:
             raise frappe.ValidationError(_("Purchase Receipt is required"))

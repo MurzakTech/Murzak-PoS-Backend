@@ -8,6 +8,7 @@ from erpnext.stock.get_item_details import get_item_details as erpnext_get_item_
 from frappe import _, as_json
 from frappe.query_builder import DocType, functions as fn
 from frappe.utils import flt, nowdate
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 ITEM_RESULT_FIELDS = [
@@ -281,6 +282,7 @@ def get_item_detail(item, doc=None, warehouse=None, price_list=None, company=Non
 @frappe.whitelist()
 def search_by_barcode(barcode, pos_profile):
 	"""Search item by barcode"""
+	ensure_record_access("POS Profile", pos_profile)
 	try:
 		# Parse pos_profile if it's a JSON string
 		if isinstance(pos_profile, str):
@@ -360,6 +362,7 @@ def search_by_barcode(barcode, pos_profile):
 @frappe.whitelist()
 def get_item_stock(item_code, warehouse):
 	"""Get real-time stock for item"""
+	ensure_record_access("Warehouse", warehouse)
 	try:
 		from frappe.utils import flt
 
@@ -390,6 +393,7 @@ def get_item_stock(item_code, warehouse):
 @frappe.whitelist()
 def get_batch_serial_details(item_code, warehouse):
 	"""Get batch/serial number details"""
+	ensure_record_access("Item", item_code)
 	try:
 		# Check if item has batch
 		has_batch_no = frappe.db.get_value("Item", item_code, "has_batch_no")
@@ -441,6 +445,7 @@ def get_batch_serial_details(item_code, warehouse):
 @frappe.whitelist()
 def get_item_variants(template_item, pos_profile):
 	"""Get all variants for a template item with prices and stock"""
+	ensure_record_access("POS Profile", pos_profile)
 	try:
 		pos_profile_doc = frappe.get_cached_doc("POS Profile", pos_profile)
 
@@ -920,6 +925,7 @@ def _get_bundle_warehouse_availability_bulk(bundle_codes, warehouses):
 @frappe.whitelist()
 def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20):
 	"""Get items for POS with stock, price, and tax details"""
+	ensure_record_access("POS Profile", pos_profile)
 	try:
 		pos_profile_doc = frappe.get_cached_doc("POS Profile", pos_profile)
 
@@ -1227,6 +1233,8 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 @frappe.whitelist()
 def get_item_details(item_code, pos_profile, customer=None, qty=1, uom=None):
 	"""Get detailed item info including price, tax, stock"""
+	ensure_record_access("Item", item_code)
+	ensure_record_access("POS Profile", pos_profile)
 	try:
 		# Parse pos_profile if it's a JSON string
 		if isinstance(pos_profile, str):
@@ -1319,6 +1327,7 @@ def get_stock_quantities(item_codes, warehouse):
 	Returns:
 		List of dicts with item_code, warehouse, and actual_qty
 	"""
+	ensure_record_access("Warehouse", warehouse)
 	try:
 		# Parse item_codes if it's a JSON string
 		if isinstance(item_codes, str):
@@ -1617,6 +1626,7 @@ def get_product_bundle_availability(item_code, warehouse):
 			]
 		}
 	"""
+	ensure_record_access("Warehouse", warehouse)
 	try:
 		# Use bulk calculation for single bundle
 		bundle_availability = _calculate_bundle_availability_bulk([item_code], warehouse)
@@ -1712,6 +1722,7 @@ def return_items():
     try:
         data = json.loads(frappe.request.data or "{}")
         grn_name = data.get("grn")
+        ensure_record_access("Stock Entry", grn_name)
         items = data.get("items")
         returned_by = data.get("returned_by")
         return_notes = data.get("return_notes")

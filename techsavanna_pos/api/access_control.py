@@ -18,7 +18,13 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from techsavanna_pos.api.payment_gateway_common import get_user_companies
+
 MANAGER_ROLE = "System Manager"
+
+# The field that says which company owns a record. Most records have `company`; customers, items and
+# suppliers carry their owner in `custom_company` (added by this app).
+OWNER_FIELD = {"Customer": "custom_company", "Item": "custom_company", "Supplier": "custom_company"}
 
 # Who may do the sensitive everyday jobs. These are copied from the frontend's role table
 # (src/config/roleAccessConfig.js in the Murzak-PoS-Frontend repository) so the server and the screens
@@ -159,3 +165,27 @@ def require_loyalty_role() -> None:
 def require_transfer_role() -> None:
 	"""Moving stock between stores: requesting, approving, dispatching and receiving a transfer."""
 	require_any_role(TRANSFER_ROLES, _("move stock between stores"))
+
+
+def ensure_record_access(doctype: str, name) -> None:
+	"""
+	Refuse a record that belongs to another business, such as an invoice, stock entry or warehouse opened by its number.
+
+	Invoice and stock entry numbers run in sequence, so without this anyone signed in could read or cancel
+	another business's records by counting. The Administrator may open any record.
+
+	Left to the call itself: a record that does not exist (the call says so), and a record with no owner
+	recorded, such as an item made before items belonged to a business.
+	"""
+	user = frappe.session.user
+	if user == "Administrator" or not name or not isinstance(name, str | int):
+		return
+	if user == "Guest":
+		frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
+
+	field = OWNER_FIELD.get(doctype, "company")
+	if not frappe.db.has_column(doctype, field):
+		return
+	owner = frappe.db.get_value(doctype, name, field)
+	if owner and owner not in get_user_companies(user):
+		frappe.throw(_("You do not have access to this {0}.").format(_(doctype)), frappe.PermissionError)

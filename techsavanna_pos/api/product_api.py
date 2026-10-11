@@ -15,7 +15,7 @@ import erpnext
 import re
 
 from techsavanna_pos.api.etims_optional import relax_etims_mandatory
-from techsavanna_pos.api.access_control import require_catalogue_role
+from techsavanna_pos.api.access_control import ensure_record_access, require_catalogue_role
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -1128,6 +1128,7 @@ def delete_product(item_code: str) -> Dict:
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    ensure_record_access("Item", item_code)
     # Validate user permissions
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1159,6 +1160,7 @@ def enable_product(item_code: str) -> Dict:
         Success message
     """
     # Validate user permissions
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1190,6 +1192,7 @@ def add_barcode(item_code: str, barcode: str) -> Dict:
         Success message
     """
     # Validate user permissions
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1230,6 +1233,7 @@ def remove_barcode(item_code: str, barcode: str) -> Dict:
         Success message
     """
     # Validate user permissions
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1722,6 +1726,7 @@ def create_product_variant(
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    ensure_record_access("Item", template_item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1780,6 +1785,7 @@ def get_product_variants(template_item_code: str) -> Dict:
     Returns:
         List of variants
     """
+    ensure_record_access("Item", template_item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -3699,6 +3705,7 @@ def set_product_warranty(item_code: str, warranty_period: int, warranty_period_u
     Returns:
         Success message with warranty information
     """
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -3768,6 +3775,7 @@ def get_product_warranty(item_code: str) -> Dict:
     Returns:
         Warranty information (warranty_period is always returned in days)
     """
+    ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     

@@ -9,6 +9,7 @@ from frappe.query_builder import DocType, functions as fn
 from erpnext.accounts.utils import get_balance_on
 
 from erpnext.accounts.report.profit_and_loss_statement.profit_and_loss_statement import execute
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -2575,6 +2576,7 @@ def grn_detail_report(grn_no: str) -> Dict:
     Returns:
         dict: Detailed GRN information including items, PO linkage, and stock status
     """
+    ensure_record_access("Purchase Receipt", grn_no)
     try:
         if not grn_no:
             return {
@@ -2714,9 +2716,14 @@ def get_profit_and_loss(**kwargs):
         or None
     )
 
+    # Refuse a company the caller does not belong to
+    requested_company = kwargs.get("company")
+    if requested_company:
+        requested_company = resolve_company(requested_company)
+
     # Build filters with correct keys for financial_statements.py ===
     filters = frappe._dict({
-        "company": kwargs.get("company") or frappe.defaults.get_user_default("Company"),
+        "company": requested_company or frappe.defaults.get_user_default("Company"),
         "period_start_date": period_start_date,
         "period_end_date": period_end_date,
         "from_date": period_start_date,

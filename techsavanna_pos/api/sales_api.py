@@ -23,6 +23,7 @@ from techsavanna_pos.api.pharmacy_rules import add_to_remarks
 from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
 )
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -1290,6 +1291,7 @@ def get_sales_invoice(name: str) -> Dict:
     """
     Get a single Sales Invoice by name.
     """
+    ensure_record_access("Sales Invoice", name)
     try:
         if not frappe.db.exists("Sales Invoice", name):
             return {
@@ -1395,6 +1397,7 @@ def cancel_sales_invoice(name: str, reason: Optional[str] = None) -> Dict:
         name: Sales Invoice name
         reason: Optional cancellation reason (stored in remarks)
     """
+    ensure_record_access("Sales Invoice", name)
     try:
         if not frappe.db.exists("Sales Invoice", name):
             return {
@@ -2119,6 +2122,7 @@ def get_pos_invoice(name: str) -> Dict:
     """
     Get a single POS Invoice by name.
     """
+    ensure_record_access("POS Invoice", name)
     try:
         if not frappe.db.exists("POS Invoice", name):
             return {
@@ -2282,6 +2286,7 @@ def cancel_pos_invoice(name: str, reason: Optional[str] = None) -> Dict:
         name: POS Invoice name
         reason: Optional cancellation reason (stored in remarks)
     """
+    ensure_record_access("POS Invoice", name)
     try:
         if not frappe.db.exists("POS Invoice", name):
             return {
@@ -2648,6 +2653,7 @@ def cancel_sales_return(name: str, reason: Optional[str] = None) -> Dict:
         name: Credit Note name
         reason: Optional cancellation reason (stored in remarks)
     """
+    ensure_record_access("Sales Invoice", name)
     _check_return_access(invoice=name)
 
     try:
@@ -2748,6 +2754,8 @@ def submit_invoice(name: str, invoice_type: Optional[str] = None) -> Dict:
                 "error_type": "validation_error",
             }
 
+        ensure_record_access(doctype, name)
+
         if not frappe.db.exists(doctype, name):
             return {
                 "success": False,
@@ -2776,6 +2784,8 @@ def submit_invoice(name: str, invoice_type: Optional[str] = None) -> Dict:
                 "status": doc.status,
             },
         }
+    except frappe.PermissionError:
+        raise
     except Exception as e:
         frappe.log_error(
             "Submit Invoice Error",
@@ -2984,6 +2994,7 @@ def get_pos_opening_entry(name: str) -> Dict:
     Returns:
         dict: POS Opening Entry details
     """
+    ensure_record_access("POS Opening Entry", name)
     try:
         if not frappe.db.exists("POS Opening Entry", name):
             return {
@@ -3373,6 +3384,7 @@ def create_payment_entry_for_invoice(
     Returns:
         dict: Payment Entry details and updated invoice status
     """
+    ensure_record_access("Sales Invoice", sales_invoice)
     try:
         # Validate sales invoice exists
         if not frappe.db.exists("Sales Invoice", sales_invoice):
@@ -3554,6 +3566,7 @@ def get_invoice_payment_status(sales_invoice: str) -> Dict:
     Returns:
         dict: Invoice payment status details
     """
+    ensure_record_access("Sales Invoice", sales_invoice)
     try:
         if not frappe.db.exists("Sales Invoice", sales_invoice):
             return {

@@ -18,7 +18,7 @@ from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_d
     get_applicable_inventory_discount,
 )
 from techsavanna_pos.api.product_seeding import ensure_fiscal_year_exists
-from techsavanna_pos.api.access_control import require_manager, require_stock_count_role, require_stock_role
+from techsavanna_pos.api.access_control import ensure_record_access, require_manager, require_stock_count_role, require_stock_role
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -1969,6 +1969,7 @@ def delete_inventory_discount_rule(name: str) -> Dict:
     """Delete an inventory discount rule."""
     # Discount rules change what customers pay: business owners only
     require_manager()
+    ensure_record_access("Inventory Discount Rule", name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1989,6 +1990,7 @@ def delete_inventory_discount_rule(name: str) -> Dict:
 @frappe.whitelist()
 def get_inventory_discount_rule(name: str) -> Dict:
     """Fetch a single inventory discount rule."""
+    ensure_record_access("Inventory Discount Rule", name)
     try:
         if not frappe.db.exists("Inventory Discount Rule", name):
             return {"success": False, "message": _("Inventory Discount Rule {0} not found").format(name)}
@@ -2465,6 +2467,7 @@ def get_stock_entry_details(
     Returns:
         dict: Detailed stock entry information including all items
     """
+    ensure_record_access("Stock Entry", stock_entry_name)
     try:
         if not frappe.db.exists("Stock Entry", stock_entry_name):
             return {
@@ -2545,6 +2548,7 @@ def update_stock_entry(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    ensure_record_access("Stock Entry", stock_entry_name)
     try:
         if not frappe.db.exists("Stock Entry", stock_entry_name):
             return {
@@ -2696,6 +2700,7 @@ def cancel_stock_entry(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    ensure_record_access("Stock Entry", stock_entry_name)
     try:
         if not frappe.db.exists("Stock Entry", stock_entry_name):
             return {
@@ -2759,6 +2764,7 @@ def submit_stock_entry(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    ensure_record_access("Stock Entry", stock_entry_name)
     try:
         if not frappe.db.exists("Stock Entry", stock_entry_name):
             return {
@@ -3029,6 +3035,7 @@ def add_sales_person_stock_take(
     Returns:
         dict: Result of adding sales user stock take
     """
+    ensure_record_access("Stock Reconciliation", reconciliation_name)
     try:
         if not frappe.db.exists("Stock Reconciliation", reconciliation_name):
             return {
@@ -3160,6 +3167,7 @@ def add_stock_controller_stock_take(
     Returns:
         dict: Result of adding quality manager stock take
     """
+    ensure_record_access("Stock Reconciliation", reconciliation_name)
     try:
         if not frappe.db.exists("Stock Reconciliation", reconciliation_name):
             return {
@@ -3293,6 +3301,7 @@ def add_stock_manager_stock_take_and_submit(
     Returns:
         dict: Result of adding stock manager stock take and submission
     """
+    ensure_record_access("Stock Reconciliation", reconciliation_name)
     try:
         if not frappe.db.exists("Stock Reconciliation", reconciliation_name):
             return {
@@ -3452,6 +3461,7 @@ def get_multi_level_stock_reconciliation(
     Returns:
         dict: Stock reconciliation with all stock taking records
     """
+    ensure_record_access("Stock Reconciliation", reconciliation_name)
     print(f'\nMulti Level Reconc name: {reconciliation_name} ')
     try:
         if not frappe.db.exists("Stock Reconciliation", reconciliation_name):
