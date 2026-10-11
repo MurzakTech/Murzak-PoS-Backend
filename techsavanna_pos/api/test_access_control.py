@@ -710,7 +710,7 @@ class TestGuardsAreNotForgotten(unittest.TestCase):
 			"ensure_record_company",
 			"_ensure_can",
 			"require_gateway_admin",
-			"_caller_company",
+			"caller_company",
 			"_build_base_filters",
 		)
 		unchecked = []

@@ -394,6 +394,7 @@ def get_item_stock(item_code, warehouse):
 def get_batch_serial_details(item_code, warehouse):
 	"""Get batch/serial number details"""
 	ensure_record_access("Item", item_code)
+	ensure_record_access("Warehouse", warehouse)
 	try:
 		# Check if item has batch
 		has_batch_no = frappe.db.get_value("Item", item_code, "has_batch_no")

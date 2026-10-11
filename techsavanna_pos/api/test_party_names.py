@@ -75,6 +75,7 @@ class PartyCase(unittest.TestCase):
 				side_effect=lambda n, c, exclude=None: n in mine,
 			),
 		]
+		frappe.local.response = {}  # where a call sets the HTTP status
 		for p in stack:
 			p.start()
 			self.addCleanup(p.stop)

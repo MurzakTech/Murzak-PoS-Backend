@@ -1,5 +1,5 @@
 """
-Names for new suppliers and customers when each business keeps its own records.
+Names for new suppliers, customers and price lists when each business keeps its own records.
 
 Frappe names a supplier or customer by its own name ("Supplier Name" in Buying Settings, "Customer Name"
 in Selling Settings), so a name can exist only once on the whole site, whichever business made it.
@@ -22,7 +22,8 @@ NAMING_SETTING = {"Supplier": "supp_master_name", "Customer": "cust_master_name"
 
 def names_must_be_unique(doctype: str) -> bool:
 	"""False when the site names these records by number series, so the same display name may repeat."""
-	return frappe.defaults.get_global_default(NAMING_SETTING[doctype]) != "Naming Series"
+	setting = NAMING_SETTING.get(doctype)
+	return setting is None or frappe.defaults.get_global_default(setting) != "Naming Series"
 
 
 def name_for_new_record(doctype: str, wanted: str, company: str | None) -> str:

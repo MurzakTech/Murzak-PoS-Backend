@@ -582,6 +582,7 @@ def update_company(
     Returns:
         Updated company details
     """
+    ensure_record_access("Warehouse", default_warehouse)
     try:
         # Validate user permissions
         if frappe.session.user == "Guest":
@@ -872,6 +873,8 @@ def create_pos_profile(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
+    ensure_record_access("Price List", selling_price_list)
     if frappe.session.user == "Guest":
         frappe.throw(
             _("Please log in to create a POS profile. Your session has expired or you need to authenticate first."),
@@ -1084,6 +1087,8 @@ def update_pos_profile(
     # Validate user permissions
     ensure_record_access("POS Profile", name)
     ensure_record_access("POS Profile", profile_name)
+    ensure_record_access("Warehouse", warehouse)
+    ensure_record_access("Price List", selling_price_list)
     if frappe.session.user == "Guest":
         frappe.throw(
             _("Please log in to update a POS profile. Your session has expired or you need to authenticate first."),

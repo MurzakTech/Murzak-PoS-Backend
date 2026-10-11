@@ -124,6 +124,7 @@ def create_warehouse(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", parent_warehouse)
     try:
         # Validate company exists
         if not frappe.db.exists("Company", company):
@@ -284,6 +285,7 @@ def list_warehouses(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", parent_warehouse)
     try:
         # Check if custom_is_main_depot field exists in Warehouse doctype
         meta = frappe.get_meta("Warehouse")
@@ -916,6 +918,7 @@ def remove_warehouse_from_staff(
     Returns:
         dict: Removal result
     """
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Find and delete the user permission
         permission = frappe.db.exists(
@@ -1140,6 +1143,7 @@ def set_default_warehouse(company: str, warehouse: str) -> dict:
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not frappe.db.exists("Company", company):
             return {

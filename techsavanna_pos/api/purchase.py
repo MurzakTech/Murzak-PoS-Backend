@@ -25,6 +25,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.exceptions import ValidationError
 from techsavanna_pos.api.access_control import ensure_record_access, require_stock_role
+from techsavanna_pos.api.business_lists import first_mode_of_payment, mode_of_payment_usable
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -699,6 +700,7 @@ def create_grn():
 
         # Proceed with the normal logic for creating the GRN
         lpo_no = data.get("lpo_no")
+        ensure_record_access("Warehouse", data.get("warehouse"))
         warehouse = data.get("warehouse")
         items = data.get("items")
 
@@ -2405,7 +2407,7 @@ def pay_purchase_invoice(
             mode_of_payment = frappe.db.get_value("Company", pi.company, "default_mode_of_payment")
             if not mode_of_payment:
                 # Get first available mode of payment
-                mop = frappe.db.get_value("Mode of Payment", {"enabled": 1}, "name", order_by="name")
+                mop = first_mode_of_payment(pi.company)
                 if not mop:
                     return pos_response(
                         status="error",
@@ -2416,7 +2418,9 @@ def pay_purchase_invoice(
                 mode_of_payment = mop
         
         # Validate mode of payment exists
-        if not frappe.db.exists("Mode of Payment", mode_of_payment):
+        if not frappe.db.exists("Mode of Payment", mode_of_payment) or not mode_of_payment_usable(
+            mode_of_payment, pi.company
+        ):
             return pos_response(
                 status="error",
                 code=POSErrorCode.INVALID_REQUEST,

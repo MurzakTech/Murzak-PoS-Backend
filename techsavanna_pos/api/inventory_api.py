@@ -46,6 +46,7 @@ def get_stock_balance_api(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Validate item exists
         if not frappe.db.exists("Item", item_code):
@@ -151,6 +152,7 @@ def get_stock_balance_multiple(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Parse items
         if isinstance(items, str):
@@ -235,6 +237,8 @@ def create_stock_entry(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", from_warehouse)
+    ensure_record_access("Warehouse", to_warehouse)
     try:
         # Parse items
         if isinstance(items, str):
@@ -429,6 +433,7 @@ def create_material_receipt(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", target_warehouse)
     return create_stock_entry(
         stock_entry_type="Material Receipt",
         items=items,
@@ -465,6 +470,7 @@ def create_material_issue(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", source_warehouse)
     return create_stock_entry(
         stock_entry_type="Material Issue",
         items=items,
@@ -503,6 +509,8 @@ def create_material_transfer(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", source_warehouse)
+    ensure_record_access("Warehouse", target_warehouse)
     return create_stock_entry(
         stock_entry_type="Material Transfer",
         items=items,
@@ -603,6 +611,7 @@ def create_stock_reconciliation(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Parse items
         if isinstance(items, str):
@@ -870,6 +879,7 @@ def check_stock_availability(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Validate item exists
         if not frappe.db.exists("Item", item_code):
@@ -985,6 +995,7 @@ def get_stock_ledger_entries(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -1070,6 +1081,7 @@ def get_stock_summary(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -1167,6 +1179,7 @@ def repost_stock(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         from erpnext.stock.stock_balance import repost_stock
         
@@ -1242,6 +1255,7 @@ def get_low_stock_items(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -1535,6 +1549,7 @@ def get_inventory_item_details(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1633,6 +1648,7 @@ def list_inventory_items(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1750,6 +1766,7 @@ def update_inventory_item_details(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1853,6 +1870,7 @@ def create_inventory_discount_rule(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1915,6 +1933,7 @@ def update_inventory_discount_rule(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -2020,6 +2039,7 @@ def list_inventory_discount_rules(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         filters = {}
         if rule_type:
@@ -2095,6 +2115,7 @@ def get_inventory_discount_for_item(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not item_code:
             frappe.throw(_("item_code is required"), frappe.ValidationError)
@@ -2140,6 +2161,7 @@ def bulk_get_inventory_discounts(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if isinstance(items, str):
             items = json.loads(items)
@@ -2222,6 +2244,7 @@ def list_stock_entries(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -2355,6 +2378,7 @@ def list_material_receipts(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     return list_stock_entries(
         stock_entry_type="Material Receipt",
         company=company,
@@ -2398,6 +2422,7 @@ def list_material_issues(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     return list_stock_entries(
         stock_entry_type="Material Issue",
         company=company,
@@ -2441,6 +2466,7 @@ def list_material_transfers(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     return list_stock_entries(
         stock_entry_type="Material Transfer",
         company=company,
@@ -2549,6 +2575,8 @@ def update_stock_entry(
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
     ensure_record_access("Stock Entry", stock_entry_name)
+    ensure_record_access("Warehouse", from_warehouse)
+    ensure_record_access("Warehouse", to_warehouse)
     try:
         if not frappe.db.exists("Stock Entry", stock_entry_name):
             return {
@@ -2849,6 +2877,7 @@ def create_multi_level_stock_reconciliation(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -3601,6 +3630,7 @@ def list_multi_level_stock_reconciliations(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Check if workflow_state field exists in the doctype
         meta = frappe.get_meta("Stock Reconciliation")

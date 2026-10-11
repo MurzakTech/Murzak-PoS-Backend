@@ -15,6 +15,7 @@ from frappe.utils import flt, nowdate, getdate, add_days, add_months, get_first_
 from frappe.query_builder import DocType, functions as fn
 from pypika.terms import Case
 
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 from techsavanna_pos.api.profit_calc import summarize_profit
 
@@ -96,6 +97,7 @@ def get_dashboard_metrics(
     Returns:
         dict: Complete dashboard metrics
     """
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Set date range based on period
         if period == "30days":

@@ -32,6 +32,7 @@ def inventory_summary_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -111,6 +112,7 @@ def inventory_movement_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -194,6 +196,7 @@ def stock_aging_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -348,6 +351,7 @@ def inventory_value_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:
@@ -432,6 +436,7 @@ def sales_analytics_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -660,6 +665,7 @@ def export_sales_analytics_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get the report data
         result = sales_analytics_report(
@@ -716,6 +722,7 @@ def inventory_value_by_category_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -840,6 +847,7 @@ def inventory_cost_method_comparison_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -951,6 +959,7 @@ def inventory_value_trends_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1097,6 +1106,7 @@ def inventory_turnover_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1249,6 +1259,7 @@ def inventory_days_on_hand_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1428,6 +1439,7 @@ def inventory_movement_patterns_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1592,6 +1604,7 @@ def inventory_obsolescence_risk_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1761,6 +1774,7 @@ def inventory_aging_recommendations_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -1901,6 +1915,7 @@ def inventory_accuracy_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -2021,6 +2036,7 @@ def inventory_variance_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -2148,6 +2164,7 @@ def inventory_adjustment_trends_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -2280,6 +2297,8 @@ def inventory_transfer_efficiency_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", from_warehouse)
+    ensure_record_access("Warehouse", to_warehouse)
     try:
         if not company:
             company = frappe.defaults.get_user_default("Company")
@@ -2430,6 +2449,7 @@ def grn_list_report(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         # Get company if not provided
         if not company:

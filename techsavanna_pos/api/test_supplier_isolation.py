@@ -67,6 +67,7 @@ class SupplierCase(unittest.TestCase):
 			),
 			patch.object(supplier_api, "get_user_companies", return_value=set(companies)),
 		]
+		frappe.local.response = {}  # where a call sets the HTTP status
 		for p in stack:
 			p.start()
 			self.addCleanup(p.stop)

@@ -29,95 +29,197 @@ APP = os.path.dirname(os.path.dirname(API))
 OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manager", "Stock Manager")
 
 # Every call that opens a record by its number, and the kinds of record it checks.
-# "variable" means the kind of record is decided while the call runs (an invoice or a POS invoice).
+# Each entry reads "kind of record, then the value checked". "variable" means the kind of record is decided
+# while the call runs (an invoice or a POS invoice).
 EXPECTED_GUARDS = {
+	"dashboard_api": {
+		"get_dashboard_metrics": ("Warehouse warehouse",),
+	},
+	"expiry_api": {
+		"get_expiry_alerts": ("Warehouse warehouse",),
+	},
+	"held_sales_api": {
+		"list_held_sales": ("Warehouse warehouse",),
+		"save_held_sale": ("Warehouse warehouse",),
+	},
 	"inventory_api": {
-		"delete_inventory_discount_rule": ("Inventory Discount Rule",),
-		"get_inventory_discount_rule": ("Inventory Discount Rule",),
-		"get_stock_entry_details": ("Stock Entry",),
-		"update_stock_entry": ("Stock Entry",),
-		"cancel_stock_entry": ("Stock Entry",),
-		"submit_stock_entry": ("Stock Entry",),
-		"add_sales_person_stock_take": ("Stock Reconciliation",),
-		"add_stock_controller_stock_take": ("Stock Reconciliation",),
-		"add_stock_manager_stock_take_and_submit": ("Stock Reconciliation",),
-		"get_multi_level_stock_reconciliation": ("Stock Reconciliation",),
+		"get_stock_balance_api": ("Warehouse warehouse",),
+		"get_stock_balance_multiple": ("Warehouse warehouse",),
+		"create_stock_entry": ("Warehouse from_warehouse", "Warehouse to_warehouse"),
+		"create_material_receipt": ("Warehouse target_warehouse",),
+		"create_material_issue": ("Warehouse source_warehouse",),
+		"create_material_transfer": ("Warehouse source_warehouse", "Warehouse target_warehouse"),
+		"create_stock_reconciliation": ("Warehouse warehouse",),
+		"check_stock_availability": ("Warehouse warehouse",),
+		"get_stock_ledger_entries": ("Warehouse warehouse",),
+		"get_stock_summary": ("Warehouse warehouse",),
+		"repost_stock": ("Warehouse warehouse",),
+		"get_low_stock_items": ("Warehouse warehouse",),
+		"get_inventory_item_details": ("Warehouse warehouse",),
+		"list_inventory_items": ("Warehouse warehouse",),
+		"update_inventory_item_details": ("Warehouse warehouse",),
+		"create_inventory_discount_rule": ("Warehouse warehouse",),
+		"update_inventory_discount_rule": ("Warehouse warehouse",),
+		"delete_inventory_discount_rule": ("Inventory Discount Rule name",),
+		"get_inventory_discount_rule": ("Inventory Discount Rule name",),
+		"list_inventory_discount_rules": ("Warehouse warehouse",),
+		"get_inventory_discount_for_item": ("Warehouse warehouse",),
+		"bulk_get_inventory_discounts": ("Warehouse warehouse",),
+		"list_stock_entries": ("Warehouse warehouse",),
+		"list_material_receipts": ("Warehouse warehouse",),
+		"list_material_issues": ("Warehouse warehouse",),
+		"list_material_transfers": ("Warehouse warehouse",),
+		"get_stock_entry_details": ("Stock Entry stock_entry_name",),
+		"update_stock_entry": (
+			"Stock Entry stock_entry_name",
+			"Warehouse from_warehouse",
+			"Warehouse to_warehouse",
+		),
+		"cancel_stock_entry": ("Stock Entry stock_entry_name",),
+		"submit_stock_entry": ("Stock Entry stock_entry_name",),
+		"create_multi_level_stock_reconciliation": ("Warehouse warehouse",),
+		"add_sales_person_stock_take": ("Stock Reconciliation reconciliation_name",),
+		"add_stock_controller_stock_take": ("Stock Reconciliation reconciliation_name",),
+		"add_stock_manager_stock_take_and_submit": ("Stock Reconciliation reconciliation_name",),
+		"get_multi_level_stock_reconciliation": ("Stock Reconciliation reconciliation_name",),
+		"list_multi_level_stock_reconciliations": ("Warehouse warehouse",),
 	},
 	"invoices": {
-		"validate_cart_items": ("POS Profile",),
-		"update_invoice": ("POS Profile",),
-		"submit_invoice": ("POS Profile", "variable"),
-		"get_invoice_for_return": ("Sales Invoice",),
+		"validate_cart_items": ("POS Profile pos_profile",),
+		"update_invoice": ("POS Profile pos_profile",),
+		"submit_invoice": ("POS Profile pos_profile", "variable invoice_name"),
+		"get_invoice_for_return": ("Sales Invoice invoice_name",),
 	},
 	"items": {
-		"search_by_barcode": ("POS Profile",),
-		"get_item_stock": ("Warehouse",),
-		"get_batch_serial_details": ("Item",),
-		"get_item_variants": ("POS Profile",),
-		"get_items": ("POS Profile",),
-		"get_item_details": ("Item", "POS Profile"),
-		"get_stock_quantities": ("Warehouse",),
-		"get_product_bundle_availability": ("Warehouse",),
-		"return_items": ("Stock Entry",),
+		"search_by_barcode": ("POS Profile pos_profile",),
+		"get_item_stock": ("Warehouse warehouse",),
+		"get_batch_serial_details": ("Item item_code", "Warehouse warehouse"),
+		"get_item_variants": ("POS Profile pos_profile",),
+		"get_items": ("POS Profile pos_profile",),
+		"get_item_details": ("Item item_code", "POS Profile pos_profile"),
+		"get_stock_quantities": ("Warehouse warehouse",),
+		"get_product_bundle_availability": ("Warehouse warehouse",),
+		"return_items": ("Stock Entry grn_name",),
+	},
+	"kitchen_api": {
+		"send_tickets": ("Warehouse warehouse",),
+		"list_tickets": ("Warehouse warehouse",),
 	},
 	"onboarding_api": {
-		"update_pos_profile": ("POS Profile",),
+		"update_company": ("Warehouse default_warehouse",),
+		"create_pos_profile": ("Price List selling_price_list", "Warehouse warehouse"),
+		"update_pos_profile": (
+			"POS Profile name",
+			"POS Profile profile_name",
+			"Price List selling_price_list",
+			"Warehouse warehouse",
+		),
 	},
 	"product_api": {
-		"delete_product": ("Item",),
-		"enable_product": ("Item",),
-		"add_barcode": ("Item",),
-		"remove_barcode": ("Item",),
-		"create_product_variant": ("Item",),
-		"get_product_variants": ("Item",),
-		"set_product_warranty": ("Item",),
-		"get_product_warranty": ("Item",),
+		"get_products": ("Price List price_list", "Warehouse warehouse"),
+		"update_product": ("Warehouse warehouse",),
+		"delete_product": ("Item item_code",),
+		"enable_product": ("Item item_code",),
+		"add_barcode": ("Item item_code",),
+		"remove_barcode": ("Item item_code",),
+		"get_product_price": ("Price List price_list",),
+		"set_product_price": ("Price List price_list",),
+		"get_stock_quantity": ("Warehouse warehouse",),
+		"bulk_update_prices": ("Price List price_list",),
+		"create_product_variant": ("Item template_item_code",),
+		"get_product_variants": ("Item template_item_code",),
+		"bulk_import_opening_stock": ("Warehouse warehouse",),
+		"update_price_list": ("Price List price_list_doc.name",),
+		"delete_price_list": ("Price List price_list_name",),
+		"set_product_warranty": ("Item item_code",),
+		"get_product_warranty": ("Item item_code",),
 	},
 	"purchase": {
-		"create_purchase_order": ("Supplier",),
-		"create_grn": ("Purchase Order",),
-		"create_stock_receipt": ("Purchase Receipt",),
-		"get_grn_details": ("Purchase Receipt",),
-		"create_purchase_invoice": ("variable",),
-		"create_purchase_invoice_from_grn": ("Purchase Receipt",),
-		"create_delivery_note_from_po": ("Purchase Order",),
-		"pay_purchase_invoice": ("Purchase Invoice",),
+		"create_purchase_order": ("Supplier supplier",),
+		"create_grn": ("Purchase Order data.get('lpo_no')", "Warehouse data.get('warehouse')"),
+		"create_stock_receipt": ("Purchase Receipt grn_no",),
+		"get_grn_details": ("Purchase Receipt grn_no",),
+		"create_purchase_invoice": ("variable reference_name",),
+		"create_purchase_invoice_from_grn": ("Purchase Receipt grn_no",),
+		"create_delivery_note_from_po": ("Purchase Order purchase_order_name",),
+		"pay_purchase_invoice": ("Purchase Invoice invoice_no",),
 	},
 	"purchase_receipt": {
-		"reject_return_items": ("Purchase Receipt",),
+		"reject_return_items": ("Purchase Receipt purchase_receipt",),
 	},
 	"reports": {
-		"grn_detail_report": ("Purchase Receipt",),
+		"inventory_summary_report": ("Warehouse warehouse",),
+		"inventory_movement_report": ("Warehouse warehouse",),
+		"stock_aging_report": ("Warehouse warehouse",),
+		"inventory_value_report": ("Warehouse warehouse",),
+		"sales_analytics_report": ("Warehouse warehouse",),
+		"export_sales_analytics_report": ("Warehouse warehouse",),
+		"inventory_value_by_category_report": ("Warehouse warehouse",),
+		"inventory_cost_method_comparison_report": ("Warehouse warehouse",),
+		"inventory_value_trends_report": ("Warehouse warehouse",),
+		"inventory_turnover_report": ("Warehouse warehouse",),
+		"inventory_days_on_hand_report": ("Warehouse warehouse",),
+		"inventory_movement_patterns_report": ("Warehouse warehouse",),
+		"inventory_obsolescence_risk_report": ("Warehouse warehouse",),
+		"inventory_aging_recommendations_report": ("Warehouse warehouse",),
+		"inventory_accuracy_report": ("Warehouse warehouse",),
+		"inventory_variance_report": ("Warehouse warehouse",),
+		"inventory_adjustment_trends_report": ("Warehouse warehouse",),
+		"inventory_transfer_efficiency_report": ("Warehouse from_warehouse", "Warehouse to_warehouse"),
+		"grn_list_report": ("Warehouse warehouse",),
+		"grn_detail_report": ("Purchase Receipt grn_no",),
 	},
 	"sales_api": {
-		"get_sales_invoice": ("Sales Invoice",),
-		"cancel_sales_invoice": ("Sales Invoice",),
-		"get_pos_invoice": ("POS Invoice",),
-		"cancel_pos_invoice": ("POS Invoice",),
-		"cancel_sales_return": ("Sales Invoice",),
-		"submit_invoice": ("variable",),
-		"get_pos_opening_entry": ("POS Opening Entry",),
-		"create_payment_entry_for_invoice": ("Sales Invoice",),
-		"get_invoice_payment_status": ("Sales Invoice",),
+		"create_sales_invoice": ("Warehouse warehouse",),
+		"create_pos_invoice": ("Warehouse warehouse",),
+		"get_sales_invoice": ("Sales Invoice name",),
+		"cancel_sales_invoice": ("Sales Invoice name",),
+		"get_pos_invoice": ("POS Invoice name",),
+		"cancel_pos_invoice": ("POS Invoice name",),
+		"cancel_sales_return": ("Sales Invoice name",),
+		"submit_invoice": ("variable name",),
+		"get_pos_opening_entry": ("POS Opening Entry name",),
+		"create_payment_entry_for_invoice": ("Sales Invoice sales_invoice",),
+		"get_invoice_payment_status": ("Sales Invoice sales_invoice",),
 	},
 	"stock": {
-		"get_low_stock_items": ("Warehouse",),
-		"start_stock_count": ("Warehouse",),
-		"add_stock_count_items": ("Stock Reconciliation",),
-		"complete_stock_count": ("Stock Reconciliation",),
-		"create_pr_from_po": ("Purchase Order",),
-		"cancel_purchase_order": ("Purchase Order",),
-		"approve_stock_transfer_workflow": ("Material Request",),
-		"dispatch_stock": ("Material Request",),
-		"receive_stock_destination": ("Material Request",),
-		"get_stock_transfer_request": ("Material Request",),
-		"confirm_receive_transfer": ("Stock Entry",),
+		"create_stock_transfer": (
+			"Warehouse data.get('from_warehouse')",
+			"Warehouse data.get('to_warehouse')",
+		),
+		"create_stock_adjustment": ("Warehouse data.get('warehouse')",),
+		"create_pos_delivery_note": ("Warehouse data.get('warehouse')",),
+		"create_stock_receipt": ("Warehouse data.get('to_warehouse')",),
+		"get_low_stock_items": ("Warehouse warehouse",),
+		"start_stock_count": ("Warehouse data['warehouse']",),
+		"add_stock_count_items": ("Stock Reconciliation count_id",),
+		"complete_stock_count": ("Stock Reconciliation count_id",),
+		"create_pr_from_po": ("Purchase Order purchase_order",),
+		"cancel_purchase_order": ("Purchase Order purchase_order",),
+		"approve_stock_transfer_workflow": ("Material Request request_id",),
+		"dispatch_stock": ("Material Request request_id", "Warehouse data.get('origin_warehouse')"),
+		"receive_stock_destination": (
+			"Material Request request_id",
+			"Warehouse data.get('destination_warehouse')",
+		),
+		"create_stock_transfer_request": (
+			"Warehouse data.get('from_warehouse')",
+			"Warehouse data.get('to_warehouse')",
+		),
+		"get_stock_transfer_request": ("Material Request request_id",),
+		"create_stock_entry_old": ("Warehouse from_warehouse", "Warehouse to_warehouse"),
+		"create_stock_entry": ("Warehouse from_warehouse", "Warehouse to_warehouse"),
+		"confirm_receive_transfer": ("Stock Entry stock_entry_name",),
 	},
 	"warehouse_api": {
-		"get_warehouse_details": ("Warehouse",),
-		"update_warehouse": ("Warehouse",),
-		"assign_warehouses_to_staff": ("Warehouse",),
-		"get_warehouse_staff": ("Warehouse",),
+		"create_warehouse": ("Warehouse parent_warehouse",),
+		"list_warehouses": ("Warehouse parent_warehouse",),
+		"get_warehouse_details": ("Warehouse name",),
+		"update_warehouse": ("Warehouse name", "Warehouse parent_warehouse"),
+		"assign_warehouses_to_staff": ("Warehouse warehouse",),
+		"get_warehouse_staff": ("Warehouse warehouse",),
+		"remove_warehouse_from_staff": ("Warehouse warehouse",),
+		"set_default_warehouse": ("Warehouse warehouse",),
 	},
 }
 
@@ -140,6 +242,9 @@ class RecordAccessCase(unittest.TestCase):
 			patch.object(frappe, "log_error", create=True),
 			patch("frappe.translate.get_all_translations", return_value={}),
 			patch("techsavanna_pos.api.access_control.get_user_companies", return_value=set(companies)),
+			patch(
+				"techsavanna_pos.api.payment_gateway_common.get_user_companies", return_value=set(companies)
+			),
 		]
 		for p in stack:
 			p.start()
@@ -245,9 +350,9 @@ class TestTheListMatchesTheSource(unittest.TestCase):
 	def test_every_listed_call_makes_its_checks_and_no_unlisted_call_does(self):
 		actual = {}
 		for (module, name), node in _function_nodes().items():
-			kinds = sorted({kind for kind, _arg in _checks_in(node)})
-			if kinds:
-				actual.setdefault(module, {})[name] = tuple(kinds)
+			checks = sorted({f"{kind} {ast.unparse(arg)}" for kind, arg in _checks_in(node)})
+			if checks:
+				actual.setdefault(module, {})[name] = tuple(checks)
 		expected = {
 			m: {n: tuple(sorted(k)) for n, k in calls.items()} for m, calls in EXPECTED_GUARDS.items()
 		}
@@ -319,7 +424,7 @@ class TestEachCallRefusesAnotherBusinessesRecord(RecordAccessCase):
 				with self.subTest(call=f"{module_name}.{name}"), self.assertRaises(frappe.PermissionError):
 					function(**arguments)
 				tested += 1
-		self.assertGreater(tested, 30, "expected many calls to be exercised")
+		self.assertGreater(tested, 100, "expected many calls to be exercised")
 		if skipped:
 			self.skipTest(f"ran {tested}; not importable without ERPNext: {sorted(set(skipped))}")
 
@@ -355,7 +460,7 @@ class TestTheOwnerFieldExists(unittest.TestCase):
 	"""A check on a field the document type does not have would silently let every record through."""
 
 	def kinds(self):
-		kinds = {k for calls in EXPECTED_GUARDS.values() for kinds in calls.values() for k in kinds}
+		kinds = {kind for node in _function_nodes().values() for kind, _arg in _checks_in(node)}
 		return sorted(kinds - {"variable"} | {"Sales Invoice", "POS Invoice"})
 
 	def test_each_kind_of_record_has_the_field_the_check_reads(self):

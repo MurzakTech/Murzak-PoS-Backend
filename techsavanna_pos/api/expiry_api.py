@@ -18,6 +18,7 @@ from frappe import _
 from frappe.utils import add_days, cint, flt, getdate, nowdate
 
 from techsavanna_pos.api.expiry_rules import clamp_window, classify, sort_alerts, summarize
+from techsavanna_pos.api.access_control import ensure_record_access
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -118,6 +119,7 @@ def get_expiry_alerts(
 	Stock that has expired or expires within `days` (1 to 365, default 30),
 	soonest first, with the stock value at risk.
 	"""
+	ensure_record_access("Warehouse", warehouse)
 	company = resolve_company(company)
 	window = clamp_window(days)
 	include_expired = bool(cint(include_expired))

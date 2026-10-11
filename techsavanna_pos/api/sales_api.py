@@ -24,6 +24,12 @@ from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_d
     get_applicable_inventory_discount,
 )
 from techsavanna_pos.api.access_control import ensure_record_access
+from techsavanna_pos.api.business_lists import (
+    caller_company,
+    first_mode_of_payment,
+    mode_of_payment_usable,
+    modes_of_payment_for,
+)
 from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
@@ -325,7 +331,7 @@ def _get_or_create_pos_opening_entry(
         cash_mode = frappe.db.get_value("Mode of Payment", {"name": "Cash"}, "name")
         if not cash_mode:
             # Try to get any mode of payment
-            cash_mode = frappe.db.get_value("Mode of Payment", {"enabled": 1}, "name", order_by="creation desc")
+            cash_mode = first_mode_of_payment(pos_profile_doc.company)
         
         if cash_mode:
             balance_details.append({
@@ -859,6 +865,7 @@ def create_sales_invoice(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     import json
 
     try:
@@ -1033,6 +1040,7 @@ def create_pos_invoice(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", warehouse)
     try:
         parsed_items = _parse_items(items)
         parsed_payments = _parse_payments(payments)
@@ -1657,9 +1665,15 @@ def list_payment_methods(company: Optional[str] = None, only_enabled: bool = Tru
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    # Only the modes this business may use: set up for its company, or not set up for anyone yet
+    company = caller_company(company)
+    allowed = modes_of_payment_for(company, only_enabled=bool(only_enabled))
+
     filters = {}
     if only_enabled:
         filters["enabled"] = 1
+    if allowed is not None:
+        filters["name"] = ["in", allowed]
 
     methods = frappe.get_all(
         "Mode of Payment",
@@ -3442,7 +3456,7 @@ def create_payment_entry_for_invoice(
             mode_of_payment = frappe.db.get_value("Company", si.company, "default_mode_of_payment")
             if not mode_of_payment:
                 # Get first available mode of payment
-                mop = frappe.db.get_value("Mode of Payment", {"enabled": 1}, "name", order_by="name")
+                mop = first_mode_of_payment(si.company)
                 if not mop:
                     return {
                         "success": False,
@@ -3452,7 +3466,9 @@ def create_payment_entry_for_invoice(
                 mode_of_payment = mop
         
         # Validate mode of payment exists
-        if not frappe.db.exists("Mode of Payment", mode_of_payment):
+        if not frappe.db.exists("Mode of Payment", mode_of_payment) or not mode_of_payment_usable(
+            mode_of_payment, si.company
+        ):
             return {
                 "success": False,
                 "message": _("Mode of Payment {0} not found").format(mode_of_payment),

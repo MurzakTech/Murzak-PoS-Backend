@@ -22,9 +22,14 @@ from techsavanna_pos.api.payment_gateway_common import get_user_companies
 
 MANAGER_ROLE = "System Manager"
 
-# The field that says which company owns a record. Most records have `company`; customers, items and
+# The field that says which company owns a record. Most records have `company`; customers, items, price lists and
 # suppliers carry their owner in `custom_company` (added by this app).
-OWNER_FIELD = {"Customer": "custom_company", "Item": "custom_company", "Supplier": "custom_company"}
+OWNER_FIELD = {
+	"Customer": "custom_company",
+	"Item": "custom_company",
+	"Supplier": "custom_company",
+	"Price List": "custom_company",
+}
 
 # Who may do the sensitive everyday jobs. These are copied from the frontend's role table
 # (src/config/roleAccessConfig.js in the Murzak-PoS-Frontend repository) so the server and the screens

@@ -116,6 +116,8 @@ def create_stock_transfer():
 
         items = []
         for item in data["items"]:
+            ensure_record_access("Warehouse", data.get("from_warehouse"))
+            ensure_record_access("Warehouse", data.get("to_warehouse"))
             items.append({
                 "item_code": item["item_code"],
                 "qty": item["qty"],
@@ -201,6 +203,7 @@ def create_stock_adjustment():
         }
 
         if entry_type == "Material Issue":
+            ensure_record_access("Warehouse", data.get("warehouse"))
             row["s_warehouse"] = data["warehouse"]
         else:
             row["t_warehouse"] = data["warehouse"]
@@ -282,6 +285,7 @@ def create_pos_delivery_note():
     dn.company = data["company"]
     dn.customer = data["customer"]
     dn.posting_date = data.get("posting_date") or nowdate()
+    ensure_record_access("Warehouse", data.get("warehouse"))
     dn.set_warehouse = data["warehouse"]
     dn.custom_pos_reference = data.get("pos_reference")
 
@@ -393,6 +397,7 @@ def create_stock_receipt():
         # Create Stock Entry
         # Refuse a company the caller does not belong to
         resolve_company(data["company"])
+        ensure_record_access("Warehouse", data.get("to_warehouse"))
         stock_entry = frappe.get_doc({
             "doctype": "Stock Entry",
             "stock_entry_type": "Material Receipt",
@@ -1156,6 +1161,7 @@ def dispatch_stock():
 
         request_id = data.get("request_id")
         ensure_record_access("Material Request", request_id)
+        ensure_record_access("Warehouse", data.get("origin_warehouse"))
         origin_warehouse = data.get("origin_warehouse")
         items = data.get("items")
         dispatched_by = data.get("dispatched_by")
@@ -1340,6 +1346,7 @@ def receive_stock_destination():
 
         request_id = data.get("request_id")
         ensure_record_access("Material Request", request_id)
+        ensure_record_access("Warehouse", data.get("destination_warehouse"))
         destination_warehouse = data.get("destination_warehouse")
         items = data.get("items")
         received_by = data.get("received_by")
@@ -1539,7 +1546,9 @@ def create_stock_transfer_request():
         mr.company = data["company"]
         mr.transaction_date = data.get("transaction_date") or frappe.utils.today()
         mr.material_request_type = "Material Transfer"
+        ensure_record_access("Warehouse", data.get("from_warehouse"))
         mr.set_from_warehouse = data["from_warehouse"]
+        ensure_record_access("Warehouse", data.get("to_warehouse"))
         mr.set_warehouse = data["to_warehouse"]
         mr.schedule_date = data.get("schedule_date") or mr.transaction_date
         
@@ -1969,6 +1978,8 @@ def create_stock_entry_old(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", from_warehouse)
+    ensure_record_access("Warehouse", to_warehouse)
     try:
         # Parse items if they are provided as a string
         if isinstance(items, str):
@@ -2239,6 +2250,8 @@ def create_stock_entry(
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
+    ensure_record_access("Warehouse", from_warehouse)
+    ensure_record_access("Warehouse", to_warehouse)
     print(f'|Creating a Stock entry.....\n\n')
     try:
         # Parse items if they are provided as a string
