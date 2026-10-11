@@ -654,28 +654,71 @@ class TestRetriedSaleReturnsTheOriginal(unittest.TestCase):
 	"""Fix 4: a sale retried after a lost reply gets the invoice already created."""
 
 	def setUp(self):
-		frappe.cache().delete_value("techsavanna_pos:sale_ref:Shop A:POS1")
+		for company in ("Shop A", "Shop B"):
+			frappe.cache().delete_value(f"techsavanna_pos:sale_ref:{company}:POS1")
+
+	def lookups(self, docstatus=None, stored=(), has_field=True):
+		"""
+		A database that answers the two questions find_recorded_sale asks: the docstatus of the
+		remembered invoice, and which live invoice of a company carries a till reference.
+		`stored` lists the invoices on file as (doctype, name, company, client_reference, docstatus).
+		"""
+
+		def get_value(doctype, filters, fieldname=None, *args, **kwargs):
+			if not isinstance(filters, dict):
+				return docstatus
+			for stored_doctype, name, company, reference, stored_docstatus in stored:
+				# Like a real query, a filter that is not given matches every row
+				if (
+					stored_doctype == doctype
+					and filters.get("company", company) == company
+					and filters.get("pos_client_reference", reference) == reference
+					and ("docstatus" not in filters or stored_docstatus != 2)
+				):
+					return name
+			return None
+
+		meta = MagicMock()
+		meta.has_field.return_value = has_field
+		return (
+			patch.object(frappe.db, "get_value", side_effect=get_value),
+			patch.object(frappe, "get_meta", return_value=meta),
+		)
+
+	def find(self, company, reference, **db):
+		get_value, get_meta = self.lookups(**db)
+		with get_value, get_meta:
+			return payment_gateway_api.find_recorded_sale(company, reference)
 
 	def test_remembered_sale_is_found(self):
 		payment_gateway_api.remember_sale("Shop A", "POS1", "POS Invoice", "POS-0001")
-		with patch.object(frappe.db, "get_value", return_value=1):
-			self.assertEqual(
-				payment_gateway_api.find_recorded_sale("Shop A", "POS1"), ("POS Invoice", "POS-0001")
-			)
+		self.assertEqual(self.find("Shop A", "POS1", docstatus=1), ("POS Invoice", "POS-0001"))
 
 	def test_cancelled_or_missing_sale_counts_as_new(self):
 		payment_gateway_api.remember_sale("Shop A", "POS1", "POS Invoice", "POS-0001")
+		cancelled = [("POS Invoice", "POS-0001", "Shop A", "POS1", 2)]
 		for docstatus in (2, None):
-			with patch.object(frappe.db, "get_value", return_value=docstatus):
-				self.assertIsNone(payment_gateway_api.find_recorded_sale("Shop A", "POS1"))
+			self.assertIsNone(self.find("Shop A", "POS1", docstatus=docstatus, stored=cancelled))
 
 	def test_no_reference_means_no_lookup(self):
 		self.assertIsNone(payment_gateway_api.find_recorded_sale("Shop A", None))
 
 	def test_other_business_cannot_see_the_sale(self):
 		payment_gateway_api.remember_sale("Shop A", "POS1", "POS Invoice", "POS-0001")
-		with patch.object(frappe.db, "get_value", return_value=1):
-			self.assertIsNone(payment_gateway_api.find_recorded_sale("Shop B", "POS1"))
+		on_file = [("POS Invoice", "POS-0001", "Shop A", "POS1", 1)]
+		self.assertIsNone(self.find("Shop B", "POS1", docstatus=1, stored=on_file))
+
+	def test_offline_sale_is_found_by_its_stored_reference_after_the_memory_is_gone(self):
+		on_file = [
+			("POS Invoice", "POS-0001", "Shop B", "POS1", 1),
+			("Sales Invoice", "SINV-0009", "Shop A", "POS1", 1),
+		]
+		self.assertEqual(self.find("Shop A", "POS1", stored=on_file), ("Sales Invoice", "SINV-0009"))
+		self.assertEqual(self.find("Shop B", "POS1", stored=on_file), ("POS Invoice", "POS-0001"))
+
+	def test_stored_reference_is_not_looked_up_before_the_field_exists(self):
+		on_file = [("POS Invoice", "POS-0001", "Shop A", "POS1", 1)]
+		self.assertIsNone(self.find("Shop A", "POS1", stored=on_file, has_field=False))
 
 	def test_losing_the_race_returns_the_winning_sale(self):
 		from techsavanna_pos.api import sales_api
