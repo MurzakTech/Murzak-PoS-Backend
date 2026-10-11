@@ -69,6 +69,12 @@ def main() -> int:
 		frappe.flags.in_test = True
 		frappe.local.lang = "en"
 
+		# Frappe looks up message translations in the database and Redis. Here there is neither, and the
+		# tests mock the database, so say plainly that there are no translations: messages stay in English.
+		import frappe.translate
+
+		frappe.translate.get_all_translations = lambda lang: {}
+
 		names, skipped = find_tests(root)
 		print(f"Running {len(names)} test file(s) on Frappe {frappe.__version__}:")
 		for name in names:

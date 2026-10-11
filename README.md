@@ -46,6 +46,10 @@ python .github/scripts/run_unit_tests.py
 
 A few tests need a full bench site (database and Redis) and are skipped by the second check; the list is `NEEDS_A_SITE` in `.github/scripts/run_unit_tests.py`. Run those on a bench with `bench --site <site> run-tests --app techsavanna_pos`.
 
+### Server setup (once)
+
+The website's own web server (Nginx) must send two protections that only a server can send: stopping other websites from showing the till inside their own page, and making browsers always use a secure connection. The steps, which take about 10 minutes, are in [docs/SERVER_SECURITY_SETUP.md](docs/SERVER_SECURITY_SETUP.md), with a checker (`techsavanna_pos/api/scripts/check_security_headers.py`) that confirms they worked.
+
 ### License
 
 mit

@@ -218,7 +218,10 @@ scheduler_events = {
 # Request Events
 # ----------------
 # before_request = ["techsavanna_pos.utils.before_request"]
-# after_request = ["techsavanna_pos.utils.after_request"]
+
+# Adds the security headers that stop the backend's pages being shown inside other websites and make
+# browsers keep using HTTPS (see techsavanna_pos/security_headers.py)
+after_request = ["techsavanna_pos.security_headers.add_security_headers"]
 
 # Job Events
 # ----------
