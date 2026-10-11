@@ -18,6 +18,17 @@ from techsavanna_pos.api.etims_optional import relax_etims_mandatory
 from techsavanna_pos.api.access_control import require_catalogue_role
 
 
+PRESCRIPTION_FIELD = "custom_prescription_only"
+
+
+def _has_prescription_field() -> bool:
+    """False on a site that has not been migrated to the prescription-only flag yet."""
+    try:
+        return frappe.get_meta("Item").has_field(PRESCRIPTION_FIELD)
+    except Exception:
+        return False
+
+
 @frappe.whitelist()
 def create_product(
     item_code: str,
@@ -44,7 +55,8 @@ def create_product(
     packaging_unit_code: str = None,
     unit_of_quantity_code: str = None,
     item_classification: str = None,
-    taxation_type: str = None
+    taxation_type: str = None,
+    prescription_only: bool = False
 ) -> Dict:
     """Create a new product/item
     
@@ -152,6 +164,8 @@ def create_product(
         item.is_stock_item = 1 if is_stock_item else 0
         item.is_sales_item = 1 if is_sales_item else 0
         item.is_purchase_item = 1 if is_purchase_item else 0
+        if prescription_only and _has_prescription_field():
+            item.set(PRESCRIPTION_FIELD, 1)
         
         if brand:
             item.brand = brand
@@ -516,13 +530,16 @@ def get_products(
         except Exception:
             custom_fields_exist = False
         
+        # The prescription-only flag, when this site has it
+        rx_column = f", {PRESCRIPTION_FIELD}" if _has_prescription_field() else ""
+
         # Build SELECT query with or without custom fields
         if custom_fields_exist:
             products = frappe.db.sql(f"""
                 SELECT name, item_code, item_name, item_group, stock_uom,
                        standard_rate, is_stock_item, is_sales_item, is_purchase_item,
                        disabled, brand, image, warranty_period,
-                       custom_warranty_period_unit, custom_warranty_period_value
+                       custom_warranty_period_unit, custom_warranty_period_value{rx_column}
                 FROM `tabItem`
                 WHERE {where_sql}
                 ORDER BY creation DESC
@@ -537,7 +554,7 @@ def get_products(
             products = frappe.db.sql(f"""
                 SELECT name, item_code, item_name, item_group, stock_uom,
                        standard_rate, is_stock_item, is_sales_item, is_purchase_item,
-                       disabled, brand, image, warranty_period
+                       disabled, brand, image, warranty_period{rx_column}
                 FROM `tabItem`
                 WHERE {where_sql}
                 ORDER BY creation DESC
@@ -556,6 +573,8 @@ def get_products(
                 custom_fields.append("custom_warranty_period_unit")
             if meta.get_field("custom_warranty_period_value") is not None:
                 custom_fields.append("custom_warranty_period_value")
+            if meta.get_field(PRESCRIPTION_FIELD) is not None:
+                custom_fields.append(PRESCRIPTION_FIELD)
         except Exception:
             pass  # If meta check fails, just use basic fields
         
@@ -955,7 +974,8 @@ def update_product(
     disabled: bool = None,
     buying_price: float = None,
     warehouse: str = None,
-    company: str = None
+    company: str = None,
+    prescription_only: bool | None = None
 ) -> Dict:
     """Update an existing product/item
     
@@ -977,6 +997,7 @@ def update_product(
         buying_price: Buying price (cost price) - requires warehouse
         warehouse: Warehouse for buying_price (required if buying_price is provided)
         company: Company for buying_price (optional, auto-detected from warehouse if not provided)
+        prescription_only: Whether a sale of this product needs a patient and a prescriber (pharmacies)
         
     Returns:
         Updated product details
@@ -1025,6 +1046,8 @@ def update_product(
         item.weight_uom = weight_uom
     if disabled is not None:
         item.disabled = 1 if disabled else 0
+    if prescription_only is not None and _has_prescription_field():
+        item.set(PRESCRIPTION_FIELD, 1 if prescription_only else 0)
     
     item.save(ignore_permissions=True)
     
@@ -1066,6 +1089,8 @@ def update_product(
         "is_purchase_item": item.is_purchase_item,
         "disabled": item.disabled
     }
+    if _has_prescription_field():
+        response_data["prescription_only"] = item.get(PRESCRIPTION_FIELD) or 0
     
     # Add buying_price info if it was updated
     if buying_price_updated:

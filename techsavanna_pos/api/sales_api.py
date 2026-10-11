@@ -18,6 +18,8 @@ from techsavanna_pos.api.offline_sales import (
     offline_remark,
     parse_sold_at,
 )
+from techsavanna_pos.api.pharmacy import sale_remark as prescription_sale_remark
+from techsavanna_pos.api.pharmacy_rules import add_to_remarks
 from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
 )
@@ -728,6 +730,7 @@ def _create_invoice_document(
     discount_amount: Optional[float] = None,
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
+    extra_remark: str | None = None,
 ) -> "frappe.model.document.Document":
     if not company:
         company = _get_default_company()
@@ -799,6 +802,9 @@ def _create_invoice_document(
         if doc.meta.has_field(OFFLINE_SOLD_AT_FIELD):
             doc.set(OFFLINE_SOLD_AT_FIELD, sold_offline)
         doc.remarks = offline_remark(sold_offline, doc.get("remarks"))
+    # The dispensing record of prescription-only medicines, so it can be read back from the sale
+    if extra_remark:
+        doc.remarks = add_to_remarks(doc.get("remarks"), extra_remark)
 
     return doc
 
@@ -981,6 +987,7 @@ def create_pos_invoice(
     do_not_submit: bool = False,
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
+    dispensing: str | dict | None = None,
 ) -> Dict:
     """
     Create a POS Invoice (used for walk-in POS sales).
@@ -1005,6 +1012,9 @@ def create_pos_invoice(
             sale is recorded now, keeps this time on the invoice, and gets no automatic discount.
         client_reference: The till's id for this sale. Sending the same id again (a retry after a
             lost reply) returns the invoice already created instead of making a second one.
+        dispensing: For a sale that includes prescription-only medicines: {patient, prescriber,
+            reference}. A sale of such medicines without a patient and a prescriber is refused (unless
+            it was made offline); the record is written on the invoice's remarks.
 
     Returns:
         dict: Created POS Invoice details
@@ -1043,6 +1053,9 @@ def create_pos_invoice(
         recorded = find_recorded_sale(company, client_reference)
         if recorded:
             return _recorded_sale_response(*recorded)
+        # Prescription-only medicines need a patient and a prescriber on the sale (checked before any
+        # payment is used up, so a refused sale costs the customer nothing)
+        prescription_note = prescription_sale_remark(parsed_items, dispensing, parse_sold_at(offline_sold_at))
         gateway_claims = validate_gateway_payments(parsed_payments, company)
 
         # Ensure every payment row has an account; allow opt-in mapping to receivables
@@ -1104,6 +1117,7 @@ def create_pos_invoice(
                 discount_amount=discount_amount,
                 client_reference=client_reference,
                 offline_sold_at=offline_sold_at,
+                extra_remark=prescription_note,
             )
 
             if receivable_account and hasattr(si, "debit_to"):
@@ -1181,6 +1195,7 @@ def create_pos_invoice(
             discount_amount=discount_amount,
             client_reference=client_reference,
             offline_sold_at=offline_sold_at,
+            extra_remark=prescription_note,
         )
 
         if receivable_account and hasattr(pi, "debit_to"):
