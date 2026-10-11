@@ -19,6 +19,7 @@ from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_d
 )
 from techsavanna_pos.api.product_seeding import ensure_fiscal_year_exists
 from techsavanna_pos.api.access_control import require_manager, require_stock_count_role, require_stock_role
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 @frappe.whitelist()
@@ -42,6 +43,9 @@ def get_stock_balance_api(
     Returns:
         dict: Stock balance information
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Validate item exists
         if not frappe.db.exists("Item", item_code):
@@ -144,6 +148,9 @@ def get_stock_balance_multiple(
     Returns:
         dict: Stock balance information for all items
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Parse items
         if isinstance(items, str):
@@ -225,6 +232,9 @@ def create_stock_entry(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Parse items
         if isinstance(items, str):
@@ -416,6 +426,9 @@ def create_material_receipt(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     return create_stock_entry(
         stock_entry_type="Material Receipt",
         items=items,
@@ -449,6 +462,9 @@ def create_material_issue(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     return create_stock_entry(
         stock_entry_type="Material Issue",
         items=items,
@@ -484,6 +500,9 @@ def create_material_transfer(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     return create_stock_entry(
         stock_entry_type="Material Transfer",
         items=items,
@@ -581,6 +600,9 @@ def create_stock_reconciliation(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Parse items
         if isinstance(items, str):
@@ -845,6 +867,9 @@ def check_stock_availability(
     Returns:
         dict: Availability information
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Validate item exists
         if not frappe.db.exists("Item", item_code):
@@ -957,6 +982,9 @@ def get_stock_ledger_entries(
     Returns:
         dict: List of stock ledger entries
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get company if not provided
         if not company:
@@ -1039,6 +1067,9 @@ def get_stock_summary(
     Returns:
         dict: Stock summary data
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get company if not provided
         if not company:
@@ -1133,6 +1164,9 @@ def repost_stock(
     Returns:
         dict: Repost result
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         from erpnext.stock.stock_balance import repost_stock
         
@@ -1205,6 +1239,9 @@ def get_low_stock_items(
     Returns:
         dict: List of items with low stock
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get company if not provided
         if not company:
@@ -1288,6 +1325,9 @@ def list_stock_reconciliation_accounts(
     Returns:
         dict: List of suitable accounts with details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get company if not provided
         if not company:
@@ -1408,6 +1448,9 @@ def get_company_default_accounts(company: str = None) -> Dict:
     Returns:
         dict: Default accounts for the company
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get company if not provided
         if not company:
@@ -1489,6 +1532,9 @@ def get_inventory_item_details(
     Returns:
         Inventory item details including buying price, selling price, UOM, SKU, expiry date, etc.
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1584,6 +1630,9 @@ def list_inventory_items(
     Returns:
         List of inventory items with pagination
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1698,6 +1747,9 @@ def update_inventory_item_details(
     Returns:
         Updated inventory item details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1798,6 +1850,9 @@ def create_inventory_discount_rule(
     """Create an inventory discount rule (item, batch, or item group)."""
     # Discount rules change what customers pay: business owners only
     require_manager()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1857,6 +1912,9 @@ def update_inventory_discount_rule(
     """Update an inventory discount rule."""
     # Discount rules change what customers pay: business owners only
     require_manager()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -1957,6 +2015,9 @@ def list_inventory_discount_rules(
     page_size: int = 20,
 ) -> Dict:
     """List inventory discount rules with filters and pagination."""
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         filters = {}
         if rule_type:
@@ -2029,6 +2090,9 @@ def get_inventory_discount_for_item(
     posting_date: str = None,
 ) -> Dict:
     """Return the applicable discount rule for an item (batch > item > item group)."""
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not item_code:
             frappe.throw(_("item_code is required"), frappe.ValidationError)
@@ -2071,6 +2135,9 @@ def bulk_get_inventory_discounts(
     Return applicable discount rules for multiple items in one call.
     Accepts per-row overrides for warehouse, batch_no, and item_group.
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if isinstance(items, str):
             items = json.loads(items)
@@ -2150,6 +2217,9 @@ def list_stock_entries(
     Returns:
         dict: List of stock entries with pagination
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get company if not provided
         if not company:
@@ -2280,6 +2350,9 @@ def list_material_receipts(
     Returns:
         dict: List of material receipt entries with pagination
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     return list_stock_entries(
         stock_entry_type="Material Receipt",
         company=company,
@@ -2320,6 +2393,9 @@ def list_material_issues(
     Returns:
         dict: List of material issue entries with pagination
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     return list_stock_entries(
         stock_entry_type="Material Issue",
         company=company,
@@ -2360,6 +2436,9 @@ def list_material_transfers(
     Returns:
         dict: List of material transfer entries with pagination
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     return list_stock_entries(
         stock_entry_type="Material Transfer",
         company=company,
@@ -2761,6 +2840,9 @@ def create_multi_level_stock_reconciliation(
     """
     # Starting a stock count: only roles the frontend gives that screen
     require_stock_count_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get company if not provided
         if not company:
@@ -3506,6 +3588,9 @@ def list_multi_level_stock_reconciliations(
     Returns:
         dict: List of stock reconciliations with summary information
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Check if workflow_state field exists in the doctype
         meta = frappe.get_meta("Stock Reconciliation")

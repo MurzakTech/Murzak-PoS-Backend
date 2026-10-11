@@ -5,6 +5,7 @@ from frappe import _
 from frappe.utils import flt, cint, nowdate, nowtime, get_datetime, cstr
 from erpnext.stock.doctype.batch.batch import get_batch_qty, get_batch_no
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 try:
     from erpnext.accounts.doctype.pricing_rule.pricing_rule import (
@@ -1026,6 +1027,9 @@ def search_invoices_for_return(
 ):
     """Search for invoices that can be returned with pagination."""
     # Start with base filters
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     filters = {
         "docstatus": 1,
         "is_return": 0,

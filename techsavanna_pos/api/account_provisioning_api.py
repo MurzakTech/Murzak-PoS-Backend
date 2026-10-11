@@ -23,6 +23,7 @@ import frappe
 from frappe import _
 from typing import Optional, Dict, List, Tuple
 from frappe.utils import cint
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 @frappe.whitelist()
@@ -36,6 +37,9 @@ def get_provisional_accounting_status(company: str) -> Dict:
     Returns:
         dict: Provisional accounting status and configuration details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Company", company):
             return {
@@ -108,6 +112,9 @@ def set_default_provisional_account(
     Returns:
         dict: Operation result
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Company", company):
             return {
@@ -246,6 +253,9 @@ def list_available_provisional_accounts(
     Returns:
         dict: List of available accounts
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Company", company):
             return {
@@ -366,6 +376,9 @@ def auto_configure_provisional_account(
         >>> if result["success"]:
         ...     print(f"Account: {result['data']['account']}")
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Company", company):
             return {
@@ -514,6 +527,9 @@ def validate_provisional_accounting_setup(company: str) -> Dict:
     Returns:
         dict: Validation results with recommendations
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Company", company):
             return {

@@ -16,6 +16,7 @@ import re
 
 from techsavanna_pos.api.etims_optional import relax_etims_mandatory
 from techsavanna_pos.api.access_control import require_catalogue_role
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 @frappe.whitelist()
@@ -80,6 +81,9 @@ def create_product(
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Validate user permissions
         if frappe.session.user == "Guest":
@@ -362,6 +366,9 @@ def get_products(
         List of products with pagination info
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -786,6 +793,9 @@ def get_product_details(item_code: str, company: str = None) -> Dict:
         Detailed product information
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -984,6 +994,9 @@ def update_product(
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1228,6 +1241,9 @@ def get_product_price(item_code: str, price_list: str = None, company: str = Non
         Product price information
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1303,6 +1319,9 @@ def set_product_price(
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1366,6 +1385,9 @@ def get_stock_quantity(item_code: str, company: str = None, warehouse: str = Non
         Stock quantity information
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1404,6 +1426,9 @@ def bulk_create_products(products: List[Dict], company: str = None) -> Dict:
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1560,6 +1585,9 @@ def bulk_update_prices(price_updates: List[Dict], price_list: str, currency: str
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1771,6 +1799,9 @@ def bulk_import_products(products_data: str, company: str = None) -> Dict:
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -1808,6 +1839,9 @@ def bulk_import_opening_stock(
     """
     # Prices and the product catalogue: only roles the frontend gives the price screens
     require_catalogue_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -2736,6 +2770,9 @@ def update_item_group(
     Returns:
         Updated item group details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Please log in to update an item group. Your session has expired or you are not authenticated."), frappe.AuthenticationError)
     
@@ -3194,6 +3231,9 @@ def update_brand(brand_name: str, new_brand_name: str, company: str = None) -> D
     Returns:
         Updated brand details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Please log in to update a brand. Your session has expired or you are not authenticated."), frappe.AuthenticationError)
     
@@ -3570,6 +3610,9 @@ def seed_global_products(company: str = None, products_data: list = None) -> Dic
     Returns:
         Summary of seeding operation
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     

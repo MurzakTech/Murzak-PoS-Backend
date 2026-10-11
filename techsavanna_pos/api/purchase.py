@@ -25,6 +25,7 @@ import frappe
 from frappe.model.document import Document
 from frappe.exceptions import ValidationError
 from techsavanna_pos.api.access_control import require_stock_role
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 
@@ -1624,6 +1625,9 @@ def list_purchase_invoices(
     Example:
         GET /api/method/techsavanna_pos.api.purchase.list_purchase_invoices?page=1&page_size=20&supplier=Supplier%20ABC&status=Unpaid
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         page = int(page) if page else 1
         page_size = min(int(page_size) if page_size else 20, 100)

@@ -16,6 +16,7 @@ from techsavanna_pos.api.api_response import pos_response
 from techsavanna_pos.api.error_handler import handle_pos_exception
 from techsavanna_pos.api.constants import POSErrorCode
 from techsavanna_pos.api.access_control import require_stock_count_role, require_stock_role, require_transfer_role
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 # logger = logging.getLogger("stock_entry_error_log")
 
@@ -1939,6 +1940,9 @@ def create_stock_entry_old(
     """
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Parse items if they are provided as a string
         if isinstance(items, str):
@@ -2206,6 +2210,9 @@ def create_stock_entry(
     
     # Stock changes: only roles the frontend gives the stock screens
     require_stock_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     print(f'|Creating a Stock entry.....\n\n')
     try:
         # Parse items if they are provided as a string

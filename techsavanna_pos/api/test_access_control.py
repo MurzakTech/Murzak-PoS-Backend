@@ -536,6 +536,100 @@ class TestSensitiveCallsRefuseACashier(AccessCase):
 			self.skipTest(f"ran the rest; not importable without ERPNext: {sorted(set(skipped))}")
 
 
+def _api_modules():
+	api = os.path.dirname(os.path.abspath(__file__))
+	return sorted(
+		name[:-3] for name in os.listdir(api) if name.endswith(".py") and not name.startswith(("test_", "__"))
+	)
+
+
+def _is_whitelisted(node):
+	return any("whitelist" in ast.unparse(d) for d in node.decorator_list)
+
+
+def _takes_company(node):
+	return "company" in [a.arg for a in node.args.args + node.args.kwonlyargs]
+
+
+def _has_plain_company_check_on_top(node):
+	"""True when, after the docstring and any role checks, the first thing the call does is check `company`."""
+	body = list(node.body)
+	index = (
+		1
+		if body
+		and isinstance(body[0], ast.Expr)
+		and isinstance(getattr(body[0], "value", None), ast.Constant)
+		else 0
+	)
+	while (
+		index < len(body)
+		and isinstance(body[index], ast.Expr)
+		and isinstance(body[index].value, ast.Call)
+		and getattr(body[index].value.func, "id", "").startswith("require_")
+	):
+		index += 1
+	if index >= len(body) or not isinstance(body[index], ast.If):
+		return False
+	return ast.unparse(body[index].test) == "company" and "resolve_company(company)" in ast.unparse(
+		body[index]
+	)
+
+
+class TestEveryCallRefusesAnotherBusinessesCompany(AccessCase):
+	"""A user of Shop A who names Shop B's company is refused by every call that checks it at the top."""
+
+	def calls_checked_at_the_top(self):
+		api = os.path.dirname(os.path.abspath(__file__))
+		found = []
+		for module_name in _api_modules():
+			with open(os.path.join(api, module_name + ".py")) as handle:
+				tree = ast.parse(handle.read())
+			for node in tree.body:
+				if isinstance(node, ast.FunctionDef) and _is_whitelisted(node) and _takes_company(node):
+					if _has_plain_company_check_on_top(node):
+						found.append((module_name, node.name))
+		return found
+
+	def test_each_one_refuses_shop_b_for_a_user_of_shop_a(self):
+		# An owner holds every role the role checks look for, so only the company is in question
+		self.as_user("owner@shop-a.test", roles=OWNER_ROLES, companies=("Shop A",))
+		calls = self.calls_checked_at_the_top()
+		self.assertGreater(len(calls), 60, "expected the many calls that check the company at the top")
+		skipped, tested = [], 0
+		with (
+			patch.object(frappe, "new_doc", create=True) as new_doc,
+			patch.object(frappe, "get_all", create=True) as get_all,
+		):
+			for module_name, name in calls:
+				try:
+					module = importlib.import_module(f"techsavanna_pos.api.{module_name}")
+				except ImportError:  # needs ERPNext, which only a full bench has
+					skipped.append(module_name)
+					continue
+				function = inspect.unwrap(getattr(module, name))
+				arguments = {
+					parameter.name: "x"
+					for parameter in inspect.signature(function).parameters.values()
+					if parameter.default is inspect.Parameter.empty
+					and parameter.kind not in (parameter.VAR_POSITIONAL, parameter.VAR_KEYWORD)
+				}
+				arguments["company"] = "Shop B"
+				with self.subTest(call=f"{module_name}.{name}"), self.assertRaises(frappe.PermissionError):
+					function(**arguments)
+				tested += 1
+		new_doc.assert_not_called()
+		get_all.assert_not_called()
+		self.assertGreater(tested, 0)
+		if skipped:
+			self.skipTest(f"ran {tested}; not importable without ERPNext: {sorted(set(skipped))}")
+
+	def test_the_users_own_company_is_not_refused_by_the_check(self):
+		self.as_user("owner@shop-a.test", roles=OWNER_ROLES, companies=("Shop A",))
+		from techsavanna_pos.api import payment_gateway_common
+
+		self.assertEqual(payment_gateway_common.resolve_company("Shop A"), "Shop A")
+
+
 class TestGuardsAreNotForgotten(unittest.TestCase):
 	"""Reads the source files, so a new call that skips a guard fails here."""
 
@@ -599,6 +693,42 @@ class TestGuardsAreNotForgotten(unittest.TestCase):
 					unlimited.append(f"{filename}:{node.name}")
 		self.assertEqual(
 			unlimited, [], "Calls anyone can reach need @rate_limit (or a reason in OPEN_WITHOUT_LIMIT)"
+		)
+
+	# Calls that take a `company` but are fine without the check, and why
+	COMPANY_NOT_CHECKED: ClassVar[dict[tuple[str, str], str]] = {
+		(
+			"staff_api.py",
+			"get_staff_users",
+		): "ignores the company it is given and always uses the caller's own",
+	}
+
+	def test_every_call_that_takes_a_company_checks_it(self):
+		check = (
+			"resolve_company",
+			"get_user_companies",
+			"ensure_record_company",
+			"_ensure_can",
+			"require_gateway_admin",
+			"_caller_company",
+			"_build_base_filters",
+		)
+		unchecked = []
+		for filename in sorted(os.listdir(self.API)):
+			if not filename.endswith(".py") or filename.startswith("test_"):
+				continue
+			for node, decorators, source in self.functions(filename):
+				if not any("whitelist" in d for d in decorators) or not _takes_company(node):
+					continue
+				if (filename, node.name) in self.COMPANY_NOT_CHECKED:
+					continue
+				if not any(word in source for word in check):
+					unchecked.append(f"{filename}:{node.name}")
+		self.assertEqual(
+			unchecked,
+			[],
+			"A call that takes a company must refuse one the caller does not belong to: "
+			"start it with `if company: company = resolve_company(company)`",
 		)
 
 	def test_every_staff_and_role_change_checks_for_an_owner(self):

@@ -8,6 +8,7 @@ from erpnext.stock.get_item_details import get_item_details as erpnext_get_item_
 from frappe import _, as_json
 from frappe.query_builder import DocType, functions as fn
 from frappe.utils import flt, nowdate
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 ITEM_RESULT_FIELDS = [
 	"name as item_code",
@@ -1506,6 +1507,9 @@ def get_item_warehouse_availability(item_code=None, item_codes=None, company=Non
 			"company": str
 		}]
 	"""
+	# Refuse a company the caller does not belong to
+	if company:
+		company = resolve_company(company)
 	try:
 		if item_codes:
 			items_to_check = _parse_item_codes_param(item_codes)

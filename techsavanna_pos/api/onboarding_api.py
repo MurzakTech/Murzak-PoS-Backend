@@ -8,6 +8,7 @@ from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils import now, today
 from erpnext.setup.setup_wizard import setup_wizard
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 def initialize_site(country="Kenya"):
@@ -867,6 +868,9 @@ def create_pos_profile(
         Created POS profile details
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(
             _("Please log in to create a POS profile. Your session has expired or you need to authenticate first."),
@@ -1354,6 +1358,9 @@ def create_etims_settings(
         Created eTIMS settings details
     """
     # Validate user permissions
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if frappe.session.user == "Guest":
         frappe.throw(
             _("Please log in to configure eTIMS settings. Your session has expired or you need to authenticate first."),

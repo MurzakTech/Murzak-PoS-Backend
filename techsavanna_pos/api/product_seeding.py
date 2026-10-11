@@ -13,6 +13,7 @@ from frappe.utils import flt, nowdate, getdate, get_first_day, get_last_day
 
 from techsavanna_pos.api.etims_optional import relax_etims_mandatory
 from techsavanna_pos.api.seed_results import readable_seed_error, seed_result_status
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 def ensure_fiscal_year_exists(company: str, posting_date: str = None) -> str:
@@ -444,6 +445,9 @@ def create_seed_item(company: str = None):
         Dictionary with status, created count, skipped count, failed items, stock entries created, and total received
     """
     # Read & parse JSON safely
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     payload = {}
     try:
         raw_data = frappe.request.data
@@ -858,6 +862,9 @@ def create_seed_item(company: str = None):
     Response separates items created/skipped/failed and stock entry status.
     Failed and skipped items include short readable messages.
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # ----------------------
         # Parse payload safely

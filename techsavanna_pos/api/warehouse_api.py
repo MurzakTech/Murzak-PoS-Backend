@@ -7,6 +7,8 @@ import frappe
 from frappe import _
 from frappe.query_builder import DocType
 
+from techsavanna_pos.api.payment_gateway_common import resolve_company
+
 
 def is_staff_user(user_email: str = None) -> bool:
     """Check if a user is a staff user (has custom_company field set)
@@ -118,6 +120,9 @@ def create_warehouse(
     Returns:
         dict: Created warehouse details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Validate company exists
         if not frappe.db.exists("Company", company):
@@ -275,6 +280,9 @@ def list_warehouses(
     Returns:
         dict: List of warehouses with main_depot and is_default flags
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Check if custom_is_main_depot field exists in Warehouse doctype
         meta = frappe.get_meta("Warehouse")
@@ -1123,6 +1131,9 @@ def set_default_warehouse(company: str, warehouse: str) -> dict:
     Returns:
         dict: Operation result
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Company", company):
             return {
@@ -1177,6 +1188,9 @@ def get_default_warehouse(company: str) -> dict:
     Returns:
         dict: Default warehouse details or None
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Company", company):
             return {

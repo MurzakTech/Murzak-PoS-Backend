@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime, nowdate, cint, getdate, flt
 from techsavanna_pos.api.access_control import require_loyalty_role
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 @frappe.whitelist(allow_guest=False)
@@ -38,6 +39,9 @@ def create_loyalty_program(
     """
     # Loyalty programs: only roles the frontend gives the loyalty settings screen
     require_loyalty_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get logged-in user's company (required for isolation)
         if not company:
@@ -207,6 +211,9 @@ def get_loyalty_program_rules(loyalty_program_name=None, loyalty_program_id=None
     :param company: Company name (optional, defaults to logged-in user's company)
     :return: Loyalty program details with collection rules
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     debug = []
     
     try:
@@ -323,6 +330,9 @@ def list_loyalty_programs(company=None):
     :param company: Company name (optional, defaults to logged-in user's company)
     :return: List of loyalty programs
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     debug = []
     
     try:
@@ -401,6 +411,9 @@ def assign_loyalty_program(customer_id, loyalty_program_name, company=None):
     """
     # Loyalty programs: only roles the frontend gives the loyalty settings screen
     require_loyalty_role()
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get logged-in user's company (required for isolation)
         if not company:
@@ -486,6 +499,9 @@ def earn_loyalty_points(customer_id, purchase_amount, company=None):
     :param company: Company name (optional, defaults to logged-in user's company)
     :return: Success or failure message with points earned
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     debug_messages = []
 
     try:
@@ -662,6 +678,9 @@ def get_loyalty_balance(customer_id, company=None, limit=5):
     :param limit: Number of recent transactions to return (default: 5)
     :return: Loyalty balance and recent transactions
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     debug = []
 
     try:
@@ -785,6 +804,9 @@ def redeem_points(customer_id, points_to_redeem, company=None, reference_documen
     :return: Success or failure message with redemption details
     """
 
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     debug = []
 
     try:
@@ -928,6 +950,9 @@ def get_customer_loyalty_details(customer_id, company=None, invoice_amount=None)
     Returns:
         dict: Customer loyalty details including available points, conversion factor, etc.
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get logged-in user's company (required for isolation)
         if not company:
@@ -1058,6 +1083,9 @@ def calculate_loyalty_redemption(customer_id, points_to_redeem, invoice_amount=N
     Returns:
         dict: Redemption calculation including discount amount and validation
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         # Get logged-in user's company
         if not company:
@@ -1168,6 +1196,9 @@ def get_points_history(
     :param page: Page number (default: 1)
     :return: Loyalty points transaction history
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     debug = []
 
     try:

@@ -522,6 +522,9 @@ def get_mpesa_settings(company: str | None = None) -> dict:
 @frappe.whitelist()
 def update_mpesa_settings(company: str | None = None, **kwargs) -> dict:
 	"""Alias for register_mpesa_settings, which handles both create and update"""
+	# Refuse a company the caller does not belong to
+	if company:
+		company = resolve_company(company)
 	return register_mpesa_settings(company=company, **kwargs)
 
 

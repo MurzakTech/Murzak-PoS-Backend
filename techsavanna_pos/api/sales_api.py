@@ -21,6 +21,7 @@ from techsavanna_pos.api.offline_sales import (
 from techsavanna_pos.techsavanna_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
 )
+from techsavanna_pos.api.payment_gateway_common import resolve_company
 
 
 def _get_default_company() -> Optional[str]:
@@ -848,6 +849,9 @@ def create_sales_invoice(
     Returns:
         dict: Created Sales Invoice details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     import json
 
     try:
@@ -1015,6 +1019,9 @@ def create_pos_invoice(
         - Customer must be enrolled in a loyalty program and have sufficient points
         - The loyalty_amount is automatically calculated based on the redemption conversion factor
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         parsed_items = _parse_items(items)
         parsed_payments = _parse_payments(payments)
@@ -1306,6 +1313,9 @@ def list_sales_invoices(
     """
     List Sales Invoices with optional filters.
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not company:
             company = _get_default_company()
@@ -1626,6 +1636,9 @@ def _update_invoice_payments(doc, payments: List[Dict]) -> None:
 @frappe.whitelist()
 def list_payment_methods(company: Optional[str] = None, only_enabled: bool = True) -> Dict:
     """List modes of payment with optional company-specific account mapping."""
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     filters = {}
     if only_enabled:
         filters["enabled"] = 1
@@ -1680,6 +1693,9 @@ def create_credit_mode_of_payment(
     Create or enable a 'Credit' Mode of Payment and add its company account row.
     Safe to call multiple times (idempotent).
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if not company:
         frappe.throw(_("company is required"), frappe.ValidationError)
     if not default_account:
@@ -1753,6 +1769,9 @@ def get_pos_invoice_type(company: Optional[str] = None) -> Dict:
     - If company is provided, returns the company override when set.
     - Otherwise returns the global POS Settings value (defaults to 'POS Invoice').
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     return {"success": True, "data": {"invoice_type": _get_invoice_type(company)}}
 
 
@@ -1764,6 +1783,9 @@ def set_pos_invoice_type(invoice_type: str, company: Optional[str] = None) -> Di
     - If company is provided, stores a per-company override via defaults (pos_invoice_type::<company>).
     - Otherwise sets the global POS Settings value.
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     allowed = {"POS Invoice", "Sales Invoice"}
     if invoice_type not in allowed:
         frappe.throw(_("invoice_type must be one of: {0}").format(", ".join(allowed)), frappe.ValidationError)
@@ -1787,6 +1809,9 @@ def set_pos_invoice_type(invoice_type: str, company: Optional[str] = None) -> Di
 @frappe.whitelist()
 def get_receivable_account(customer: str, company: str) -> Dict:
     """Return the receivable account to use for a customer in a company."""
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     if not customer:
         frappe.throw(_("customer is required"), frappe.ValidationError)
     if not company:
@@ -1847,6 +1872,9 @@ def update_sales_invoice(
     Returns:
         dict: Updated Sales Invoice details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("Sales Invoice", name):
             return {
@@ -1977,6 +2005,9 @@ def update_pos_invoice(
     Returns:
         dict: Updated POS Invoice details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not frappe.db.exists("POS Invoice", name):
             return {
@@ -2112,6 +2143,9 @@ def list_pos_invoices(
     """
     List POS Invoices with optional filters.
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if not company:
             company = _get_default_company()
@@ -2388,6 +2422,9 @@ def create_sales_return(
     Returns:
         dict: Created Sales Return details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     import json
 
     company = _check_return_access(company, return_against)
@@ -2754,6 +2791,9 @@ def create_pos_opening_entry(
     Returns:
         Created POS Opening Entry details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
@@ -2847,6 +2887,9 @@ def list_pos_opening_entries(
     Returns:
         dict: List of POS Opening Entries with details
     """
+    # Refuse a company the caller does not belong to
+    if company:
+        company = resolve_company(company)
     try:
         filters: Dict = {}
         
