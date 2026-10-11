@@ -72,16 +72,28 @@ def _set_pos_settings_invoice_type(invoice_type: str) -> bool:
     return True
 
 
+def _company_uses_etims(company: str) -> bool:
+    """True when the business has an active eTIMS settings record (it is registered to send sales to KRA)."""
+    if not frappe.db.exists("DocType", "Navari KRA eTims Settings"):
+        return False
+    return bool(frappe.db.exists("Navari KRA eTims Settings", {"company": company, "is_active": 1}))
+
+
 def _get_invoice_type(company: Optional[str] = None) -> str:
     """
-    Resolve invoice type with a company override stored in defaults.
-    Falls back to POS Settings invoice_type, then defaults to 'POS Invoice'.
+    Resolve invoice type: a company override stored in defaults, then eTIMS, then POS Settings.
+
+    A business on eTIMS sells through Sales Invoice. That path posts stock and accounts once and can be
+    sent to KRA. (A POS Invoice would be merged into a Sales Invoice at shift close and counted twice.)
+    Other businesses use POS Invoice.
     """
     # Company override via Default key; does not require schema changes
     if company:
         override = frappe.db.get_default(f"pos_invoice_type::{company}")
         if override:
             return override
+        if _company_uses_etims(company):
+            return "Sales Invoice"
 
     # Then the global POS Settings value, on ERPNext versions that have it
     return _get_pos_settings_invoice_type() or "POS Invoice"

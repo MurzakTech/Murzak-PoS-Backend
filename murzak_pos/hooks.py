@@ -143,7 +143,10 @@ required_apps = ["frappe/erpnext", "navariltd/kenya_compliance"]
 # ---------------
 # Override standard doctype classes
 
-override_doctype_class = {"POS Invoice": "murzak_pos.overrides.pos_invoice_class.POSInvoice"}
+override_doctype_class = {
+	"POS Invoice": "murzak_pos.overrides.pos_invoice_class.POSInvoice",
+	"POS Closing Entry": "murzak_pos.overrides.pos_closing_entry_class.POSClosingEntry",
+}
 
 # Document Events
 # ---------------
