@@ -13,6 +13,25 @@ class POSInvoice(ERPNextPOSInvoice):
     the stock ledger update logic. This override fixes that.
     """
     
+    def make_discount_gl_entries(self, gl_entries):
+        """
+        Newer ERPNext 15 releases (seen on 15.122) only know "Purchase Invoice" and "Sales Invoice" here,
+        so a POS Invoice raises UnboundLocalError (enable_discount_accounting) as soon as it is submitted
+        through SalesInvoice.on_submit(). Run the Sales Invoice rules, then put the POS Invoice name back
+        on the ledger rows that this call added. On releases that already handle POS Invoice the result is
+        the same as before.
+        """
+        first_new_row = len(gl_entries)
+        real_doctype = self.doctype
+        self.doctype = "Sales Invoice"
+        try:
+            super().make_discount_gl_entries(gl_entries)
+        finally:
+            self.doctype = real_doctype
+        for row in gl_entries[first_new_row:]:
+            if row.get("voucher_type") == "Sales Invoice":
+                row["voucher_type"] = real_doctype
+
     def on_submit(self):
         """Override on_submit to call parent method for stock ledger updates"""
         # Debug logging
