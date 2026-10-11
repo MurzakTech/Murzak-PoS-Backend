@@ -730,7 +730,7 @@ def _create_invoice_document(
     discount_amount: Optional[float] = None,
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
-    extra_remark: Optional[str] = None,
+    extra_remark: str | None = None,
 ) -> "frappe.model.document.Document":
     if not company:
         company = _get_default_company()
@@ -987,7 +987,7 @@ def create_pos_invoice(
     do_not_submit: bool = False,
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
-    dispensing: Optional[Union[str, Dict]] = None,
+    dispensing: str | dict | None = None,
 ) -> Dict:
     """
     Create a POS Invoice (used for walk-in POS sales).

@@ -975,7 +975,7 @@ def update_product(
     buying_price: float = None,
     warehouse: str = None,
     company: str = None,
-    prescription_only: bool = None
+    prescription_only: bool | None = None
 ) -> Dict:
     """Update an existing product/item
     
