@@ -4,13 +4,18 @@ Murzak POS
 
 ### Installation
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+This app needs a Frappe 15 bench with ERPNext 15 and the Kenya tax app (`kenya-compliance`) in it. Using the [bench](https://github.com/frappe/bench) CLI:
 
 ```bash
 cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app murzak_pos
+bench get-app https://github.com/frappe/erpnext.git --branch version-15
+# Fetched by its full address: its real repository name has a hyphen, which "--resolve-deps" would not find
+bench get-app https://github.com/navariltd/kenya-compliance.git
+bench get-app $URL_OF_THIS_REPO --branch main
+bench --site <site> install-app murzak_pos
 ```
+
+To build a complete staging server (database included) in one go, see [docs/STAGING_SERVER.md](docs/STAGING_SERVER.md).
 
 ### Contributing
 
@@ -44,7 +49,7 @@ python .github/scripts/check_changed_files.py origin/main
 python .github/scripts/run_unit_tests.py
 ```
 
-A few tests need a full bench site (database and Redis) and are skipped by the second check; the list is `NEEDS_A_SITE` in `.github/scripts/run_unit_tests.py`. Run those on a bench with `bench --site <site> run-tests --app murzak_pos`.
+A few tests need a full bench site (database and Redis) and are skipped by the second check; the list is `NEEDS_A_SITE` in `.github/scripts/run_unit_tests.py`. Run those on a staging server, one test file at a time, as described in [docs/STAGING_SERVER.md](docs/STAGING_SERVER.md).
 
 ### Server setup (once)
 
