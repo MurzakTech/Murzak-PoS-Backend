@@ -163,6 +163,10 @@ doc_events = {
 		"before_submit": "murzak_pos.overrides.sales_invoice.before_submit",
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_sales_invoice_update",
 	},
+	# Live screen messages (api/realtime_events.py): payments and kitchen tickets
+	"MPESA Transaction Log": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
+	"POS Gateway Transaction": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
+	"Kitchen Ticket": {"on_update": "murzak_pos.api.realtime_events.on_kitchen_ticket_update"},
 	"POS Profile": {
 		"validate": "murzak_pos.api.vat_setup.validate_pos_profile",
 		"on_update": "murzak_pos.overrides.mpesa_integration.on_pos_profile_update",
