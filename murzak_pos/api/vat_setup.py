@@ -8,6 +8,7 @@ For each business this makes, once and safely repeatable:
 * three item tax templates that say how a product is taxed: standard-rated (16%), zero-rated, exempt.
   Each one is linked to the matching KRA eTIMS taxation type (B, C and A), when the Kenya app is installed.
 
+Prices are VAT-inclusive: the price on the shelf is what the customer pays, with the VAT shown inside it.
 A product with no item tax template simply pays the standard 16%, so only zero-rated and exempt goods
 need marking. The product classes offered to a business are suggestions to confirm with its tax adviser,
 not legal claims.
@@ -88,6 +89,17 @@ def _find_or_make_vat_account(company: str) -> str:
 def _ensure_sales_template(company: str, vat_account: str) -> str:
 	name = f"{SALES_TEMPLATE_TITLE} - {_abbr(company)}"
 	if frappe.db.exists("Sales Taxes and Charges Template", name):
+		# Shelf prices already include VAT; bring a template made earlier in line
+		for row in frappe.get_all(
+			"Sales Taxes and Charges",
+			filters={
+				"parent": name,
+				"parenttype": "Sales Taxes and Charges Template",
+				"included_in_print_rate": 0,
+			},
+			pluck="name",
+		):
+			frappe.db.set_value("Sales Taxes and Charges", row, "included_in_print_rate", 1)
 		return name
 	template = frappe.get_doc(
 		{
@@ -100,6 +112,8 @@ def _ensure_sales_template(company: str, vat_account: str) -> str:
 					"account_head": vat_account,
 					"description": f"VAT {VAT_RATE}%",
 					"rate": VAT_RATE,
+					# Shelf prices already include VAT: the customer pays the price shown
+					"included_in_print_rate": 1,
 				}
 			],
 		}
