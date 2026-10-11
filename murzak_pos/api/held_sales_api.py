@@ -16,6 +16,7 @@ from frappe.utils import cint, flt
 
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.realtime_events import notify_held_sale
 
 MAX_LINES = 300
 MAX_PAYLOAD = 256 * 1024
@@ -202,6 +203,9 @@ def save_held_sale(
 		doc.update(values)
 		doc.save(ignore_permissions=True)
 
+	# Tell the business's other tills, so the bill shows up there at once
+	notify_held_sale(company, doc.held_id, doc.warehouse, "saved")
+
 	return {
 		"success": True,
 		"data": {
@@ -225,9 +229,15 @@ def delete_held_sale(id, company=None):
 	except _Refused as refusal:
 		return {"success": False, "message": str(refusal)}
 
+	# The store is read first, because the row is gone once it is deleted
+	warehouse = frappe.db.get_value("POS Held Sale", {"company": company, "held_id": held_id}, "warehouse")
+
 	# One statement, so that of two tills deleting at the same moment only one removes the row
 	frappe.db.sql("DELETE FROM `tabPOS Held Sale` WHERE company=%s AND held_id=%s", (company, held_id))
 	deleted = frappe.db.sql("SELECT ROW_COUNT()")[0][0] > 0
+	if deleted:
+		# Sent from here and not from a document hook: the raw delete above never fires document events
+		notify_held_sale(company, held_id, warehouse, "removed")
 	return {"success": True, "data": {"id": held_id, "deleted": bool(deleted)}}
 
 
