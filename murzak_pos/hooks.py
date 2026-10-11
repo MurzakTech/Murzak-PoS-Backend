@@ -163,7 +163,10 @@ doc_events = {
 		"before_submit": "murzak_pos.overrides.sales_invoice.before_submit",
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_sales_invoice_update",
 	},
-	"POS Profile": {"on_update": "murzak_pos.overrides.mpesa_integration.on_pos_profile_update"},
+	"POS Profile": {
+		"validate": "murzak_pos.api.vat_setup.validate_pos_profile",
+		"on_update": "murzak_pos.overrides.mpesa_integration.on_pos_profile_update",
+	},
 	# Item hooks - for POS-specific functionality (no eTIMS)
 	"Item": {
 		"validate": "murzak_pos.overrides.item.validate",

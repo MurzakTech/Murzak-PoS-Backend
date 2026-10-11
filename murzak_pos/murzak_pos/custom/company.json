@@ -65,10 +65,21 @@
       "translatable": 0,
       "unique": 0,
       "width": null
+    },
+    {
+      "doctype": "Custom Field",
+      "dt": "Company",
+      "fieldname": "custom_vat_registered",
+      "fieldtype": "Check",
+      "label": "Registered for VAT",
+      "insert_after": "tax_id",
+      "default": "0",
+      "module": "Murzak POS",
+      "description": "Tick when the business is registered for VAT with KRA. Its POS Profile then gets the Kenya VAT 16% template by default.",
+      "name": "Company-custom_vat_registered"
     }
   ],
   "custom_perms": [],
   "links": [],
   "property_setters": []
 }
-

@@ -455,12 +455,15 @@ def _get_or_create_pos_profile(company: str) -> str:
             customer_doc = frappe.new_doc("Customer")
             customer_doc.customer_name = "Walk-in Customer"
             customer_doc.customer_type = "Company"
+            customer_doc.customer_group = _leaf_customer_group()
+            if customer_doc.meta.has_field("custom_company"):
+                customer_doc.custom_company = company
             customer_doc.insert(ignore_permissions=True)
             customer = customer_doc.name
         except Exception as e:
             frappe.log_error("POS Profile Creation", f"Error creating Walk-in Customer: {str(e)}")
             # Try to get any customer
-            customer = frappe.db.get_value("Customer", {"company": company}, "name")
+            customer = frappe.db.get_value("Customer", {"custom_company": company}, "name")
             if not customer:
                 frappe.throw(
                     _("Could not create or find a default customer. Please create a customer first."),
@@ -735,6 +738,36 @@ def _payment_row_has_reference(doctype: str) -> bool:
     return bool(child and frappe.get_meta(child.options).has_field("reference_no"))
 
 
+def _leaf_customer_group() -> str:
+    """A customer group that is not a folder ("All Customer Groups" cannot hold customers)."""
+    if frappe.db.exists("Customer Group", {"name": "Individual", "is_group": 0}):
+        return "Individual"
+    leaf = frappe.db.get_value("Customer Group", {"is_group": 0}, "name", order_by="creation asc")
+    return leaf or "All Customer Groups"
+
+
+def _apply_sales_taxes(doc, company: str, pos_profile: Optional[str] = None) -> None:
+    """
+    Put the business's sales tax (VAT) template on a new sale.
+
+    The sale uses its POS Profile's tax template; a VAT-registered business whose profile has none still
+    gets its Kenya VAT template. A sale that already carries tax rows, or a business with no template,
+    is left alone. Item tax templates then adjust the rate per product (zero-rated, exempt).
+    """
+    if doc.get("taxes"):
+        return
+    template = pos_profile and frappe.db.get_value("POS Profile", pos_profile, "taxes_and_charges")
+    if not template:
+        from murzak_pos.api.vat_setup import ensure_vat_setup, is_vat_registered
+
+        if company and is_vat_registered(company):
+            template = ensure_vat_setup(company)["sales_taxes_template"]
+    if not template:
+        return
+    doc.taxes_and_charges = template
+    doc.set_taxes()
+
+
 def _create_invoice_document(
     doctype: str,
     customer: str,
@@ -826,6 +859,7 @@ def _create_invoice_document(
     if extra_remark:
         doc.remarks = add_to_remarks(doc.get("remarks"), extra_remark)
 
+    _apply_sales_taxes(doc, company, pos_profile)
     return doc
 
 
@@ -1258,6 +1292,7 @@ def create_pos_invoice(
         if recorded:
             return recorded
 
+        _apply_sales_taxes(pi, company, pos_profile)
         pi.insert(ignore_permissions=True)
 
         _finalize_credit_and_outstanding(pi, pos_profile_doc, receivable_account)

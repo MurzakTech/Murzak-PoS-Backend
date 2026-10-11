@@ -86,7 +86,8 @@ def create_company(
     company_logo: str = None,
     company_address: dict = None,
     company_contact: dict = None,
-    tax_id: str = None
+    tax_id: str = None,
+    vat_registered: bool = False
 ) -> dict:
     """Create a new company with default setup
     
@@ -99,6 +100,7 @@ def create_company(
         company_address: Optional address details
         company_contact: Optional contact details
         tax_id: Optional tax ID (KRA PIN)
+        vat_registered: True when the business is registered for VAT; its POS profile then gets the VAT template
         
     Returns:
         Created company details
@@ -304,6 +306,16 @@ def create_company(
             "ERPNext Default Initialization",
             frappe.get_traceback()
         )
+
+    # VAT account and templates; a failure here must not undo the company
+    try:
+        from murzak_pos.api.vat_setup import ensure_vat_setup
+
+        ensure_vat_setup(company.name)
+        if vat_registered:
+            frappe.db.set_value("Company", company.name, "custom_vat_registered", 1)
+    except Exception:
+        frappe.log_error("Onboarding VAT Setup", frappe.get_traceback())
 
     frappe.db.set_single_value("System Settings", "country", company.country)
     frappe.db.set_single_value("System Settings", "setup_complete", 1)
@@ -1630,13 +1642,20 @@ def create_default_warehouse(company: str) -> str:
         )
 
 
+def _leaf_customer_group() -> str:
+    """A customer group that is not a folder (the "All Customer Groups" folder cannot hold customers)."""
+    from murzak_pos.api.sales_api import _leaf_customer_group as leaf_group
+
+    return leaf_group()
+
+
 def create_default_customer(company: str) -> str:
     """Create default walk-in customer"""
     try:
         customer = frappe.new_doc("Customer")
         customer.customer_name = "Walk-in Customer"
         customer.customer_type = "Company"
-        customer.customer_group = "All Customer Groups"
+        customer.customer_group = _leaf_customer_group()
         customer.territory = "All Territories"
         # Set require_tax_id to False for walk-in customers (they may not have a tax ID)
         customer.require_tax_id = 0

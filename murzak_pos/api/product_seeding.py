@@ -13,6 +13,7 @@ from frappe.utils import flt, nowdate, getdate, get_first_day, get_last_day
 
 from murzak_pos.api.etims_optional import relax_etims_mandatory
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.vat_setup import item_tax_template_for
 from murzak_pos.api.seed_results import readable_seed_error, seed_result_status
 from murzak_pos.api.seed_rules import resolve_uom, starter_product, stock_flag
 
@@ -1040,6 +1041,11 @@ def create_seed_item(company: str = None):
                     "custom_pos_industry": product_industry,
                     "custom_prevent_etims_registration": 1
                 })
+
+                # How the product is taxed, when the till says (standard, zero_rated or exempt)
+                vat_template = item_tax_template_for(company, row.get("vat_class"))
+                if vat_template:
+                    item_doc.append("taxes", {"item_tax_template": vat_template})
                 
                 # Explicitly set custom_item_classification to None if field exists
                 # This prevents AttributeError when fetch_from tries to access it during validation

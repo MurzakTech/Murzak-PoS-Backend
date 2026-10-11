@@ -15,6 +15,7 @@ import erpnext
 import re
 
 from murzak_pos.api.etims_optional import relax_etims_mandatory
+from murzak_pos.api.vat_setup import etims_code_for, item_tax_template_for
 from murzak_pos.api.access_control import ensure_record_access, require_catalogue_role
 from murzak_pos.api.business_lists import (
     OWNER_FIELD as PRICE_LIST_OWNER_FIELD,
@@ -64,7 +65,8 @@ def create_product(
     unit_of_quantity_code: str = None,
     item_classification: str = None,
     taxation_type: str = None,
-    prescription_only: bool = False
+    prescription_only: bool = False,
+    vat_class: str = None
 ) -> Dict:
     """Create a new product/item
     
@@ -94,6 +96,7 @@ def create_product(
         unit_of_quantity_code: Unit of quantity code (required if prevent_etims_registration is False)
         item_classification: Item classification name (required if prevent_etims_registration is False)
         taxation_type: Taxation type name (required if prevent_etims_registration is False)
+        vat_class: How the product is taxed: "standard" (16%), "zero_rated" or "exempt". Leave out for standard.
         
     Returns:
         Created product details
@@ -214,6 +217,11 @@ def create_product(
         if taxes:
             for tax in taxes:
                 item.append("taxes", tax)
+
+        # VAT class: attach the business's matching item tax template
+        vat_template = item_tax_template_for(company, vat_class)
+        if vat_template and not any(row.get("item_tax_template") == vat_template for row in item.get("taxes")):
+            item.append("taxes", {"item_tax_template": vat_template})
         
         # Add barcode
         if barcode:
@@ -241,6 +249,8 @@ def create_product(
                 item.custom_item_classification = item_classification
             if taxation_type:
                 item.custom_taxation_type = taxation_type
+            elif vat_class:
+                item.custom_taxation_type = etims_code_for(vat_class)
         
         # Temporarily set standard_rate to 0 to prevent automatic price creation
         # We'll restore it and create the price manually after insert
