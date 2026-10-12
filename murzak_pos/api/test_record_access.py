@@ -32,6 +32,11 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 # Each entry reads "kind of record, then the value checked". "variable" means the kind of record is decided
 # while the call runs (an invoice or a POS invoice).
 EXPECTED_GUARDS = {
+	"purchase_receipts_api": {
+		"create_purchase_receipt": ("Item code", "Supplier supplier"),
+		"get_purchase_receipt": ("Purchase Receipt name",),
+		"create_purchase_return": ("Purchase Invoice return_against",),
+	},
 	"dashboard_api": {
 		"get_dashboard_metrics": ("Warehouse warehouse",),
 	},
