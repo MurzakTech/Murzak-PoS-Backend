@@ -2103,7 +2103,7 @@ def list_inventory_discount_rules(
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
     try:
-        rules: List[Dict] = []
+        rules: list[dict] = []
 
         if rule_type in (None, "", *discount_rules.KINDS) and not batch_no:
             for rule in discount_rules.simple_rules(company):
