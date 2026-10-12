@@ -307,6 +307,14 @@ def create_company(
             frappe.get_traceback()
         )
 
+    # Clearing accounts for M-Pesa, card and PayPal money that has not reached the bank yet
+    try:
+        from murzak_pos.api.payment_matching_api import ensure_clearing_accounts
+
+        ensure_clearing_accounts(company.name)
+    except Exception:
+        frappe.log_error("Clearing accounts", frappe.get_traceback())
+
     # VAT account and templates; a failure here must not undo the company
     try:
         from murzak_pos.api.vat_setup import ensure_vat_setup

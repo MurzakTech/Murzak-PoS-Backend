@@ -159,6 +159,11 @@ def save_gateway_settings(company: str | None = None, gateway: str | None = None
 		settings.client_secret = secret.strip()
 
 	settings.is_active = _bool(kwargs["is_active"]) if kwargs.get("is_active") is not None else 1
+	if is_new and not settings.payment_account:
+		# New settings start on the business's clearing account for this method, where the money waits for the statement
+		from murzak_pos.api.payment_matching_api import default_payment_account
+
+		settings.payment_account = default_payment_account(company, gateway)
 	if not settings.mode_of_payment:
 		settings.mode_of_payment = DEFAULT_MODES[gateway]
 

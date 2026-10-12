@@ -241,3 +241,25 @@ def unsent_etims(filters=None):
 		_col("Made at", "creation", "Datetime", 160),
 	]
 	return columns, rows, None, None
+
+
+def payment_matching_exceptions(filters=None):
+	"""M-Pesa payments that do not match the statement, for the businesses the person may see."""
+	from frappe.utils import cint
+
+	from murzak_pos.api.payment_matching_api import DEFAULT_DAYS, exception_rows
+
+	filters = _filters(filters)
+	days = cint(filters.get("days")) or DEFAULT_DAYS
+	rows = []
+	for company in chosen_companies(filters.get("company")):
+		rows.extend(exception_rows(company, days))
+	columns = [
+		_col("Business", "company", "Link", 160, "Company"),
+		_col("Date", "date", "Date"),
+		_col("M-Pesa receipt", "reference", "Data", 140),
+		_col("Amount", "amount", "Currency"),
+		_col("Problem", "problem", "Data", 300),
+		_col("Detail", "detail", "Data", 260),
+	]
+	return columns, rows, None, None

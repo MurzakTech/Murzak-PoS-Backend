@@ -14,6 +14,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate, today
 
+from murzak_pos.api import approvals_api
 from murzak_pos.api.access_control import ensure_record_access, require_any_role, require_stock_role
 from murzak_pos.api.payment_gateway_common import resolve_company
 
@@ -167,6 +168,11 @@ def upsert_purchase_order(
 		message = _("Purchase Order created successfully")
 
 	if cint(submit):
+		if approvals_api.requires_approval(doc) and not approvals_api.is_approved(doc):
+			request = approvals_api.ask_for_approval(doc)
+			return _saved_order(doc, _("Purchase Order saved and sent for approval")) | {
+				"approval": approvals_api.waiting_reply(doc, request)
+			}
 		doc.submit()
 		message = _("Purchase Order submitted successfully")
 	return _saved_order(doc, message)

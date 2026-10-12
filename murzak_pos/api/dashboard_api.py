@@ -602,6 +602,9 @@ def _get_profit_stats(filters: Dict, warehouse_filter: Dict, operating_expenses:
         .run(as_dict=True)
     )
 
+    # A dish sold from a recipe is not kept in stock, so its cost is in its ingredients (the invoice's packed items)
+    rows = list(rows) + _packed_item_cost_rows(filters, warehouse_filter)
+
     # Where no cost was recorded, use the current valuation: the store's first, then the item's
     needs_rate = [r for r in rows if r.get("is_stock_item") and flt(r.get("uncosted_qty"))]
     if needs_rate:
@@ -622,6 +625,48 @@ def _get_profit_stats(filters: Dict, warehouse_filter: Dict, operating_expenses:
             r["fallback_rate"] = bin_rates.get((r["item_code"], r["warehouse"])) or item_rates.get(r["item_code"]) or 0.0
 
     return summarize_profit(rows, operating_expenses)
+
+
+def _packed_item_cost_rows(filters: dict, warehouse_filter: dict) -> list[dict]:
+    """Cost rows for the ingredients taken out by sales of dishes with a recipe (Product Bundle).
+
+    The dish's own line carries the sale and no cost; its ingredients are on the invoice as packed items, each with
+    the cost recorded when the stock left. Returns have negative quantities, so the cost comes back. The rows add cost
+    only (their sales amount is zero), in the same shape summarize_profit already reads.
+    """
+    SalesInvoice = DocType("Sales Invoice")
+    PackedItem = DocType("Packed Item")
+
+    query = (
+        frappe.qb.from_(PackedItem)
+        .join(SalesInvoice)
+        .on((SalesInvoice.name == PackedItem.parent) & (PackedItem.parenttype == "Sales Invoice"))
+        .where(SalesInvoice.docstatus == 1)
+    )
+    if filters.get("company"):
+        query = query.where(SalesInvoice.company == filters["company"])
+    if filters.get("owner"):
+        query = query.where(SalesInvoice.owner == filters["owner"])
+    if warehouse_filter.get("warehouse"):
+        query = query.where(PackedItem.warehouse == warehouse_filter["warehouse"])
+    query = _apply_date_filter(query, SalesInvoice.posting_date, filters)
+
+    rows = (
+        query.select(
+            PackedItem.item_code,
+            PackedItem.warehouse,
+            fn.Sum(PackedItem.qty * PackedItem.incoming_rate).as_("recorded_cost"),
+            fn.Sum(Case().when(fn.Coalesce(PackedItem.incoming_rate, 0) == 0, PackedItem.qty).else_(0)).as_(
+                "uncosted_qty"
+            ),
+        )
+        .groupby(PackedItem.item_code, PackedItem.warehouse)
+        .run(as_dict=True)
+    )
+    for row in rows:
+        row["is_stock_item"] = 1
+        row["net_amount"] = 0.0
+    return rows
 
 
 def _get_daily_sales_data(filters: Dict, warehouse_filter: Dict, company: str) -> List[Dict]:

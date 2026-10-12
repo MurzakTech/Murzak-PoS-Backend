@@ -377,6 +377,19 @@ def submit_purchase_order():
                 message="This LPO has been cancelled and cannot be submitted"
             )
 
+        from murzak_pos.api import approvals_api
+
+        if approvals_api.requires_approval(po) and not approvals_api.is_approved(po):
+            request = approvals_api.ask_for_approval(po)
+            frappe.db.commit()
+            return pos_response(
+                status="success",
+                code="APPROVAL_REQUIRED",
+                lpo_no=po.name,
+                message="LPO is above the approval limit and was sent for approval",
+                data=approvals_api.waiting_reply(po, request),
+            )
+
         frappe.db.begin()
         po.submit()
         frappe.db.commit()

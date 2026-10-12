@@ -316,6 +316,17 @@ def run_for_business(settings, today=None, hour=None) -> dict:
 				settings, rules.LOW_STOCK, today, rules.low_stock_digest(company, low_stock_rows(company))
 			)
 
+	if cint(settings.alert_payment_matching) and rules.due_for_daily_alerts(hour, settings.send_hour):
+		if getdate(today).weekday() == rules.WEEKLY_DAY:
+			from murzak_pos.api.payment_matching_api import summary_counts
+
+			sent[rules.PAYMENT_MATCHING] = _deliver(
+				settings,
+				rules.PAYMENT_MATCHING,
+				rules.week_reference(today),
+				rules.payment_matching_digest(company, summary_counts(company)),
+			)
+
 	if cint(settings.alert_unsent_etims):
 		count, oldest = unsent_etims(company)
 		sent[rules.UNSENT_ETIMS] = _deliver(

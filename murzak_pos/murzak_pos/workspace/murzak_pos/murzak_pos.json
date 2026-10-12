@@ -39,7 +39,8 @@
    "hidden": 0,
    "is_query_report": 0,
    "link_count": 11,
-   "onboard": 0
+   "onboard": 0,
+   "idx": 1
   },
   {
    "type": "Link",
@@ -50,7 +51,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 2
   },
   {
    "type": "Link",
@@ -61,7 +63,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 3
   },
   {
    "type": "Link",
@@ -72,7 +75,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 4
   },
   {
    "type": "Link",
@@ -83,7 +87,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 5
   },
   {
    "type": "Link",
@@ -94,7 +99,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 6
   },
   {
    "type": "Link",
@@ -105,7 +111,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 7
   },
   {
    "type": "Link",
@@ -116,7 +123,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 8
   },
   {
    "type": "Link",
@@ -127,7 +135,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 9
   },
   {
    "type": "Link",
@@ -138,7 +147,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 10
   },
   {
    "type": "Link",
@@ -149,7 +159,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 11
   },
   {
    "type": "Link",
@@ -160,7 +171,21 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 12
+  },
+  {
+   "type": "Link",
+   "label": "Payment Matching Exceptions",
+   "link_type": "Report",
+   "link_to": "Murzak Payment Matching Exceptions",
+   "is_query_report": 1,
+   "dependencies": "",
+   "hidden": 0,
+   "onboard": 0,
+   "only_for": "",
+   "name": null,
+   "idx": 13
   },
   {
    "type": "Card Break",
@@ -168,7 +193,8 @@
    "hidden": 0,
    "is_query_report": 0,
    "link_count": 6,
-   "onboard": 0
+   "onboard": 0,
+   "idx": 14
   },
   {
    "type": "Link",
@@ -179,7 +205,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 15
   },
   {
    "type": "Link",
@@ -190,7 +217,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 16
   },
   {
    "type": "Link",
@@ -201,7 +229,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 17
   },
   {
    "type": "Link",
@@ -212,7 +241,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 18
   },
   {
    "type": "Link",
@@ -223,7 +253,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 19
   },
   {
    "type": "Link",
@@ -234,7 +265,8 @@
    "dependencies": "",
    "hidden": 0,
    "onboard": 0,
-   "only_for": ""
+   "only_for": "",
+   "idx": 20
   }
  ],
  "modified": "2026-10-11 21:00:00.000000",

@@ -29,6 +29,7 @@ OWNER_FIELD = {
 	"Item": "custom_company",
 	"Supplier": "custom_company",
 	"Price List": "custom_company",
+	"Sales Person": "custom_company",
 }
 
 # Who may do the sensitive everyday jobs. These are copied from the frontend's role table

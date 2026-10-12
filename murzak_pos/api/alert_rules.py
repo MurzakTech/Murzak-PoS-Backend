@@ -18,6 +18,8 @@ EXPIRY = "Expiry"
 LOW_STOCK = "Low stock"
 SHIFT_SUMMARY = "Shift summary"
 UNSENT_ETIMS = "Unsent eTIMS"
+PAYMENT_MATCHING = "Payment matching"
+WEEKLY_DAY = 0  # Monday
 
 MAX_ROWS = 50  # rows listed in one message; the rest are counted
 
@@ -172,6 +174,31 @@ def etims_digest(company: str, count: int, oldest: str | None):
 	html = (
 		f"<p>{escape(subject)}. The oldest was made at {escape(str(oldest or ''))}. "
 		"They are retried every hour; if this continues, check the eTIMS settings and the connection.</p>"
+	)
+	return subject, html, subject
+
+
+def week_reference(day: str) -> str:
+	"""A key for the week a day is in, so a weekly alert is sent once a week: '2026-W42'."""
+	from datetime import date
+
+	year, week, _weekday = date.fromisoformat(str(day)).isocalendar()
+	return f"{year}-W{week:02d}"
+
+
+def payment_matching_digest(company: str, counts: dict[str, int]):
+	"""(subject, html, short text) for M-Pesa payments that do not match the statement, or None when all match."""
+	total = sum(counts.values())
+	if not total:
+		return None
+	subject = f"{company}: {total} M-Pesa payment(s) do not match the statement"
+	table = _table(
+		["Problem", "Payments"],
+		[[problem, n] for problem, n in sorted(counts.items(), key=lambda x: (-x[1], x[0]))],
+	)
+	html = (
+		f"<p>{escape(subject)}.</p>{table}"
+		'<p>The list, with each receipt number, is the report "Murzak Payment Matching Exceptions" in Frappe.</p>'
 	)
 	return subject, html, subject
 

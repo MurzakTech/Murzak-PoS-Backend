@@ -1,0 +1,34 @@
+{% set co = murzak_company(doc.company) %}
+<div class="mz">
+  {% include "murzak_pos/templates/print_formats/_style_a4.html" %}
+  {% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}
+  <h1>{{ _("Delivery Note") }}</h1>
+  <table class="meta"><tr>
+    <td style="width:55%">
+      {% if not (letter_head and not no_letterhead) %}<b>{{ co.company_name }}</b><br>
+      {% if co.tax_id %}{{ _("PIN") }}: {{ co.tax_id }}<br>{% endif %}
+      {% if co.phone_no %}{{ co.phone_no }}{% endif %} {% endif %}
+    </td>
+    <td>
+      {{ _("Number") }}: <b>{{ doc.name }}</b><br>
+      {{ _("Date") }}: {{ doc.get_formatted("posting_date") }}<br>
+      {% if doc.get("lr_no") %}{{ _("Vehicle / reference") }}: {{ doc.lr_no }}{% endif %}
+    </td>
+  </tr><tr>
+    <td colspan="2" style="padding-top:8px">
+      {{ _("Deliver to") }}: <b>{{ doc.customer_name or doc.customer }}</b>
+      {% if doc.get("shipping_address") %}<br>{{ doc.shipping_address | striptags }}{% elif doc.get("address_display") %}<br>{{ doc.address_display | striptags }}{% endif %}
+    </td>
+  </tr></table>
+  <table class="lines">
+    <thead><tr><th style="width:4%">#</th><th>{{ _("Item") }}</th><th class="num">{{ _("Qty") }}</th><th>{{ _("Unit") }}</th></tr></thead>
+    <tbody>
+    {% for row in doc.items %}
+      <tr><td>{{ loop.index }}</td><td>{{ row.item_name or row.item_code }}</td><td class="num">{{ row.get_formatted("qty", doc) }}</td><td>{{ row.uom }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if doc.get("remarks") %}<div class="remarks">{{ doc.remarks }}</div>{% endif %}
+  <table class="sign"><tr><td>{{ _("Delivered by") }}</td><td>{{ _("Received by (name, signature, date)") }}</td></tr></table>
+  {% if footer and not no_letterhead %}<div class="letter-foot">{{ footer }}</div>{% endif %}
+</div>

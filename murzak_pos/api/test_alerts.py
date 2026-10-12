@@ -134,6 +134,7 @@ def settings(**changes):
 		alert_low_stock=1,
 		alert_shift_summary=1,
 		alert_unsent_etims=1,
+		alert_payment_matching=1,
 		expiry_window_long=30,
 		expiry_window_short=7,
 		send_hour=7,
@@ -146,7 +147,9 @@ LOW = [{"item_code": "I1", "item_name": "One", "warehouse": "W", "actual_qty": 1
 
 
 class RunCase(unittest.TestCase):
-	def run_business(self, config, hour=8, claimed=True, low=None, expiring=None, unsent=(0, None)):
+	def run_business(
+		self, config, hour=8, claimed=True, low=None, expiring=None, unsent=(0, None), today="2026-10-11", counts=None
+	):
 		with (
 			patch.object(alerts, "low_stock_rows", return_value=low or []),
 			patch.object(alerts, "expiring_stock", return_value=expiring or []),
@@ -155,8 +158,9 @@ class RunCase(unittest.TestCase):
 			patch.object(alerts, "_send_sms"),
 			patch.object(alerts.frappe, "sendmail") as sendmail,
 			patch.object(alerts.frappe, "db", MagicMock()),
+			patch("murzak_pos.api.payment_matching_api.summary_counts", return_value=counts or {}),
 		):
-			result = alerts.run_for_business(config, today="2026-10-11", hour=hour)
+			result = alerts.run_for_business(config, today=today, hour=hour)
 		return result, sendmail, claim
 
 	def test_low_stock_sends_one_email_to_the_recipients(self):
@@ -194,6 +198,23 @@ class RunCase(unittest.TestCase):
 	def test_unsent_invoices_are_reported_hourly_even_before_the_daily_hour(self):
 		result, _sendmail, _claim = self.run_business(settings(), hour=3, unsent=(2, "2026-10-11 01:00:00"))
 		self.assertTrue(result["Unsent eTIMS"])
+
+	def test_payment_matching_goes_out_on_mondays_only(self):
+		counts = {"Amount differs": 2}
+		monday, sendmail, _claim = self.run_business(settings(), today="2026-10-12", counts=counts)
+		self.assertTrue(monday["Payment matching"])
+		sunday, _sendmail, _claim = self.run_business(settings(), today="2026-10-11", counts=counts)
+		self.assertNotIn("Payment matching", sunday)
+
+	def test_payment_matching_can_be_switched_off(self):
+		result, _sendmail, _claim = self.run_business(
+			settings(alert_payment_matching=0), today="2026-10-12", counts={"Amount differs": 2}
+		)
+		self.assertNotIn("Payment matching", result)
+
+	def test_payment_matching_is_keyed_by_the_week(self):
+		_result, _sendmail, claim = self.run_business(settings(), today="2026-10-12", counts={"Amount differs": 1})
+		self.assertEqual(claim.call_args.args[:3], ("Acme", "Payment matching", "2026-W42"))
 
 	def test_failed_send_forgets_the_claim_so_it_is_tried_again(self):
 		with (

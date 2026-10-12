@@ -439,6 +439,12 @@ def register_mpesa_settings(company: str | None = None, **kwargs) -> dict:
 
 	settings.is_active = _bool(kwargs["is_active"]) if kwargs.get("is_active") is not None else 1
 
+	if not update_mode and not settings.payment_account:
+		# New settings start on the business's M-Pesa clearing account, where the money waits for the statement
+		from murzak_pos.api.payment_matching_api import default_payment_account
+
+		settings.payment_account = default_payment_account(company, "M-Pesa")
+
 	settings.save(ignore_permissions=True)
 
 	mode = setup_mpesa_mode_of_payment(company)

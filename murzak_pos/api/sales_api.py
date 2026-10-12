@@ -23,6 +23,7 @@ from murzak_pos.api.pharmacy_rules import add_to_remarks
 from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
 )
+from murzak_pos.api import sales_person_api
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.business_lists import (
     caller_company,
@@ -786,6 +787,7 @@ def _create_invoice_document(
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
     extra_remark: str | None = None,
+    sales_person: str | None = None,
 ) -> "frappe.model.document.Document":
     if not company:
         company = _get_default_company()
@@ -864,6 +866,9 @@ def _create_invoice_document(
     if extra_remark:
         doc.remarks = add_to_remarks(doc.get("remarks"), extra_remark)
 
+    # Credit the sale to the named sales person, or to the cashier's own when their login is linked to one
+    sales_person_api.attach(doc, sales_person)
+
     _apply_sales_taxes(doc, company, pos_profile)
     return doc
 
@@ -886,6 +891,7 @@ def create_sales_invoice(
     do_not_submit: bool = False,
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
+    sales_person: str | None = None,
 ) -> Dict:
     """
     Create a Sales Invoice for standard or POS sales.
@@ -958,6 +964,7 @@ def create_sales_invoice(
             discount_amount=discount_amount,
             client_reference=client_reference,
             offline_sold_at=offline_sold_at,
+            sales_person=sales_person,
         )
 
         # Set update_stock flag - CRITICAL for inventory reduction
@@ -1051,6 +1058,7 @@ def create_pos_invoice(
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
     dispensing: str | dict | None = None,
+    sales_person: str | None = None,
 ) -> Dict:
     """
     Create a POS Invoice (used for walk-in POS sales).
@@ -1185,6 +1193,7 @@ def create_pos_invoice(
                 client_reference=client_reference,
                 offline_sold_at=offline_sold_at,
                 extra_remark=prescription_note,
+                sales_person=sales_person,
             )
 
             if receivable_account and hasattr(si, "debit_to"):
@@ -1263,6 +1272,7 @@ def create_pos_invoice(
             client_reference=client_reference,
             offline_sold_at=offline_sold_at,
             extra_remark=prescription_note,
+            sales_person=sales_person,
         )
 
         if receivable_account and hasattr(pi, "debit_to"):
@@ -1634,7 +1644,7 @@ def _finalize_credit_and_outstanding(
     
     # Check credit limit if there's an outstanding amount (credit payment)
     # This needs to be done before submit to validate against credit limit
-    if doc.outstanding_amount > 0 and hasattr(doc, "check_credit_limit"):
+    if flt(doc.get("outstanding_amount")) > 0 and hasattr(doc, "check_credit_limit"):
         # Check if credit limit validation should be performed
         from erpnext.selling.doctype.customer.customer import check_credit_limit, get_credit_limit
         
@@ -2454,6 +2464,31 @@ def _build_credit_note_items(items: List[Dict], return_against: Optional[str] = 
     return built_items
 
 
+TAX_LINE_FIELDS = (
+    "charge_type",
+    "account_head",
+    "description",
+    "rate",
+    "included_in_print_rate",
+    "included_in_paid_amount",
+    "cost_center",
+    "row_id",
+)
+
+
+def _copy_tax_lines(source: str, doc) -> None:
+    """Give a return the tax lines of the sale it returns, so ERPNext reverses the VAT with the price."""
+    lines = frappe.get_all(
+        "Sales Taxes and Charges",
+        filters={"parent": source, "parenttype": "Sales Invoice"},
+        fields=list(TAX_LINE_FIELDS),
+        order_by="idx asc",
+        limit_page_length=0,
+    )
+    for line in lines:
+        doc.append("taxes", dict(line))
+
+
 # Returns hand money back, so only managers and owners may record or cancel them.
 RETURN_ROLES = {"System Manager", "Sales Manager", "Accounts Manager"}
 
@@ -2544,10 +2579,18 @@ def create_sales_return(
 
         if reason:
             cn.remarks = reason
+        if return_against:
+            sales_person_api.copy_sales_team(return_against, cn)
 
         # Build items
         for row in _build_credit_note_items(parsed_items, return_against):
             cn.append("items", row)
+
+        # A return reverses the sale's VAT as well as its price: use the sale's own tax lines, or the business's
+        # template for a credit note with no sale behind it
+        if return_against:
+            _copy_tax_lines(return_against, cn)
+        _apply_sales_taxes(cn, company)
 
         # Discounts
         if apply_discount_on:
@@ -2559,12 +2602,25 @@ def create_sales_return(
 
         cn.insert(ignore_permissions=True)
 
+        # A refund above the business's limit waits for a manager's approval as a draft
+        from murzak_pos.api import approvals_api
+
+        approval = None
+        if not do_not_submit and approvals_api.requires_approval(cn):
+            approval = approvals_api.ask_for_approval(cn, reason)
+            do_not_submit = True
+
         if not do_not_submit:
             cn.submit()
 
         return {
             "success": True,
-            "message": _("Sales Return created successfully"),
+            "message": (
+                _("Sales Return saved and sent for approval")
+                if approval
+                else _("Sales Return created successfully")
+            ),
+            "approval": approvals_api.waiting_reply(cn, approval) if approval else None,
             "data": {
                 "name": cn.name,
                 "customer": cn.customer,

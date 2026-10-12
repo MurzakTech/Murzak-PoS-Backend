@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:company",
+ "creation": "2026-10-12 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "limits_section",
+  "refund_limit",
+  "purchase_order_limit"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "description": "A manager's second approval is needed above these amounts. Leave at 0 to switch the check off.",
+   "fieldname": "limits_section",
+   "fieldtype": "Section Break",
+   "label": "Approval limits"
+  },
+  {
+   "default": "0",
+   "description": "A refund (sales return) above this amount waits for approval before it is posted.",
+   "fieldname": "refund_limit",
+   "fieldtype": "Currency",
+   "label": "Refunds above"
+  },
+  {
+   "default": "0",
+   "description": "A purchase order above this amount waits for approval before it is submitted.",
+   "fieldname": "purchase_order_limit",
+   "fieldtype": "Currency",
+   "label": "Purchase orders above"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-12 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Murzak POS",
+ "name": "Approval Settings",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "company",
+ "track_changes": 1
+}
