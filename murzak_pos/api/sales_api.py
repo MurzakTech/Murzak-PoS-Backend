@@ -659,6 +659,8 @@ def _build_invoice_items(items: List[Dict], company: str, auto_discount: bool = 
         warehouse = row.get("warehouse")
         item_code = row.get("item_code")
 
+        # A batch discount is added here. Discounts on the item or its group are ERPNext Pricing Rules,
+        # which ERPNext applies itself when the invoice is saved.
         # Offline sales were already charged at the till, so never add a discount afterwards
         if auto_discount and not discount_percentage and not discount_amount:
             item_group = frappe.db.get_value("Item", item_code, "item_group")
@@ -815,6 +817,9 @@ def _create_invoice_document(
 
     # Build items
     sold_offline = parse_sold_at(offline_sold_at)
+    if sold_offline:
+        # The till already charged this sale, so ERPNext's pricing rules must not discount it again
+        doc.ignore_pricing_rule = 1
     for row in _build_invoice_items(items, company, auto_discount=not sold_offline):
         doc.append("items", row)
 

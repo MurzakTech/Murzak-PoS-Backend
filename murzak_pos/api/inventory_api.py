@@ -14,9 +14,7 @@ from erpnext.stock.utils import get_stock_balance
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 from erpnext.stock.get_item_details import get_bin_details
 from frappe.model.workflow import get_transitions
-from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
-    get_applicable_inventory_discount,
-)
+from murzak_pos.api import discount_rules
 from murzak_pos.api.product_seeding import ensure_fiscal_year_exists
 from murzak_pos.api.access_control import ensure_record_access, require_manager, require_stock_count_role, require_stock_role
 from murzak_pos.api.payment_gateway_common import resolve_company
@@ -1847,6 +1845,11 @@ def _serialize_discount_rule(rule: Dict) -> Dict:
     return {k: rule.get(k) for k in keys}
 
 
+# Discounts on an item or an item group are ERPNext Pricing Rules; only a batch discount is kept in an
+# Inventory Discount Rule. The calls below keep the shape the Discounts screen has always used.
+# See murzak_pos/api/discount_rules.py.
+
+
 @frappe.whitelist()
 def create_inventory_discount_rule(
     rule_type: str,
@@ -1864,16 +1867,38 @@ def create_inventory_discount_rule(
     description: str = None,
     naming_series: str = None,
 ) -> Dict:
-    """Create an inventory discount rule (item, batch, or item group)."""
+    """Create a discount rule: an item or item group discount (a Pricing Rule) or a batch discount."""
     # Discount rules change what customers pay: business owners only
     require_manager()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
+    ensure_record_access("Item", item_code)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
+
+        if rule_type in discount_rules.KINDS:
+            rule = discount_rules.create_rule(
+                rule_type=rule_type,
+                company=company,
+                discount_type=discount_type,
+                discount_value=discount_value,
+                item_code=item_code,
+                item_group=item_group,
+                warehouse=warehouse,
+                priority=priority,
+                is_active=is_active,
+                valid_from=valid_from,
+                valid_upto=valid_upto,
+                description=description,
+            )
+            return {
+                "success": True,
+                "message": "Inventory discount rule created",
+                "data": _serialize_discount_rule(rule),
+            }
 
         doc = frappe.new_doc("Inventory Discount Rule")
         # Set naming series - use provided value or default from doctype
@@ -1927,16 +1952,41 @@ def update_inventory_discount_rule(
     valid_upto: str = None,
     description: str = None,
 ) -> Dict:
-    """Update an inventory discount rule."""
+    """Update a discount rule (a Pricing Rule for an item or item group, or a batch discount)."""
     # Discount rules change what customers pay: business owners only
     require_manager()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
+    ensure_record_access("Item", item_code)
+    ensure_record_access("Pricing Rule", name)
+    ensure_record_access("Inventory Discount Rule", name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
+
+        if frappe.db.exists("Pricing Rule", name):
+            rule = discount_rules.update_rule(
+                name,
+                rule_type=rule_type,
+                company=company,
+                discount_type=discount_type,
+                discount_value=discount_value,
+                item_code=item_code,
+                item_group=item_group,
+                warehouse=warehouse,
+                priority=priority,
+                is_active=is_active,
+                valid_from=valid_from,
+                valid_upto=valid_upto,
+                description=description,
+            )
+            return {
+                "success": True,
+                "message": "Inventory discount rule updated",
+                "data": _serialize_discount_rule(rule),
+            }
 
         if not frappe.db.exists("Inventory Discount Rule", name):
             return {"success": False, "message": _("Inventory Discount Rule {0} not found").format(name)}
@@ -1985,13 +2035,18 @@ def update_inventory_discount_rule(
 
 @frappe.whitelist()
 def delete_inventory_discount_rule(name: str) -> Dict:
-    """Delete an inventory discount rule."""
+    """Delete a discount rule."""
     # Discount rules change what customers pay: business owners only
     require_manager()
+    ensure_record_access("Pricing Rule", name)
     ensure_record_access("Inventory Discount Rule", name)
     try:
         if frappe.session.user == "Guest":
             frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
+
+        if frappe.db.exists("Pricing Rule", name):
+            discount_rules.delete_rule(name)
+            return {"success": True, "message": "Inventory discount rule deleted"}
 
         if not frappe.db.exists("Inventory Discount Rule", name):
             return {"success": False, "message": _("Inventory Discount Rule {0} not found").format(name)}
@@ -2008,9 +2063,16 @@ def delete_inventory_discount_rule(name: str) -> Dict:
 
 @frappe.whitelist()
 def get_inventory_discount_rule(name: str) -> Dict:
-    """Fetch a single inventory discount rule."""
+    """Fetch a single discount rule."""
+    ensure_record_access("Pricing Rule", name)
     ensure_record_access("Inventory Discount Rule", name)
     try:
+        if frappe.db.exists("Pricing Rule", name):
+            rule = discount_rules.find_simple_rule(name)
+            if not rule:
+                return {"success": False, "message": _("Inventory Discount Rule {0} not found").format(name)}
+            return {"success": True, "data": _serialize_discount_rule(rule)}
+
         if not frappe.db.exists("Inventory Discount Rule", name):
             return {"success": False, "message": _("Inventory Discount Rule {0} not found").format(name)}
         doc = frappe.get_doc("Inventory Discount Rule", name)
@@ -2035,57 +2097,72 @@ def list_inventory_discount_rules(
     page: int = 1,
     page_size: int = 20,
 ) -> Dict:
-    """List inventory discount rules with filters and pagination."""
+    """List discount rules (Pricing Rules for items and item groups, and batch discounts) with filters and pagination."""
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
     try:
-        filters = {}
-        if rule_type:
-            filters["rule_type"] = rule_type
-        if company:
-            filters["company"] = company
-        if item_code:
-            filters["item_code"] = item_code
-        if batch_no:
-            filters["batch_no"] = batch_no
-        if item_group:
-            filters["item_group"] = item_group
-        if warehouse:
-            filters["warehouse"] = warehouse
-        if is_active is not None:
-            filters["is_active"] = cint(is_active)
+        rules: List[Dict] = []
 
-        total = frappe.db.count("Inventory Discount Rule", filters=filters)
-        rules = frappe.get_all(
-            "Inventory Discount Rule",
-            fields=[
-                "name",
-                "rule_type",
-                "item_code",
-                "batch_no",
-                "item_group",
-                "warehouse",
-                "company",
-                "discount_type",
-                "discount_value",
-                "priority",
-                "is_active",
-                "valid_from",
-                "valid_upto",
-                "description",
-            ],
-            filters=filters,
-            limit=page_size,
-            start=(page - 1) * page_size,
-            order_by="priority asc, modified desc",
-        )
+        if rule_type in (None, "", *discount_rules.KINDS) and not batch_no:
+            for rule in discount_rules.simple_rules(company):
+                if rule_type and rule["rule_type"] != rule_type:
+                    continue
+                if discount_rules.matches(rule, item_code, item_group, warehouse, is_active):
+                    rules.append(rule)
+
+        if rule_type in (None, "", "Batch") and not item_group:
+            filters = {"rule_type": "Batch"}
+            scope = discount_rules.companies_in_scope(company)
+            if scope is not None:
+                filters["company"] = ["in", scope] if scope else ["in", [""]]
+            if item_code:
+                filters["item_code"] = item_code
+            if batch_no:
+                filters["batch_no"] = batch_no
+            if warehouse:
+                filters["warehouse"] = warehouse
+            if is_active is not None:
+                filters["is_active"] = cint(is_active)
+            rules.extend(
+                frappe.get_all(
+                    "Inventory Discount Rule",
+                    fields=[
+                        "name",
+                        "rule_type",
+                        "item_code",
+                        "batch_no",
+                        "item_group",
+                        "warehouse",
+                        "company",
+                        "discount_type",
+                        "discount_value",
+                        "priority",
+                        "is_active",
+                        "valid_from",
+                        "valid_upto",
+                        "description",
+                        "modified",
+                    ],
+                    filters=filters,
+                    limit_page_length=discount_rules.MAX_RULES_READ,
+                )
+            )
+
+        # Lowest priority number first; the most recently changed first among equals
+        rules.sort(key=lambda r: str(r.get("modified") or ""), reverse=True)
+        rules.sort(key=lambda r: cint(r.get("priority")))
+
+        total = len(rules)
+        page = max(cint(page), 1)
+        page_size = max(cint(page_size), 1)
+        window = rules[(page - 1) * page_size : page * page_size]
 
         return {
             "success": True,
             "data": {
-                "rules": [_serialize_discount_rule(r) for r in rules],
+                "rules": [_serialize_discount_rule(r) for r in window],
                 "pagination": {
                     "page": page,
                     "page_size": page_size,
@@ -2111,7 +2188,7 @@ def get_inventory_discount_for_item(
     item_group: str = None,
     posting_date: str = None,
 ) -> Dict:
-    """Return the applicable discount rule for an item (batch > item > item group)."""
+    """Return the discount a sale of this item would get (batch discount, else ERPNext's pricing rules)."""
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
@@ -2125,14 +2202,11 @@ def get_inventory_discount_for_item(
         if not item_group:
             item_group = frappe.db.get_value("Item", item_code, "item_group")
 
-        rule = get_applicable_inventory_discount(
-            item_code=item_code,
-            company=company,
-            warehouse=warehouse,
-            batch_no=batch_no,
-            item_group=item_group,
-            posting_date=posting_date,
-        )
+        rule = discount_rules.discounts_for(
+            [{"item_code": item_code, "item_group": item_group, "warehouse": warehouse, "batch_no": batch_no}],
+            company,
+            posting_date,
+        )[0]
 
         return {
             "success": True,
@@ -2155,7 +2229,7 @@ def bulk_get_inventory_discounts(
     posting_date: str = None,
 ) -> Dict:
     """
-    Return applicable discount rules for multiple items in one call.
+    Return the discount a sale of each of several items would get, in one call.
     Accepts per-row overrides for warehouse, batch_no, and item_group.
     """
     # Refuse a company the caller does not belong to
@@ -2171,33 +2245,31 @@ def bulk_get_inventory_discounts(
         if not company:
             frappe.throw(_("company is required"), frappe.ValidationError)
 
-        results = []
+        rows = []
         for row in items:
             item_code = (row or {}).get("item_code")
             if not item_code:
                 frappe.throw(_("item_code is required for each row"), frappe.ValidationError)
-
-            row_item_group = row.get("item_group") or frappe.db.get_value("Item", item_code, "item_group")
-            row_warehouse = row.get("warehouse") or warehouse
-
-            rule = get_applicable_inventory_discount(
-                item_code=item_code,
-                company=company,
-                warehouse=row_warehouse,
-                batch_no=row.get("batch_no"),
-                item_group=row_item_group,
-                posting_date=posting_date,
-            )
-
-            results.append(
+            rows.append(
                 {
                     "item_code": item_code,
                     "batch_no": row.get("batch_no"),
-                    "warehouse": row_warehouse,
-                    "item_group": row_item_group,
-                    "rule": _serialize_discount_rule(rule) if rule else None,
+                    "warehouse": row.get("warehouse") or warehouse,
+                    "item_group": row.get("item_group") or frappe.db.get_value("Item", item_code, "item_group"),
                 }
             )
+
+        found = discount_rules.discounts_for(rows, company, posting_date)
+        results = [
+            {
+                "item_code": row["item_code"],
+                "batch_no": row["batch_no"],
+                "warehouse": row["warehouse"],
+                "item_group": row["item_group"],
+                "rule": _serialize_discount_rule(rule) if rule else None,
+            }
+            for row, rule in zip(rows, found, strict=True)
+        ]
 
         return {
             "success": True,

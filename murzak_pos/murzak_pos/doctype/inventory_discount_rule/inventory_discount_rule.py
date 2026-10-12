@@ -7,7 +7,12 @@ from frappe.utils import getdate, nowdate
 
 
 class InventoryDiscountRule(Document):
-	"""Inventory-level discount rule for items, batches, or item groups."""
+	"""
+	A discount on one batch of stock.
+
+	Discounts on an item or an item group are ERPNext Pricing Rules (see murzak_pos.api.discount_rules); ERPNext
+	has no Pricing Rule for a batch, so this record keeps that one kind.
+	"""
 
 	def validate(self):
 		self._validate_rule_target()
@@ -15,12 +20,12 @@ class InventoryDiscountRule(Document):
 		self._validate_dates()
 
 	def _validate_rule_target(self):
-		if self.rule_type == "Item" and not self.item_code:
-			frappe.throw(_("Item is required for rule type Item"))
-		if self.rule_type == "Batch" and not self.batch_no:
+		if self.rule_type != "Batch":
+			frappe.throw(
+				_("A discount on an item or an item group is a Pricing Rule. Make a Pricing Rule instead.")
+			)
+		if not self.batch_no:
 			frappe.throw(_("Batch is required for rule type Batch"))
-		if self.rule_type == "Item Group" and not self.item_group:
-			frappe.throw(_("Item Group is required for rule type Item Group"))
 
 	def _validate_discount_value(self):
 		if not self.discount_value or self.discount_value <= 0:
@@ -44,17 +49,16 @@ def get_applicable_inventory_discount(
 	posting_date: str | None = None,
 ) -> dict | None:
 	"""
-	Return the best matching inventory discount rule for the given item.
-	Priority order (more specific first):
-		1. Batch
-		2. Item
-		3. Item Group
-	Within the same specificity, lower priority number wins (default 10).
+	Return the batch discount for the given batch, if there is one.
+
+	Only batch discounts are kept in this record. A discount on the item or its group is a Pricing Rule, which
+	ERPNext applies itself on the sale. `item_code` and `item_group` are accepted so callers need not change.
+	Within the batch, a warehouse rule applies only in its warehouse, and a lower priority number wins (default 10).
 
 	If the DocType isn't installed, returns None.
 	"""
 
-	if not item_code or not company:
+	if not batch_no or not company:
 		return None
 
 	# Allow murzak_pos to run without this DocType if an admin removed it
@@ -62,63 +66,39 @@ def get_applicable_inventory_discount(
 		return None
 
 	date = getdate(posting_date) if posting_date else getdate(nowdate())
+	filters = {"company": company, "rule_type": "Batch", "is_active": 1, "batch_no": batch_no}
 
-	specificity = [
-		("Batch", batch_no),
-		("Item", item_code),
-		("Item Group", item_group),
-	]
+	# Only apply warehouse-specific rules when they match
+	if warehouse:
+		filters["warehouse"] = ["in", ["", warehouse]]
 
-	for rule_type, value in specificity:
-		if not value:
+	results = frappe.get_all(
+		"Inventory Discount Rule",
+		fields=[
+			"name",
+			"rule_type",
+			"item_code",
+			"batch_no",
+			"item_group",
+			"warehouse",
+			"company",
+			"discount_type",
+			"discount_value",
+			"priority",
+			"valid_from",
+			"valid_upto",
+		],
+		filters=filters,
+		order_by="priority asc, modified desc",
+	)
+
+	for rule in results:
+		if rule.valid_from and getdate(rule.valid_from) > date:
 			continue
-
-		filters = {
-			"company": company,
-			"rule_type": rule_type,
-			"is_active": 1,
-		}
-
-		if rule_type == "Batch":
-			filters["batch_no"] = value
-		elif rule_type == "Item":
-			filters["item_code"] = value
-		elif rule_type == "Item Group":
-			filters["item_group"] = value
-
-		# Only apply warehouse-specific rules when they match
-		if warehouse:
-			filters["warehouse"] = ["in", ["", warehouse]]
-
-		results = frappe.get_all(
-			"Inventory Discount Rule",
-			fields=[
-				"name",
-				"rule_type",
-				"item_code",
-				"batch_no",
-				"item_group",
-				"warehouse",
-				"company",
-				"discount_type",
-				"discount_value",
-				"priority",
-				"valid_from",
-				"valid_upto",
-			],
-			filters=filters,
-			order_by="priority asc, modified desc",
-		)
-
-		for rule in results:
-			if rule.valid_from and getdate(rule.valid_from) > date:
-				continue
-			if rule.valid_upto and getdate(rule.valid_upto) < date:
-				continue
-			if rule.warehouse and warehouse and rule.warehouse != warehouse:
-				continue
-			return rule
+		if rule.valid_upto and getdate(rule.valid_upto) < date:
+			continue
+		if rule.warehouse and warehouse and rule.warehouse != warehouse:
+			continue
+		return rule
 
 	return None
-
-
