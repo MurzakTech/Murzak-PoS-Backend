@@ -82,7 +82,14 @@ class TestChanging(NewLookCase):
 		self.assertFalse(new_look_api.get_new_look()["data"]["enabled"])
 
 	def test_the_browsers_spellings_of_on_and_off_are_understood(self):
-		for sent, expected in (("true", True), ("1", True), (1, True), ("false", False), ("0", False), (0, False)):
+		for sent, expected in (
+			("true", True),
+			("1", True),
+			(1, True),
+			("false", False),
+			("0", False),
+			(0, False),
+		):
 			with self.subTest(sent=sent):
 				self.as_user()
 				self.assertEqual(new_look_api.set_new_look(sent)["data"]["enabled"], expected)
@@ -156,4 +163,4 @@ class TestGuardIsNotForgotten(unittest.TestCase):
 		touching = [body.find(word) for word in ("frappe.db", "resolve_company(")]
 		self.assertNotEqual(call, -1, "set_new_look must call require_manager()")
 		self.assertTrue(all(call < position for position in touching if position != -1))
-		self.assertIn("methods=[\"POST\"]", ast.unparse(node.decorator_list[0]).replace("'", '"'))
+		self.assertIn('methods=["POST"]', ast.unparse(node.decorator_list[0]).replace("'", '"'))
