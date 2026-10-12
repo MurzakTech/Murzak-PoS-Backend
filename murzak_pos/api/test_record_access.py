@@ -32,6 +32,7 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 # Each entry reads "kind of record, then the value checked". "variable" means the kind of record is decided
 # while the call runs (an invoice or a POS invoice).
 EXPECTED_GUARDS = {
+	"print_api": {"get_print": ("variable name",)},
 	"sales_person_api": {
 		"update_sales_person": ("variable name",),
 		"get_commission_report": ("variable sales_person",),
@@ -245,7 +246,10 @@ EXPECTED_GUARDS = {
 }
 
 # Calls that must be told which kind of record the number is, before they look at it
-CALL_NEEDS = {("purchase", "create_purchase_invoice"): {"reference_type": "Purchase Order"}}
+CALL_NEEDS = {
+	("purchase", "create_purchase_invoice"): {"reference_type": "Purchase Order"},
+	("print_api", "get_print"): {"doctype": "Sales Invoice"},
+}
 
 
 class RecordAccessCase(unittest.TestCase):

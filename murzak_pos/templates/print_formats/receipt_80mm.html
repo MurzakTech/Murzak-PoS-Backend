@@ -1,0 +1,49 @@
+{% set co = murzak_company(doc.company) %}
+<style>
+.rc { width: 72mm; margin: 0 auto; font-family: "Courier New", monospace; font-size: 12px; color: #000; }
+.rc .c { text-align: center; }
+.rc hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
+.rc table { width: 100%; border-collapse: collapse; }
+.rc td { padding: 1px 0; vertical-align: top; }
+.rc .r { text-align: right; white-space: nowrap; }
+.rc .big td { font-weight: bold; font-size: 14px; }
+.rc img { width: 34mm; height: 34mm; }
+</style>
+<div class="rc">
+  <div class="c">
+    <b style="font-size:15px">{{ co.company_name }}</b><br>
+    {% if co.tax_id %}{{ _("PIN") }}: {{ co.tax_id }}<br>{% endif %}
+    {% if co.phone_no %}{{ _("Tel") }}: {{ co.phone_no }}<br>{% endif %}
+    {{ _("Credit Note") if doc.get("is_return") else _("Receipt") }} {{ doc.name }}<br>
+    {{ doc.get_formatted("posting_date") }}{% if doc.get("posting_time") %} {{ doc.get_formatted("posting_time") }}{% endif %}
+  </div>
+  <hr>
+  <table>
+  {% for row in doc.items %}
+    <tr><td colspan="2">{{ row.item_name or row.item_code }}</td></tr>
+    <tr><td>{{ row.get_formatted("qty", doc) }} x {{ row.get_formatted("rate", doc) }}</td><td class="r">{{ row.get_formatted("amount", doc) }}</td></tr>
+  {% endfor %}
+  </table>
+  <hr>
+  <table>
+    <tr><td>{{ _("Subtotal") }}</td><td class="r">{{ doc.get_formatted("net_total") }}</td></tr>
+    {% for tax in doc.taxes %}<tr><td>{{ tax.description }}</td><td class="r">{{ tax.get_formatted("tax_amount", doc) }}</td></tr>{% endfor %}
+    {% if doc.get("discount_amount") %}<tr><td>{{ _("Discount") }}</td><td class="r">{{ doc.get_formatted("discount_amount") }}</td></tr>{% endif %}
+    <tr class="big"><td>{{ _("TOTAL") }}</td><td class="r">{{ doc.get_formatted("rounded_total") if doc.get("rounded_total") else doc.get_formatted("grand_total") }}</td></tr>
+    {% for pay in doc.get("payments") or [] %}{% if pay.amount %}<tr><td>{{ pay.mode_of_payment }}</td><td class="r">{{ pay.get_formatted("amount", doc) }}</td></tr>{% endif %}{% endfor %}
+    {% if doc.get("change_amount") %}<tr><td>{{ _("Change") }}</td><td class="r">{{ doc.get_formatted("change_amount") }}</td></tr>{% endif %}
+    {% if doc.get("outstanding_amount") %}<tr><td>{{ _("Balance due") }}</td><td class="r">{{ doc.get_formatted("outstanding_amount") }}</td></tr>{% endif %}
+  </table>
+  {% if doc.get("custom_scu_id") or doc.get("custom_qr_code") %}
+  <hr>
+  <div class="c">
+    <b>{{ _("KRA eTIMS") }}</b><br>
+    {% if doc.get("custom_scu_id") %}{{ _("SCU ID") }}: {{ doc.custom_scu_id }}<br>{% endif %}
+    {% if doc.get("custom_current_receipt_number") %}{{ _("Receipt No.") }}: {{ doc.custom_current_receipt_number }}{% if doc.get("custom_total_receipt_number") %}/{{ doc.custom_total_receipt_number }}{% endif %}<br>{% endif %}
+    {% if doc.get("custom_receipt_signature") %}<span style="word-break:break-all">{{ doc.custom_receipt_signature }}</span><br>{% endif %}
+    {% if doc.get("custom_qr_code") %}<img src="{{ murzak_qr(doc.custom_qr_code) }}" alt="eTIMS QR">{% endif %}
+  </div>
+  {% endif %}
+  <hr>
+  <div class="c">{{ _("Thank you") }}</div>
+</div>

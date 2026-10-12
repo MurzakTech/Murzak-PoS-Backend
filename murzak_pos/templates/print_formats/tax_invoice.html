@@ -1,0 +1,71 @@
+{% set co = murzak_company(doc.company) %}
+{% set is_credit = doc.get("is_return") %}
+<div class="mz">
+  {% include "murzak_pos/templates/print_formats/_style_a4.html" %}
+  {% if letter_head and not no_letterhead %}{{ letter_head }}{% endif %}
+  <h1>{{ _("Credit Note") if is_credit else _("Tax Invoice") }}</h1>
+  <table class="meta"><tr>
+    <td style="width:55%">
+      {% if not (letter_head and not no_letterhead) %}<b>{{ co.company_name }}</b><br>
+      {% if co.tax_id %}{{ _("PIN") }}: {{ co.tax_id }}<br>{% endif %}
+      {% if co.phone_no %}{{ co.phone_no }}<br>{% endif %}
+      {% if co.email %}{{ co.email }}{% endif %} {% endif %}
+    </td>
+    <td>
+      {{ _("Number") }}: <b>{{ doc.name }}</b><br>
+      {{ _("Date") }}: {{ doc.get_formatted("posting_date") }}<br>
+      {% if doc.get("due_date") %}{{ _("Due") }}: {{ doc.get_formatted("due_date") }}<br>{% endif %}
+      {% if doc.get("return_against") %}{{ _("Against") }}: {{ doc.return_against }}<br>{% endif %}
+    </td>
+  </tr><tr>
+    <td colspan="2" style="padding-top:8px">
+      {{ _("Customer") }}: <b>{{ doc.customer_name or doc.customer }}</b>
+      {% if doc.get("tax_id") %}<br>{{ _("Customer PIN") }}: {{ doc.tax_id }}{% endif %}
+    </td>
+  </tr></table>
+
+  <table class="lines">
+    <thead><tr>
+      <th style="width:4%">#</th><th>{{ _("Item") }}</th>
+      <th class="num">{{ _("Qty") }}</th><th>{{ _("Unit") }}</th>
+      <th class="num">{{ _("Rate") }}</th><th class="num">{{ _("Amount") }}</th>
+    </tr></thead>
+    <tbody>
+    {% for row in doc.items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ row.item_name or row.item_code }}{% if row.get("description") and row.description != row.item_name %}<br><small>{{ row.description | striptags }}</small>{% endif %}</td>
+        <td class="num">{{ row.get_formatted("qty", doc) }}</td>
+        <td>{{ row.uom }}</td>
+        <td class="num">{{ row.get_formatted("rate", doc) }}</td>
+        <td class="num">{{ row.get_formatted("amount", doc) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>{{ _("Total") }}</td><td class="num">{{ doc.get_formatted("net_total") }}</td></tr>
+    {% for tax in doc.taxes %}
+      <tr><td>{{ tax.description }}</td><td class="num">{{ tax.get_formatted("tax_amount", doc) }}</td></tr>
+    {% endfor %}
+    {% if doc.get("discount_amount") %}<tr><td>{{ _("Discount") }}</td><td class="num">{{ doc.get_formatted("discount_amount") }}</td></tr>{% endif %}
+    <tr class="grand"><td>{{ _("Grand Total") }}</td><td class="num">{{ doc.get_formatted("rounded_total") if doc.get("rounded_total") else doc.get_formatted("grand_total") }}</td></tr>
+    {% if doc.get("paid_amount") %}<tr><td>{{ _("Paid") }}</td><td class="num">{{ doc.get_formatted("paid_amount") }}</td></tr>{% endif %}
+    {% if doc.get("outstanding_amount") %}<tr><td>{{ _("Balance due") }}</td><td class="num">{{ doc.get_formatted("outstanding_amount") }}</td></tr>{% endif %}
+  </table>
+
+  {% if doc.get("remarks") and doc.remarks != "No Remarks" %}<div class="remarks">{{ doc.remarks }}</div>{% endif %}
+
+  {% if doc.get("custom_scu_id") or doc.get("custom_qr_code") %}
+  <div class="etims">
+    {% if doc.get("custom_qr_code") %}<img src="{{ murzak_qr(doc.custom_qr_code) }}" alt="eTIMS QR">{% endif %}
+    <b>{{ _("KRA eTIMS") }}</b><br>
+    {% if doc.get("custom_scu_id") %}{{ _("SCU ID") }}: {{ doc.custom_scu_id }}<br>{% endif %}
+    {% if doc.get("custom_current_receipt_number") %}{{ _("Receipt No.") }}: {{ doc.custom_current_receipt_number }}{% if doc.get("custom_total_receipt_number") %} / {{ doc.custom_total_receipt_number }}{% endif %}<br>{% endif %}
+    {% if doc.get("custom_receipt_signature") %}{{ _("Signature") }}: {{ doc.custom_receipt_signature }}{% endif %}
+    <div style="clear:both"></div>
+  </div>
+  {% endif %}
+  {% if footer and not no_letterhead %}<div class="letter-foot">{{ footer }}</div>{% endif %}
+</div>

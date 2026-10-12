@@ -88,13 +88,13 @@ required_apps = ["frappe/erpnext", "navariltd/kenya_compliance"]
 # ----------
 
 # add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "murzak_pos.utils.jinja_methods",
-# 	"filters": "murzak_pos.utils.jinja_filters"
-# }
+jinja = {"methods": ["murzak_pos.api.print_api.murzak_qr", "murzak_pos.api.print_api.murzak_company"]}
 
 # Installation
 # ------------
+
+# Refresh the print formats (api/print_api.py) after every update
+after_migrate = ["murzak_pos.api.print_api.install_print_formats"]
 
 # before_install = "murzak_pos.install.before_install"
 # after_install = "murzak_pos.install.after_install"
