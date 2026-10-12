@@ -2530,3 +2530,18 @@ def pay_purchase_invoice(
             message=f"Error creating Payment Entry: {str(e)}",
             data={}
         )
+
+
+# These calls live in their own modules; they are listed here so the screens can reach them as
+# murzak_pos.api.purchase.<name>
+from murzak_pos.api.purchase_orders_api import (
+    cancel_purchase_invoice,
+    check_etims_registration_status,
+    upsert_purchase_order,
+)
+from murzak_pos.api.purchase_receipts_api import (
+    create_purchase_receipt,
+    create_purchase_return,
+    get_purchase_receipt,
+    list_purchase_receipts,
+)

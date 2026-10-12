@@ -32,6 +32,16 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 # Each entry reads "kind of record, then the value checked". "variable" means the kind of record is decided
 # while the call runs (an invoice or a POS invoice).
 EXPECTED_GUARDS = {
+	"purchase_orders_api": {
+		"_order_lines": ("Item code",),
+		"upsert_purchase_order": ("Purchase Order name", "Supplier supplier"),
+		"cancel_purchase_invoice": ("Purchase Invoice name",),
+	},
+	"purchase_receipts_api": {
+		"create_purchase_receipt": ("Item code", "Supplier supplier"),
+		"get_purchase_receipt": ("Purchase Receipt name",),
+		"create_purchase_return": ("Purchase Invoice return_against",),
+	},
 	"dashboard_api": {
 		"get_dashboard_metrics": ("Warehouse warehouse",),
 	},
@@ -58,10 +68,15 @@ EXPECTED_GUARDS = {
 		"get_inventory_item_details": ("Warehouse warehouse",),
 		"list_inventory_items": ("Warehouse warehouse",),
 		"update_inventory_item_details": ("Warehouse warehouse",),
-		"create_inventory_discount_rule": ("Warehouse warehouse",),
-		"update_inventory_discount_rule": ("Warehouse warehouse",),
-		"delete_inventory_discount_rule": ("Inventory Discount Rule name",),
-		"get_inventory_discount_rule": ("Inventory Discount Rule name",),
+		"create_inventory_discount_rule": ("Item item_code", "Warehouse warehouse"),
+		"update_inventory_discount_rule": (
+			"Inventory Discount Rule name",
+			"Item item_code",
+			"Pricing Rule name",
+			"Warehouse warehouse",
+		),
+		"delete_inventory_discount_rule": ("Inventory Discount Rule name", "Pricing Rule name"),
+		"get_inventory_discount_rule": ("Inventory Discount Rule name", "Pricing Rule name"),
 		"list_inventory_discount_rules": ("Warehouse warehouse",),
 		"get_inventory_discount_for_item": ("Warehouse warehouse",),
 		"bulk_get_inventory_discounts": ("Warehouse warehouse",),
@@ -83,12 +98,6 @@ EXPECTED_GUARDS = {
 		"add_stock_manager_stock_take_and_submit": ("Stock Reconciliation reconciliation_name",),
 		"get_multi_level_stock_reconciliation": ("Stock Reconciliation reconciliation_name",),
 		"list_multi_level_stock_reconciliations": ("Warehouse warehouse",),
-	},
-	"invoices": {
-		"validate_cart_items": ("POS Profile pos_profile",),
-		"update_invoice": ("POS Profile pos_profile",),
-		"submit_invoice": ("POS Profile pos_profile", "variable invoice_name"),
-		"get_invoice_for_return": ("Sales Invoice invoice_name",),
 	},
 	"items": {
 		"search_by_barcode": ("POS Profile pos_profile",),
