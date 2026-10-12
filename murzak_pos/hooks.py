@@ -94,7 +94,11 @@ jinja = {"methods": ["murzak_pos.api.print_api.murzak_qr", "murzak_pos.api.print
 # ------------
 
 # Refresh the print formats (api/print_api.py) after every update
-after_migrate = ["murzak_pos.api.print_api.install_print_formats"]
+after_migrate = [
+	"murzak_pos.api.print_api.install_print_formats",
+	# Switch Swahili on (translations/sw.csv)
+	"murzak_pos.api.language_api.enable_languages",
+]
 
 # before_install = "murzak_pos.install.before_install"
 # after_install = "murzak_pos.install.after_install"
