@@ -17,6 +17,7 @@
   "alert_low_stock",
   "alert_shift_summary",
   "alert_unsent_etims",
+  "alert_payment_matching",
   "timing_section",
   "expiry_window_long",
   "expiry_window_short",
@@ -84,6 +85,13 @@
    "fieldname": "alert_unsent_etims",
    "fieldtype": "Check",
    "label": "Invoices not yet sent to KRA"
+  },
+  {
+   "default": "1",
+   "description": "A weekly note, on Mondays, of M-Pesa payments that do not match the statement.",
+   "fieldname": "alert_payment_matching",
+   "fieldtype": "Check",
+   "label": "M-Pesa payments that do not match the statement"
   },
   {
    "fieldname": "timing_section",
