@@ -32,6 +32,10 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 # Each entry reads "kind of record, then the value checked". "variable" means the kind of record is decided
 # while the call runs (an invoice or a POS invoice).
 EXPECTED_GUARDS = {
+	"sales_person_api": {
+		"update_sales_person": ("variable name",),
+		"get_commission_report": ("variable sales_person",),
+	},
 	"recipes_api": {
 		"clean_ingredients": ("Item code",),
 		"_dish_for": ("Item dish",),
