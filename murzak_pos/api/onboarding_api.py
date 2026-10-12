@@ -1761,3 +1761,12 @@ def get_default_cost_center(company: str) -> str:
         # Return None to allow POS profile creation to continue without cost center
         return None
 
+
+
+# The POS profile and eTIMS settings reads, and the eTIMS update, live in their own module; they are listed here
+# so the Settings screens can reach them as murzak_pos.api.onboarding_api.<name>
+from murzak_pos.api.onboarding_settings_api import (
+    get_etims_settings,
+    get_pos_profile,
+    update_etims_settings,
+)
