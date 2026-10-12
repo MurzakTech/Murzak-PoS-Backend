@@ -2559,12 +2559,25 @@ def create_sales_return(
 
         cn.insert(ignore_permissions=True)
 
+        # A refund above the business's limit waits for a manager's approval as a draft
+        from murzak_pos.api import approvals_api
+
+        approval = None
+        if not do_not_submit and approvals_api.requires_approval(cn):
+            approval = approvals_api.ask_for_approval(cn, reason)
+            do_not_submit = True
+
         if not do_not_submit:
             cn.submit()
 
         return {
             "success": True,
-            "message": _("Sales Return created successfully"),
+            "message": (
+                _("Sales Return saved and sent for approval")
+                if approval
+                else _("Sales Return created successfully")
+            ),
+            "approval": approvals_api.waiting_reply(cn, approval) if approval else None,
             "data": {
                 "name": cn.name,
                 "customer": cn.customer,

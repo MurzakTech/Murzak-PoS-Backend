@@ -160,9 +160,14 @@ doc_events = {
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_pos_invoice_update",
 	},
 	"Sales Invoice": {
-		"before_submit": "murzak_pos.overrides.sales_invoice.before_submit",
+		"before_submit": [
+			"murzak_pos.overrides.sales_invoice.before_submit",
+			# A refund above the business's limit needs a manager's approval (api/approvals_api.py)
+			"murzak_pos.api.approvals_api.enforce_on_submit",
+		],
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_sales_invoice_update",
 	},
+	"Purchase Order": {"before_submit": "murzak_pos.api.approvals_api.enforce_on_submit"},
 	# Live screen messages (api/realtime_events.py): payments and kitchen tickets
 	"MPESA Transaction Log": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
 	"POS Gateway Transaction": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},

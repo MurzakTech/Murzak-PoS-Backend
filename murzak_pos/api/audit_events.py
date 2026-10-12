@@ -25,6 +25,8 @@ TRACKED_DOCTYPES: dict[str, str] = {
 	"Purchase Order": "Purchases",
 	"Purchase Receipt": "Purchases",
 	"Purchase Invoice": "Purchases",
+	"Approval Request": "Approvals",
+	"Approval Settings": "Approvals",
 	"Stock Entry": "Inventory",
 	"Stock Reconciliation": "Inventory",
 	"Material Request": "Inventory",
