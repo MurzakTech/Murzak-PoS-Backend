@@ -1634,7 +1634,7 @@ def _finalize_credit_and_outstanding(
     
     # Check credit limit if there's an outstanding amount (credit payment)
     # This needs to be done before submit to validate against credit limit
-    if doc.outstanding_amount > 0 and hasattr(doc, "check_credit_limit"):
+    if flt(doc.get("outstanding_amount")) > 0 and hasattr(doc, "check_credit_limit"):
         # Check if credit limit validation should be performed
         from erpnext.selling.doctype.customer.customer import check_credit_limit, get_credit_limit
         
