@@ -33,6 +33,7 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 # while the call runs (an invoice or a POS invoice).
 EXPECTED_GUARDS = {
 	"print_api": {"get_print": ("variable name",)},
+	"profit_api": {"get_profit_summary": ("Warehouse warehouse",)},
 	"sales_person_api": {
 		"update_sales_person": ("variable name",),
 		"get_commission_report": ("variable sales_person",),
@@ -267,9 +268,7 @@ class RecordAccessCase(unittest.TestCase):
 			patch.object(frappe, "log_error", create=True),
 			patch("frappe.translate.get_all_translations", return_value={}),
 			patch("murzak_pos.api.access_control.get_user_companies", return_value=set(companies)),
-			patch(
-				"murzak_pos.api.payment_gateway_common.get_user_companies", return_value=set(companies)
-			),
+			patch("murzak_pos.api.payment_gateway_common.get_user_companies", return_value=set(companies)),
 		]
 		for p in stack:
 			p.start()

@@ -936,3 +936,4 @@
 "{0} {1} does not exist.","{0} {1} haipo."
 "{0} {1} is above this business's approval limit. It needs a manager's approval first.","{0} {1} iko juu ya kikomo cha idhini cha biashara hii. Inahitaji idhini ya meneja kwanza."
 "{0} {1} not found","{0} {1} haikupatikana"
+"Only an owner or a manager can see this.","Mmiliki au meneja pekee ndiye anayeweza kuona hili."
