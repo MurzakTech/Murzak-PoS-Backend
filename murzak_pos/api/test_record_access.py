@@ -34,6 +34,10 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 EXPECTED_GUARDS = {
 	"print_api": {"get_print": ("variable name",)},
 	"profit_api": {"get_profit_summary": ("Warehouse warehouse",)},
+	"sales_list_api": {
+		"list_sales": ("Warehouse store",),
+		"get_sale": ("POS Invoice id", "Sales Invoice id"),
+	},
 	"sales_person_api": {
 		"update_sales_person": ("variable name",),
 		"get_commission_report": ("variable sales_person",),
