@@ -59,6 +59,10 @@ EXPECTED_GUARDS = {
 	"dashboard_api": {
 		"get_dashboard_metrics": ("Warehouse warehouse",),
 	},
+	"till_api": {
+		"get_till_state": ("POS Profile pos_profile", "Warehouse warehouse"),
+		"close_till": ("POS Opening Entry session",),
+	},
 	"expiry_api": {
 		"get_expiry_alerts": ("Warehouse warehouse",),
 	},
