@@ -37,6 +37,7 @@ EXPECTED_GUARDS = {
 	"sales_list_api": {
 		"list_sales": ("Warehouse store",),
 		"get_sale": ("POS Invoice id", "Sales Invoice id"),
+		"take_payment": ("POS Invoice id", "Sales Invoice id"),
 	},
 	"sales_person_api": {
 		"update_sales_person": ("variable name",),

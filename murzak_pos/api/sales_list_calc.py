@@ -5,9 +5,15 @@ and no Frappe.
 Every function takes plain rows (dicts, dates, numbers) and returns plain results, so each rule can be tested with a
 few lines of data. The database work, the role checks and the answers are in sales_list_api.py.
 
-What a "sale" is here is the same as on Home (see sales_figures.py): a submitted Sales Invoice, or a submitted POS
-Invoice that was not merged into a Sales Invoice when a till was closed. A merged POS Invoice is inside that Sales
-Invoice already, so listing it too would show the sale twice.
+What a "sale" is here: every submitted POS Invoice, merged or not, and every submitted Sales Invoice that is not the
+consolidated invoice ERPNext makes when a till is closed. Closing a till merges its POS Invoices into one Sales Invoice
+(`is_consolidated`), and each POS Invoice then points at it with `consolidated_invoice`. The receipts stay in the list
+because they are what customers hold; the consolidated invoice is hidden because it is the same money again. Nothing
+is counted twice. (Home counts the other way round, the consolidated invoice instead of its receipts; the totals agree.)
+
+Money still owed on a merged receipt lives on the consolidated invoice, which a later payment reduces, while the
+receipt keeps its old figure. `effective_outstanding` therefore reads a merged receipt as paid once the consolidated
+invoice is paid, and as owing no more than the consolidated invoice still owes.
 
 One number for one sale: the list row and the receipt panel both get their money from `sale_amounts`, so they cannot
 disagree (acceptance criterion AC-24 at the endpoint level).
@@ -176,11 +182,14 @@ def normalize_doctype(doctype) -> str | None:
 
 
 def tab_conditions(tab: str) -> list[str]:
-	"""SQL conditions (on alias d) that a sale document must meet for the tab. The sessions tab lists no sales."""
+	"""
+	SQL conditions that a sale must meet for the tab, on the combined list of both kinds (alias s, with the
+	effective_outstanding column). The sessions tab lists no sales.
+	"""
 	return {
 		"all": [],
-		"unpaid": ["d.is_return = 0", "d.outstanding_amount > 0"],
-		"returns": ["d.is_return = 1"],
+		"unpaid": ["s.is_return = 0", "s.effective_outstanding > 0"],
+		"returns": ["s.is_return = 1"],
 		"sessions": [],
 	}[normalize_tab(tab)]
 
@@ -265,20 +274,37 @@ def sale_sort_key(row) -> tuple:
 	return (date_text(row.get("posting_date")), _seconds(row.get("posting_time")), str(row.get("name") or ""))
 
 
-def is_merged(row) -> bool:
-	"""A POS Invoice that was merged into a Sales Invoice at till close (that Sales Invoice counts it)."""
-	return row.get("doctype") == POS_INVOICE and bool(
-		row.get("merged_into") or row.get("consolidated_invoice")
-	)
+def is_consolidated_invoice(row) -> bool:
+	"""The Sales Invoice ERPNext made when a till was closed (it holds the shift's receipts, which are listed instead)."""
+	return row.get("doctype") == SALES_INVOICE and bool(calc.num(row.get("is_consolidated")))
 
 
 def union_sales(*groups) -> list[dict]:
 	"""
-	Every sale from the groups of rows (one per kind of document) as one list, newest first, without any POS Invoice
-	that was merged into a Sales Invoice. The database does the same in SQL; this is the rule in plain code.
+	Every sale from the groups of rows (one per kind of document) as one list, newest first, without the consolidated
+	Sales Invoices made at till close. A POS Invoice merged into one stays: it is the receipt. The database does the
+	same in SQL; this is the rule in plain code.
 	"""
-	rows = [row for group in groups for row in group or [] if not is_merged(row)]
+	rows = [row for group in groups for row in group or [] if not is_consolidated_invoice(row)]
 	return sorted(rows, key=sale_sort_key, reverse=True)
+
+
+def effective_outstanding(own, is_return=False, merged_into=None, merged_outstanding=None) -> float:
+	"""
+	What is still owed on a sale, read the same way in the list, the summary, the Unpaid tab and the receipt.
+
+	A sale that was not merged owes its own `outstanding_amount`. A POS Invoice merged into a consolidated Sales
+	Invoice owes nothing once that invoice is paid, and never more than that invoice still owes (a payment is taken
+	on the consolidated invoice, not on the receipt). When the consolidated invoice cannot be read, the receipt's own
+	figure is used. A return owes what it says.
+	"""
+	own = calc.num(own)
+	if is_return or not merged_into or merged_outstanding is None:
+		return own
+	remaining = calc.num(merged_outstanding)
+	if remaining <= 0:
+		return 0.0
+	return min(own, remaining) if own > 0 else own
 
 
 def sale_amounts(src) -> dict:
@@ -287,14 +313,21 @@ def sale_amounts(src) -> dict:
 
 	total        the full amount the customer was charged (grand_total), VAT included. Negative on a return
 	paid         total minus outstanding: what has been settled, change excluded
-	outstanding  what is still owed
+	outstanding  what is still owed (see effective_outstanding: a merged receipt reads its consolidated invoice)
 	change       the change handed back (receipt only)
 	subtotal     the lines added up, before the extra discount and the tax
 	discount     the extra discount on the whole sale (positive)
 	tax          the tax and charges added
 	"""
 	total = calc.money(src.get("grand_total"))
-	outstanding = calc.money(src.get("outstanding_amount"))
+	outstanding = calc.money(
+		effective_outstanding(
+			src.get("outstanding_amount"),
+			bool(calc.num(src.get("is_return"))),
+			src.get("merged_into"),
+			src.get("merged_outstanding"),
+		)
+	)
 	return {
 		"total": total,
 		"paid": calc.money(total - outstanding),
@@ -358,7 +391,7 @@ def list_row(raw, today, returned=None, methods=None, names=None) -> dict:
 	One row of the All sales, Unpaid and Returns tabs.
 
 	raw       the document as read: doctype, name, posting_date, posting_time, customer, customer_name, owner,
-	          grand_total, outstanding_amount, is_return, due_date, has_terms, is_consolidated
+	          grand_total, outstanding_amount, is_return, due_date, has_terms, merged_into, merged_outstanding
 	returned  {document name: value of the returns made against it}
 	methods   {document name: [payment rows]}
 	names     {user: full name}
@@ -390,7 +423,6 @@ def list_row(raw, today, returned=None, methods=None, names=None) -> dict:
 		),
 		"methods": method_labels((methods or {}).get(name), amounts["outstanding"], is_return),
 		"is_return": is_return,
-		"consolidated": bool(calc.num(raw.get("is_consolidated"))),
 	}
 
 
@@ -444,7 +476,15 @@ def build_receipt(doc, today, returns=None, names=None, can_return=False) -> dic
 		}
 	)
 	mobile = str(doc.get("mobile") or "").strip()
-	owing = not is_return and amounts["outstanding"] > TOLERANCE
+	plan = payment_plan(
+		doctype,
+		name,
+		1,
+		is_return,
+		amounts["outstanding"],
+		doc.get("merged_into"),
+		bool(calc.num(doc.get("is_consolidated"))),
+	)
 	return {
 		"id": name,
 		"doctype": doctype,
@@ -462,6 +502,7 @@ def build_receipt(doc, today, returns=None, names=None, can_return=False) -> dic
 		),
 		"is_return": is_return,
 		"return_against": (doc.get("return_against") or None) if is_return else None,
+		"merged_into": doc.get("merged_into") or None,
 		"lines": [
 			{
 				"item_code": line.get("item_code"),
@@ -502,7 +543,10 @@ def build_receipt(doc, today, returns=None, names=None, can_return=False) -> dic
 			for r in returns
 		],
 		"can": {
-			"take_payment": owing,
+			"take_payment": "target" in plan,
+			"take_payment_blocked": plan.get("error")
+			if plan.get("error") in ("pay_after_close", "consolidated")
+			else None,
 			"return_items": bool(
 				can_return
 				and not is_return
@@ -575,3 +619,138 @@ def session_row(opening, closing=None, closing_rows=None, sales_count=0, names=N
 		"difference": cash["difference"] if cash else None,
 		"closing_entry": (closing or {}).get("name") if closing and not is_open else None,
 	}
+
+
+# --- taking payment on a sale -------------------------------------------------------------------------
+
+# The kinds of payment the Sales page offers, by the key the page sends. A key stands for the shop's own mode of
+# payment of that kind (see pick_mode), found with the same naming rule Home uses (overview_calc.classify_method).
+MODE_KEYS = {"cash": calc.CASH, "mpesa": calc.MPESA, "card": calc.CARD}
+
+_REFERENCE = re.compile(r"^[A-Za-z0-9]{8,12}$")
+_REQUEST_ID = re.compile(r"^[A-Za-z0-9.:-]{1,64}$")
+MAX_REFERENCE_LENGTH = 40
+
+
+def parse_amount(value) -> float | None:
+	"""
+	The amount to take as a number of shillings with at most 2 decimals, or None when it cannot be used: not a number
+	(or text, NaN, infinity, a yes/no value), zero or negative.
+	"""
+	if isinstance(value, bool) or value is None:
+		return None
+	try:
+		number = float(str(value).strip().replace(",", "")) if isinstance(value, str) else float(value)
+	except (TypeError, ValueError):
+		return None
+	if number != number or number in (float("inf"), float("-inf")):
+		return None
+	number = round(number, 2) + 0.0
+	return number if number > 0 else None
+
+
+def normalize_mode_key(value) -> str | None:
+	"""cash, mpesa or card for what the page sent (M-Pesa, m-pesa and MPESA all mean mpesa); None for anything else."""
+	key = re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+	return key if key in MODE_KEYS else None
+
+
+def pick_mode(key, modes, mode_types=None) -> str | None:
+	"""
+	The shop's mode of payment for a key, from the names it has enabled (`modes`), or None when it has none of that
+	kind. A mode named exactly like the kind (Cash, M-Pesa, Mpesa, Card) wins; otherwise the first in alphabetical order.
+	"""
+	label = MODE_KEYS.get(key)
+	if not label:
+		return None
+	mode_types = mode_types or {}
+	found = sorted(m for m in modes or [] if calc.classify_method(m, mode_types.get(m)) == label)
+	for name in found:
+		if re.sub(r"[^a-z0-9]", "", name.lower()) == key:
+			return name
+	return found[0] if found else None
+
+
+def clean_reference(key, reference) -> tuple[str | None, str | None]:
+	"""
+	(reference, problem). An M-Pesa payment needs its code: 8 to 12 letters and digits, saved in capitals; the problem
+	is `missing` or `bad`. For cash and card a reference is optional; if given it is kept (control characters taken
+	out, at most 40 characters).
+	"""
+	text = re.sub(r"\s+", " ", str(reference or "")).strip()
+	if key == "mpesa":
+		if not text:
+			return None, "missing"
+		if not _REFERENCE.match(text):
+			return None, "bad"
+		return text.upper(), None
+	text = "".join(ch for ch in text if ch.isprintable())[:MAX_REFERENCE_LENGTH]
+	return (text or None), None
+
+
+def clean_request_id(request_id) -> tuple[str | None, bool]:
+	"""(request id, valid). No id is allowed (the call then cannot recognise a retry); a bad one is not."""
+	text = str(request_id or "").strip()
+	if not text:
+		return None, True
+	return (text, True) if _REQUEST_ID.match(text) else (None, False)
+
+
+def request_marker(request_id, sale_id) -> str:
+	"""The text kept in the payment's remarks that ties it to the request and the sale, so a retry finds it."""
+	return f"[pay-req:{request_id}:{sale_id}]"
+
+
+def marker_pattern(request_id, sale_id) -> str:
+	"""A SQL LIKE pattern that finds request_marker in remarks."""
+	return "%" + _escape_like(request_marker(request_id, sale_id)) + "%"
+
+
+def payment_remark(receipt, request_id, sale_id) -> str:
+	"""The remarks written on the payment."""
+	remark = f"Payment taken at the till for {receipt}"
+	return f"{remark} {request_marker(request_id, sale_id)}" if request_id else remark
+
+
+def payment_plan(
+	doctype, name, docstatus, is_return, outstanding, merged_into=None, is_consolidated=False
+) -> dict:
+	"""
+	Where a payment on a sale can be recorded, or why it cannot. Returns {"target": (doctype, name)} or {"error": code}.
+
+	not_found        the sale is a draft or cancelled
+	is_return        a return cannot take a payment
+	nothing_owed     the sale owes nothing
+	consolidated     the invoice made at till close, which holds many receipts: the payment goes on a receipt
+	pay_after_close  a POS Invoice that is not merged yet. ERPNext cannot take a Payment Entry against a POS Invoice, so
+	                 the payment waits for the shift to be closed
+	A Sales Invoice takes the payment itself; a merged POS Invoice takes it on its consolidated Sales Invoice.
+	"""
+	if int(calc.num(docstatus)) != 1:
+		return {"error": "not_found"}
+	if calc.num(is_return):
+		return {"error": "is_return"}
+	if calc.num(outstanding) < TOLERANCE:
+		return {"error": "nothing_owed"}
+	if doctype == SALES_INVOICE:
+		if is_consolidated:
+			return {"error": "consolidated"}
+		return {"target": (SALES_INVOICE, name)}
+	if merged_into:
+		return {"target": (SALES_INVOICE, merged_into)}
+	return {"error": "pay_after_close"}
+
+
+def money_text(value) -> str:
+	"""KES 350 or KES 350.50, for a message."""
+	amount = calc.money(value)
+	return f"KES {amount:,.0f}" if amount == int(amount) else f"KES {amount:,.2f}"
+
+
+def check_amount(amount, outstanding) -> str | None:
+	"""None when the amount can be taken: more than 0, at most 2 decimals, not more than is owed."""
+	if amount is None:
+		return "bad_amount"
+	if amount > round(calc.num(outstanding), 2) + TOLERANCE:
+		return "too_much"
+	return None

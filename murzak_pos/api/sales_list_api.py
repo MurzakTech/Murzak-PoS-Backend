@@ -23,8 +23,8 @@ from datetime import datetime, timezone
 import frappe
 from frappe import _
 
+from murzak_pos.api import business_lists, role_tiers
 from murzak_pos.api import overview_calc as calc
-from murzak_pos.api import role_tiers
 from murzak_pos.api import sales_list_calc as rules
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.payment_gateway_common import resolve_company
@@ -160,17 +160,276 @@ def get_sale(id, doctype=None):
 		frappe.throw(_("You can only see your own sales."), frappe.PermissionError)
 
 	try:
-		data = rules.build_receipt(
-			_receipt_source(doc),
-			calc.nairobi_today(_now_utc()),
-			returns=_returns_against(kind, doc.name),
-			names=_user_names([doc.owner]),
-			can_return=rules.may_return(frappe.get_roles(user), user),
-		)
+		data = _receipt(doc, user)
 	except Exception:
 		frappe.log_error("Sale receipt error", f"{kind} {id}\n{frappe.get_traceback()}")
 		return {"success": False, "message": _("Could not load this sale. Please try again.")}
 	return {"success": True, "data": data}
+
+
+def _receipt(doc, user) -> dict:
+	"""The receipt panel data for a sale document that has been read."""
+	return rules.build_receipt(
+		_receipt_source(doc),
+		calc.nairobi_today(_now_utc()),
+		returns=_returns_against(doc.doctype, doc.name),
+		names=_user_names([doc.owner]),
+		can_return=rules.may_return(frappe.get_roles(user), user),
+	)
+
+
+def _refusal(error_type: str, message: str) -> dict:
+	"""An expected refusal: a plain sentence and a short code the page can act on (the reply is still HTTP 200)."""
+	return {"success": False, "message": message, "error_type": error_type}
+
+
+@frappe.whitelist()
+def take_payment(id, doctype, amount, mode, reference=None, request_id=None, company=None):
+	"""
+	Record money received on an unpaid sale (see the contract for the cases that are supported and refused).
+
+	A Sales Invoice takes a Payment Entry on itself. A POS Invoice that was merged into a Sales Invoice when its till
+	was closed takes the Payment Entry on that Sales Invoice. A POS Invoice still on an open shift cannot (ERPNext
+	cannot point a Payment Entry at it) and is refused, so money is never recorded without reducing what is owed.
+	"""
+	tier = role_tiers.get_tier()
+	if tier is None:
+		frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
+	# Who may touch this sale, before any money is read: another business's sale is refused, and a cashier may
+	# take payment only on a sale of their own
+	ensure_record_access("POS Invoice", id)
+	ensure_record_access("Sales Invoice", id)
+	try:
+		doctype = rules.normalize_doctype(doctype)
+	except rules.ListError as error:
+		_refuse_list(error.code)
+	if doctype is None:
+		_refuse_list("bad_doctype")
+	if company:
+		company = resolve_company(company)
+	user = frappe.session.user
+	head = frappe.db.get_value(doctype, id, ["owner", "docstatus", "company"], as_dict=True)
+	if not head:
+		return _not_found(id)
+	if not rules.may_read_sale(tier, user, head.get("owner")):
+		frappe.throw(_("You can only see your own sales."), frappe.PermissionError)
+	if company and head.get("company") != company:
+		return _not_found(id)
+
+	# What was asked, checked before anything is read or written
+	value = rules.parse_amount(amount)
+	if value is None:
+		return _refusal("bad_amount", _("Enter an amount above 0, such as 500 or 250.50."))
+	key = rules.normalize_mode_key(mode)
+	if key is None:
+		return _refusal("bad_mode", _("Choose how the customer paid: cash, M-Pesa or card."))
+	code, problem = rules.clean_reference(key, reference)
+	if problem == "missing":
+		return _refusal("reference_required", _("Enter the M-Pesa code from the customer's message."))
+	if problem:
+		return _refusal(
+			"bad_reference",
+			_("The M-Pesa code must be 8 to 12 letters and numbers, with no spaces or dashes."),
+		)
+	request, request_ok = rules.clean_request_id(request_id)
+	if not request_ok:
+		return _refusal(
+			"bad_request_id", _("This payment could not be checked for a repeat. Please try again.")
+		)
+
+	try:
+		entry, refusal = _take(doctype, id, head.get("company"), value, key, code, request)
+	except Exception:
+		frappe.db.rollback()
+		frappe.log_error("Take payment error", f"{doctype} {id}\n{frappe.get_traceback()}")
+		return _refusal(
+			"server_error", _("The payment could not be recorded, so nothing was taken. Please try again.")
+		)
+	if refusal:
+		return refusal
+	try:
+		return _paid(entry, doctype, id, user)
+	except Exception:
+		# The money is recorded; only the picture of the sale could not be drawn
+		frappe.log_error("Take payment receipt error", f"{doctype} {id}\n{frappe.get_traceback()}")
+		return {"success": True, "data": {"payment": entry, "sale": None}}
+
+
+def _take(doctype, id, company, value, key, code, request):
+	"""Check the sale and record the payment. Returns (payment name, None) or (None, the refusal)."""
+	# One request at a time per sale, so a double tap cannot slip in between the check and the payment
+	frappe.db.get_value(doctype, id, "name", for_update=True)
+	earlier = _earlier_payment(request, id, company)
+	if earlier:
+		return earlier, None
+
+	doc = frappe.get_doc(doctype, id)
+	source = _receipt_source(doc)
+	owed = rules.sale_amounts(source)["outstanding"]
+	plan = rules.payment_plan(
+		doctype,
+		id,
+		doc.docstatus,
+		doc.get("is_return"),
+		owed,
+		source.get("merged_into"),
+		_is_consolidated_invoice(doc),
+	)
+	if plan.get("error"):
+		return None, _plan_refusal(plan["error"], id)
+	target = plan["target"]
+	target_info = _payment_target(target, doc, owed)
+	if target_info.get("error"):
+		return None, _plan_refusal(target_info["error"], id)
+	owed = target_info["owed"]
+	if rules.check_amount(value, owed):
+		return None, _refusal(
+			"too_much",
+			_("The amount is more than the {0} still owed on this sale.").format(rules.money_text(owed)),
+		)
+	modes = _shop_modes(doc.company)
+	picked = rules.pick_mode(key, modes, _mode_types() if modes else {})
+	if not picked:
+		return None, _refusal(
+			"bad_mode",
+			_("This shop does not have {0} set up as a way to pay.").format(rules.MODE_KEYS[key]),
+		)
+	account = _mode_account(picked, doc.company)
+	if not account:
+		return None, _refusal(
+			"no_account",
+			_("{0} has no account set up for this shop. Ask the owner to add it in Settings.").format(picked),
+		)
+	entry = _record_payment(
+		target, value, picked, account, code or _fallback_reference(key, id), source, request, id
+	)
+	return entry, None
+
+
+def _plan_refusal(code: str, id) -> dict:
+	"""The plain sentence for each reason a payment cannot be taken on a sale."""
+	if code == "pay_after_close":
+		return _refusal(
+			"pay_after_close",
+			_("This sale is still on the till's open shift. Close the shift, then take the payment."),
+		)
+	if code == "consolidated":
+		return _refusal(
+			"consolidated",
+			_("This is the invoice made when a till was closed. Take the payment on the customer's receipt."),
+		)
+	if code == "other_customer":
+		return _refusal(
+			"other_customer",
+			_(
+				"This sale was merged into an invoice for another customer, so the payment cannot be taken here."
+			),
+		)
+	if code == "is_return":
+		return _refusal("not_payable", _("A return cannot take a payment."))
+	if code == "nothing_owed":
+		return _refusal("not_payable", _("Nothing is owed on this sale."))
+	return _not_found(id)
+
+
+def _is_consolidated_invoice(doc) -> bool:
+	"""A Sales Invoice made when a till was closed: flagged by ERPNext, or named by the receipts merged into it."""
+	if doc.doctype != rules.SALES_INVOICE:
+		return False
+	return bool(doc.get("is_consolidated")) or bool(
+		frappe.db.exists(rules.POS_INVOICE, {"consolidated_invoice": doc.name})
+	)
+
+
+def _payment_target(target, doc, owed) -> dict:
+	"""
+	The Sales Invoice that takes the payment and the most it can take. A Sales Invoice is its own target. For a merged
+	POS Invoice the target is the consolidated invoice: it must still be submitted and be the same customer's.
+	"""
+	if target == (doc.doctype, doc.name):
+		return {"owed": owed}
+	info = frappe.db.get_value(
+		target[0], target[1], ["docstatus", "customer", "outstanding_amount"], as_dict=True, for_update=True
+	)
+	if not info or info.get("docstatus") != 1:
+		return {"error": "pay_after_close"}
+	if info.get("customer") != doc.get("customer"):
+		return {"error": "other_customer"}
+	return {"owed": min(owed, calc.money(info.get("outstanding_amount")))}
+
+
+def _shop_modes(company) -> list[str]:
+	return business_lists.modes_of_payment_for(company) or []
+
+
+def _mode_account(mode, company):
+	"""The company's account for a mode of payment, or None. Only the company's own currency is accepted."""
+	from erpnext.accounts.doctype.journal_entry.journal_entry import get_default_bank_cash_account
+
+	info = get_default_bank_cash_account(company, mode_of_payment=mode) or {}
+	account = info.get("account")
+	if not account:
+		return None
+	currency = info.get("account_currency")
+	if currency and currency != frappe.get_cached_value("Company", company, "default_currency"):
+		return None
+	return {"account": account, "account_currency": currency}
+
+
+def _fallback_reference(key, sale_id):
+	"""A card payment into a bank account must carry a reference for ERPNext; the sale id stands in when none is given."""
+	return sale_id if key == "card" else None
+
+
+def _earlier_payment(request, sale_id, company):
+	"""The submitted payment already taken for this request on this sale, or None."""
+	if not request:
+		return None
+	found = frappe.get_all(
+		"Payment Entry",
+		filters={
+			"docstatus": 1,
+			"company": company,
+			"remarks": ["like", rules.marker_pattern(request, sale_id)],
+		},
+		pluck="name",
+		limit_page_length=1,
+	)
+	return found[0] if found else None
+
+
+def _record_payment(target, amount, mode, account, reference, source, request, sale_id) -> str:
+	"""Make, save and submit one Payment Entry against the target Sales Invoice. Returns its name."""
+	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+
+	today = calc.nairobi_today(_now_utc())
+	entry = get_payment_entry(target[0], target[1], party_amount=amount)
+	entry.posting_date = today
+	entry.mode_of_payment = mode
+	entry.paid_to = account["account"]
+	if account.get("account_currency"):
+		entry.paid_to_account_currency = account["account_currency"]
+	entry.paid_amount = amount
+	entry.received_amount = amount
+	for row in entry.references:
+		row.allocated_amount = amount
+	if reference:
+		entry.reference_no = reference
+	entry.reference_date = today
+	entry.remarks = rules.payment_remark(
+		rules.short_receipt(source.get("doctype"), source.get("name")), request, sale_id
+	)
+	entry.insert(ignore_permissions=True)
+	entry.submit()
+	return entry.name
+
+
+def _paid(entry, doctype, id, user) -> dict:
+	"""The answer for a payment that is recorded: its name and the sale as the receipt panel shows it now."""
+	return {
+		"success": True,
+		"data": {"payment": entry, "sale": _receipt(frappe.get_doc(doctype, id), user)},
+	}
 
 
 def _not_found(id):
@@ -192,7 +451,7 @@ def _kind_of(id, doctype):
 # --- reading the sales list -------------------------------------------------------------------------
 
 
-def _filters(scope: _Scope, doctype: str, with_tab: bool):
+def _filters(scope: _Scope, doctype: str):
 	"""(SQL conditions, values) over one kind of sale document, alias d."""
 	conditions = [
 		"d.docstatus = 1",
@@ -204,9 +463,15 @@ def _filters(scope: _Scope, doctype: str, with_tab: bool):
 		"from_date": scope.period["from"],
 		"to_date": scope.period["to"],
 	}
-	if doctype == rules.POS_INVOICE:
-		# A POS Invoice merged into a Sales Invoice at till close is already inside that Sales Invoice
-		conditions.append("IFNULL(d.consolidated_invoice, '') = ''")
+	if doctype == rules.SALES_INVOICE:
+		# The invoice ERPNext makes when a till is closed holds that shift's receipts, which are listed themselves.
+		# It is recognised the way the rest of the app does (sales_api: is_consolidated) and by the receipts that
+		# point at it (consolidated_invoice, as sales_figures.py does), so it is hidden either way
+		if frappe.db.has_column(rules.SALES_INVOICE, "is_consolidated"):
+			conditions.append("IFNULL(d.is_consolidated, 0) = 0")
+		conditions.append(
+			"NOT EXISTS (SELECT 1 FROM `tabPOS Invoice` mp WHERE mp.consolidated_invoice = d.name)"
+		)
 	if scope.owner:
 		conditions.append("d.owner = %(owner)s")
 		values["owner"] = scope.owner
@@ -225,66 +490,75 @@ def _filters(scope: _Scope, doctype: str, with_tab: bool):
 			matches.append("d.name REGEXP %(receipt_rx)s")
 			values["receipt_rx"] = rules.receipt_regex(search["seq"])
 		conditions.append("(" + " OR ".join(matches) + ")")
-	if with_tab:
-		conditions += rules.tab_conditions(scope.tab)
 	return conditions, values
 
 
-def _sale_union(scope: _Scope, select: str, tables: str, with_tab: bool, end_with: str = ""):
-	"""SQL over both kinds of sale document joined with UNION ALL, and its values. `select` and `tables` take {doctype}."""
-	parts, values = [], {}
-	for doctype in rules.KINDS:
-		conditions, values = _filters(scope, doctype, with_tab)
-		parts.append(
-			select.format(
-				doctype=doctype,
-				consolidated=_consolidated_column(doctype) if "{consolidated}" in select else "",
-			)
-			+ " "
-			+ tables.format(doctype=doctype)
-			+ " WHERE "
-			+ " AND ".join(conditions)
-			+ " "
-			+ end_with
+# The columns of a list row, the same for both kinds of document so the two can be joined. The POS Invoice part
+# also reads the consolidated invoice it was merged into, for `effective_outstanding` (see sales_list_calc).
+_COLUMNS = (
+	"SELECT '{doctype}' AS doctype, d.name AS name, d.posting_date AS posting_date, d.posting_time AS posting_time, "
+	"d.customer AS customer, d.customer_name AS customer_name, d.owner AS owner, d.grand_total AS grand_total, "
+	"d.outstanding_amount AS outstanding_amount, {effective} AS effective_outstanding, d.is_return AS is_return, "
+	"d.due_date AS due_date, c.payment_terms AS payment_terms, {merged_into} AS merged_into, "
+	"{merged_outstanding} AS merged_outstanding "
+	"FROM `tab{doctype}` d LEFT JOIN `tabCustomer` c ON c.name = d.customer {merged_join}"
+)
+
+# The same rule as sales_list_calc.effective_outstanding, for the filters and the summary that run in SQL
+_EFFECTIVE_POS = (
+	"CASE WHEN d.is_return = 1 OR IFNULL(d.consolidated_invoice, '') = '' OR m.outstanding_amount IS NULL "
+	"THEN d.outstanding_amount WHEN m.outstanding_amount <= 0 THEN 0 "
+	"WHEN d.outstanding_amount > 0 THEN LEAST(d.outstanding_amount, m.outstanding_amount) "
+	"ELSE d.outstanding_amount END"
+)
+
+
+def _sale_part(doctype: str) -> str:
+	"""The SELECT ... FROM part for one kind of document."""
+	if doctype == rules.POS_INVOICE:
+		return _COLUMNS.format(
+			doctype=doctype,
+			effective=_EFFECTIVE_POS,
+			merged_into="IFNULL(d.consolidated_invoice, '')",
+			merged_outstanding="m.outstanding_amount",
+			merged_join="LEFT JOIN `tabSales Invoice` m ON m.name = d.consolidated_invoice",
 		)
-	return " UNION ALL ".join(parts), values
-
-
-def _row_columns() -> str:
-	"""The columns of a list row, the same for both kinds of document so the two can be joined."""
-	return (
-		"SELECT '{doctype}' AS doctype, d.name AS name, d.posting_date AS posting_date, d.posting_time AS posting_time, "
-		"d.customer AS customer, d.customer_name AS customer_name, d.owner AS owner, d.grand_total AS grand_total, "
-		"d.outstanding_amount AS outstanding_amount, d.is_return AS is_return, d.due_date AS due_date, "
-		"c.payment_terms AS payment_terms, {consolidated} AS is_consolidated"
+	return _COLUMNS.format(
+		doctype=doctype,
+		effective="d.outstanding_amount",
+		merged_into="''",
+		merged_outstanding="NULL",
+		merged_join="",
 	)
 
 
-def _consolidated_column(doctype: str) -> str:
-	"""Only a Sales Invoice can be the merged invoice of a till close (is_consolidated); a POS Invoice never is."""
-	if doctype == rules.SALES_INVOICE and frappe.db.has_column(rules.SALES_INVOICE, "is_consolidated"):
-		return "IFNULL(d.is_consolidated, 0)"
-	return "0"
+def _sale_union(scope: _Scope):
+	"""SQL listing every sale of both kinds (see the module notes), and its values. Alias it `s`."""
+	parts, values = [], {}
+	for doctype in rules.KINDS:
+		conditions, values = _filters(scope, doctype)
+		parts.append(_sale_part(doctype) + " WHERE " + " AND ".join(conditions))
+	return " UNION ALL ".join(parts), values
+
+
+def _tab_where(scope: _Scope) -> str:
+	conditions = rules.tab_conditions(scope.tab)
+	return (" WHERE " + " AND ".join(conditions)) if conditions else ""
 
 
 def _sales_page(scope: _Scope, page, page_size) -> dict:
 	"""rows, total, page, page_size, pages for the All sales, Unpaid and Returns tabs."""
-	union, values = _sale_union(scope, "SELECT d.name", "FROM `tab{doctype}` d", with_tab=True)
-	counted = frappe.db.sql(f"SELECT COUNT(*) AS n FROM ({union}) s", values, as_dict=True)
+	union, values = _sale_union(scope)
+	where = _tab_where(scope)
+	counted = frappe.db.sql(f"SELECT COUNT(*) AS n FROM ({union}) s{where}", values, as_dict=True)
 	total = int(counted[0].get("n") or 0) if counted else 0
 	numbers = rules.page_numbers(page, page_size, total)
 
 	rows: list[dict] = []
 	if total:
-		union, values = _sale_union(
-			scope,
-			_row_columns(),
-			"FROM `tab{doctype}` d LEFT JOIN `tabCustomer` c ON c.name = d.customer",
-			with_tab=True,
-		)
 		values.update(limit=numbers["page_size"], offset=numbers["offset"])
 		found = frappe.db.sql(
-			f"SELECT * FROM ({union}) s ORDER BY posting_date DESC, posting_time DESC, name DESC "
+			f"SELECT * FROM ({union}) s{where} ORDER BY s.posting_date DESC, s.posting_time DESC, s.name DESC "
 			"LIMIT %(limit)s OFFSET %(offset)s",
 			values,
 			as_dict=True,
@@ -306,15 +580,16 @@ def _sales_page(scope: _Scope, page, page_size) -> dict:
 
 def _summary(scope: _Scope) -> dict:
 	"""Sold, unpaid and returned for the same filters, whatever the tab."""
-	union, values = _sale_union(
-		scope,
-		"SELECT d.is_return AS is_return, SUM(d.grand_total) AS total, "
-		"SUM(CASE WHEN d.outstanding_amount > 0 THEN d.outstanding_amount ELSE 0 END) AS outstanding",
-		"FROM `tab{doctype}` d",
-		with_tab=False,
-		end_with="GROUP BY d.is_return",
+	union, values = _sale_union(scope)
+	return rules.build_summary(
+		frappe.db.sql(
+			"SELECT s.is_return AS is_return, SUM(s.grand_total) AS total, "
+			"SUM(CASE WHEN s.effective_outstanding > 0 THEN s.effective_outstanding ELSE 0 END) AS outstanding "
+			f"FROM ({union}) s GROUP BY s.is_return",
+			values,
+			as_dict=True,
+		)
 	)
-	return rules.build_summary(frappe.db.sql(union, values, as_dict=True))
 
 
 def _by_kind(rows) -> dict:
@@ -507,9 +782,16 @@ def _receipt_source(doc) -> dict:
 		if found:
 			mobile = found.get("mobile_no")
 			has_terms = bool(found.get("payment_terms"))
+	merged_into = (doc.get("consolidated_invoice") or None) if doc.doctype == rules.POS_INVOICE else None
+	merged_outstanding = None
+	if merged_into:
+		merged_outstanding = frappe.db.get_value(rules.SALES_INVOICE, merged_into, "outstanding_amount")
 	return {
 		"doctype": doc.doctype,
 		"name": doc.name,
+		"merged_into": merged_into,
+		"merged_outstanding": merged_outstanding,
+		"is_consolidated": doc.get("is_consolidated") if doc.doctype == rules.SALES_INVOICE else None,
 		"posting_date": doc.get("posting_date"),
 		"posting_time": doc.get("posting_time"),
 		"customer": customer,
