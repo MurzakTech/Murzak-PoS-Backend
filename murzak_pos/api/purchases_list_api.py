@@ -83,11 +83,11 @@ def _refuse_list(code: str):
 	frappe.throw(_("Choose a tab: all, orders or returns."), frappe.ValidationError)
 
 
-def plain_text(error) -> str:
+def plain_text(error, limit: int = 240) -> str:
 	"""The words of an error without tags, line breaks or a long tail, so a person can read it."""
 	text = re.sub(r"<[^>]*>", " ", str(error or ""))
 	text = re.sub(r"\s+", " ", text).strip()
-	return text[:240]
+	return text[:limit]
 
 
 # --- the list ----------------------------------------------------------------------------------------
@@ -416,6 +416,25 @@ def _payment_modes(company) -> list[dict]:
 	return modes
 
 
+def _notes_for(doctype: str, name: str) -> list[dict]:
+	"""The notes written on a purchase (comments), oldest first: [{text, date}]."""
+	found = frappe.get_all(
+		"Comment",
+		filters={"reference_doctype": doctype, "reference_name": name, "comment_type": "Comment"},
+		fields=["content", "creation"],
+		order_by="creation asc",
+		limit_page_length=20,
+	)
+	notes = [
+		{
+			"text": plain_text(r.get("content"), rules.MAX_NOTE_LENGTH),
+			"date": rules.date_text(r.get("creation")),
+		}
+		for r in found
+	]
+	return [n for n in notes if n["text"]]
+
+
 def _can_cancel_bill() -> bool:
 	user = frappe.session.user
 	return user == "Administrator" or bool(CANCEL_PURCHASE_ROLES.intersection(frappe.get_roles(user)))
@@ -514,6 +533,7 @@ def _panel(doc) -> dict:
 			"print": True,
 		},
 		"return_target": return_against,
+		"notes": _notes_for(doc.doctype, doc.name),
 	}
 	if to_pay is not None:
 		data["pay"] = {
@@ -805,6 +825,7 @@ def create_direct_bill(
 	mode_of_payment=None,
 	reference_no=None,
 	request_id=None,
+	notes=None,
 ):
 	"""
 	Record a supplier bill the shop already holds. The bill is submitted with "update stock" on, so the stock goes up at
@@ -858,6 +879,7 @@ def create_direct_bill(
 			mode_of_payment,
 			reference_no,
 			request,
+			rules.clean_note(notes),
 		)
 	except Exception as error:
 		frappe.db.rollback()
@@ -888,7 +910,18 @@ def _mode_account(mode, company):
 
 
 def _direct(
-	company, supplier, items, bill_no, bill_day, due_day, warehouse, paid_amount, mode, reference_no, request
+	company,
+	supplier,
+	items,
+	bill_no,
+	bill_day,
+	due_day,
+	warehouse,
+	paid_amount,
+	mode,
+	reference_no,
+	request,
+	note=None,
 ):
 	"""The work of create_direct_bill, inside its try."""
 	frappe.db.get_value("Supplier", supplier, "name", for_update=True)
@@ -932,7 +965,6 @@ def _direct(
 		values["bill_date"] = bill_day
 	if due_day:
 		values["due_date"] = due_day
-	total = rules.lines_total(items)
 	if paid_amount not in (None, ""):
 		mode = mode or business_lists.first_mode_of_payment(company)
 		if not mode or not business_lists.mode_of_payment_usable(mode, company):
@@ -956,10 +988,10 @@ def _direct(
 	invoice = frappe.get_doc(values)
 	invoice.insert(ignore_permissions=True)
 	invoice.submit()
+	if note:
+		invoice.add_comment("Comment", note)
 	frappe.db.commit()
-	reply = _direct_reply(invoice)
-	reply["data"]["total_of_lines"] = total
-	return reply
+	return _direct_reply(invoice)
 
 
 def _direct_reply(invoice, repeat=False) -> dict:
@@ -973,3 +1005,33 @@ def _direct_reply(invoice, repeat=False) -> dict:
 			"repeat": repeat,
 		},
 	}
+
+
+# --- a note on a purchase ----------------------------------------------------------------------------
+
+
+@frappe.whitelist(methods=["POST"])
+def add_purchase_note(id, note, doctype=None):
+	"""Write a note on an order or a bill (kept as a comment on it, shown in the panel). Replies with the note as saved."""
+	_require_buyer()
+	ensure_record_access("Purchase Order", id)
+	ensure_record_access("Purchase Invoice", id)
+	try:
+		doctype = rules.normalize_doctype(doctype)
+	except rules.ListError as error:
+		_refuse_list(error.code)
+	text = rules.clean_note(note)
+	if not text:
+		return _refusal("no_note", _("Write the note first."))
+	kind = _kind_of(id, doctype)
+	if kind is None:
+		return _not_found(id)
+	try:
+		doc = frappe.get_doc(kind, id)
+		doc.add_comment("Comment", text)
+		frappe.db.commit()
+	except Exception:
+		frappe.db.rollback()
+		frappe.log_error("Purchase note error", f"{kind} {id}\n{frappe.get_traceback()}")
+		return _refusal("server_error", _("The note was not saved. Please try again."))
+	return {"success": True, "data": {"note": {"text": text, "date": str(calc.nairobi_today(_now_utc()))}}}

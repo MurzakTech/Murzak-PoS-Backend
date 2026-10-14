@@ -47,6 +47,7 @@ def row(**extra):
 
 def order_doc(**extra):
 	values = {
+		"add_comment": MagicMock(),
 		"doctype": "Purchase Order",
 		"name": "PUR-ORD-2026-00012",
 		"docstatus": 1,
@@ -1075,6 +1076,77 @@ class TestDirectBill(DirectBillCase):
 
 	def test_a_bad_request_id_is_refused(self):
 		self.assertEqual(self.bill(request_id="no good")["error_type"], "bad_request_id")
+
+
+class TestNotes(DirectBillCase):
+	def test_a_note_on_a_direct_bill_is_saved_before_the_commit(self):
+		order = []
+		self.made.add_comment.side_effect = lambda *a: order.append("note")
+		self.db.commit.side_effect = lambda: order.append("commit")
+		self.bill(notes="  Delivered   by van ")
+		self.made.add_comment.assert_called_once_with("Comment", "Delivered by van")
+		self.assertEqual(order, ["note", "commit"])
+
+	def test_no_note_adds_no_comment(self):
+		self.bill()
+		self.made.add_comment.assert_not_called()
+
+	def test_a_failed_note_rolls_the_whole_bill_back(self):
+		self.made.add_comment.side_effect = RuntimeError("lost")
+		reply = self.bill(notes="x")
+		self.assertFalse(reply["success"])
+		self.db.rollback.assert_called()
+		self.db.commit.assert_not_called()
+
+	def test_a_note_can_be_added_to_an_order(self):
+		reply = api.add_purchase_note("PUR-ORD-2026-00012", " Call before delivery ", "Purchase Order")
+		self.assertEqual(reply["data"]["note"]["text"], "Call before delivery")
+		self.made.add_comment.assert_called_once_with("Comment", "Call before delivery")
+		self.db.commit.assert_called_once()
+
+	def test_an_empty_note_is_refused(self):
+		reply = api.add_purchase_note("PUR-ORD-2026-00012", "   ")
+		self.assertEqual(reply["error_type"], "no_note")
+		self.db.commit.assert_not_called()
+
+	def test_a_note_on_an_unknown_purchase_is_not_found(self):
+		self.db.exists.return_value = False
+		self.assertEqual(api.add_purchase_note("NOPE", "hello")["error_type"], "not_found")
+
+	def test_a_cashier_cannot_add_a_note(self):
+		self.tier = "cashier"
+		with self.assertRaises(frappe.PermissionError):
+			api.add_purchase_note("X", "hello")
+		self.access.assert_not_called()
+
+	def test_the_record_is_checked_for_another_business_before_it_is_changed(self):
+		api.add_purchase_note("PUR-ORD-2026-00012", "hi", "Purchase Order")
+		self.access.assert_any_call("Purchase Order", "PUR-ORD-2026-00012")
+		self.access.assert_any_call("Purchase Invoice", "PUR-ORD-2026-00012")
+
+	def test_a_failed_comment_is_rolled_back(self):
+		self.made.add_comment.side_effect = RuntimeError("lost")
+		reply = api.add_purchase_note("PUR-ORD-2026-00012", "hi", "Purchase Order")
+		self.assertFalse(reply["success"])
+		self.db.rollback.assert_called()
+
+	def test_the_panel_lists_the_notes_oldest_first(self):
+		comments = [
+			{"content": "<div>First</div>", "creation": datetime(2026, 10, 2, 9, 0)},
+			{"content": "Second", "creation": datetime(2026, 10, 3, 9, 0)},
+		]
+		with (
+			patch.object(frappe, "get_all", create=True, return_value=comments),
+			patch.object(frappe, "get_doc", create=True, return_value=order_doc()),
+			patch.object(api, "_linked_parents", return_value=[]),
+			patch.object(api, "_receipt_views", return_value=[]),
+			patch.object(api, "_payment_modes", return_value=[]),
+		):
+			self.db.exists.side_effect = lambda kind, name=None: kind == "Purchase Order"
+			notes = api.get_purchase("PUR-ORD-2026-00012")["data"]["notes"]
+		self.assertEqual(
+			notes, [{"text": "First", "date": "2026-10-02"}, {"text": "Second", "date": "2026-10-03"}]
+		)
 
 
 class TestMisc(ApiCase):

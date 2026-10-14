@@ -1,6 +1,6 @@
 # P4-5 contract: the Purchases page and the guided Receive goods step
 
-Four new server methods (ticket P4-5, acceptance check AC-29). No existing method, record, report or setting is
+Five new server methods (ticket P4-5, acceptance check AC-29). No existing method, record, report or setting is
 changed. They sit in new files and import existing helpers; nothing existing was edited except two additions of rows
 (`translations/sw.csv`, `EXPECTED_GUARDS` in `test_record_access.py`).
 
@@ -8,10 +8,11 @@ changed. They sit in new files and import existing helpers; nothing existing was
 - `murzak_pos.api.purchases_list_api.get_purchase` : the panel for one order or one bill
 - `murzak_pos.api.purchases_list_api.receive_goods` : the guided step. ONE transaction: goods received note, stock and supplier bill together
 - `murzak_pos.api.purchases_list_api.create_direct_bill` : "I already have the bill": a bill that raises stock at once
+- `murzak_pos.api.purchases_list_api.add_purchase_note` : a note on an order or a bill
 
 Code: `murzak_pos/api/purchases_list_api.py` (database reads and writes, role checks) and
 `murzak_pos/api/purchases_list_calc.py` (all rules, no database). Tests: `test_purchases_list_api.py` and
-`test_purchases_list_calc.py` (227 tests, no database: every Frappe call is mocked).
+`test_purchases_list_calc.py` (241 tests, no database: every Frappe call is mocked).
 
 Period rules come from `murzak_pos/api/overview_calc.py` (on main). Replies follow the usual shape
 `{"message": {"success": true, "data": {...}}}`. An expected refusal is HTTP 200 with
@@ -112,7 +113,8 @@ Dates filter on the order date (orders) or the posting date (bills and returns).
   "pay": { "invoice": "ACC-PINV-2026-00020", "number": "#B0020", "bill_no": "INV-1", "outstanding": 1160.0,
            "due_date": "2026-11-02", "modes": [ { "name": "M-Pesa", "kind": "mpesa" } ] },
   "can": { "receive_goods": true, "pay_bill": true, "cancel": false, "return": true, "edit_draft": false, "print": true },
-  "return_target": "ACC-PINV-2026-00020" } }
+  "return_target": "ACC-PINV-2026-00020",
+  "notes": [ { "text": "Call before delivery", "date": "2026-10-02" } ] } }
 ```
 
 - A bill's lines have `ordered = received = qty` and `to_arrive = 0`. `totals.outstanding` is present for a bill only.
@@ -210,6 +212,7 @@ fields were not sent to the server), so there was no server path for a bill that
 | `warehouse` | store; lines without one use the item's or the business's default (the same rules as `upsert_purchase_order`) |
 | `paid_amount`, `mode_of_payment`, `reference_no` | optional. With `paid_amount` the bill is marked as paid in the SAME document (`is_paid`, `cash_bank_account` from the way of paying), above 0 and not above the total; the M-Pesa code goes into the remarks |
 | `company`, `request_id` | as above; a repeat returns the first bill with `repeat: true` |
+| `notes` | optional text (500 characters, tags removed), saved as a comment on the bill in the same transaction |
 
 One Purchase Invoice with `update_stock = 1` is inserted and submitted (stock rises with it), then committed; on any failure
 `frappe.db.rollback()` is called and "The bill was not saved and no stock was added, so nothing was changed." comes back.
@@ -219,6 +222,12 @@ Reply: `{ "invoice", "invoice_number", "total", "outstanding", "repeat" }`. Refu
 A purchase ORDER (stock raised later by Receive goods) is saved with the EXISTING `murzak_pos.api.purchase.upsert_purchase_order`
 with `submit = 1` (the order must be submitted before goods can be received). An order that needs approval stays a draft and the
 reply carries `approval`.
+
+## `add_purchase_note` (POST)
+
+`id`, `note`, optional `doctype`. Adds a comment (`Comment` type) to the order or bill and commits; the panel's `notes` reads these
+back (oldest first, at most 20). The note is cleaned (tags removed, 500 characters). Refusals: `no_note`, `not_found`,
+`server_error` (rolled back). It exists because `upsert_purchase_order` (existing, not edited) has no place for a note.
 
 ## Assumptions about ERPNext that could not be verified here (no database)
 
@@ -236,5 +245,6 @@ reply carries `approval`.
 
 - `receive_goods` also takes `due_date` (the page shows a due date field) and returns extra fields (`receipt_number`, `invoice_number`,
   `bill`, `stock_ok`, `order`, `repeat`) besides the proposed `{receipt, invoice, stock}`; `stock` entries also carry `received`.
-- A fourth call, `create_direct_bill`, was needed because no server path existed for the direct bill (see above).
+- A fourth call, `create_direct_bill`, was needed because no server path existed for the direct bill (see above), and a fifth,
+  `add_purchase_note`, because the New purchase form has a Notes field and no existing order call stores one.
 - Pay bill, Cancel and Edit draft reuse existing calls and screens; there is no new payment or cancel method.

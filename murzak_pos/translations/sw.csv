@@ -979,3 +979,5 @@
 "{0} is listed more than once.","{0} imeorodheshwa zaidi ya mara moja."
 "{0} is not on this order.","{0} haipo kwenye agizo hili."
 "{0} is on this order more than once, so it cannot be received here. Use the current Create GRN screen for this order.","{0} iko kwenye agizo hili zaidi ya mara moja, kwa hiyo haiwezi kupokelewa hapa. Tumia skrini ya sasa ya Create GRN kwa agizo hili."
+"Write the note first.","Andika dokezo kwanza."
+"The note was not saved. Please try again.","Dokezo halikuhifadhiwa. Tafadhali jaribu tena."

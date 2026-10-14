@@ -35,6 +35,7 @@ MIN_NUMBER_DIGITS = 4
 TOLERANCE = 0.005
 MAX_NAME_LENGTH = 140
 MAX_BILL_NO_LENGTH = 60
+MAX_NOTE_LENGTH = 500
 
 # An order the supplier no longer owes goods on, whatever the quantities say
 FINISHED_ORDER_STATUSES = frozenset({"Closed", "Completed", "Cancelled"})
@@ -441,6 +442,14 @@ def invoice_remark(order, request_id) -> str:
 
 def clean_bill_no(value) -> str:
 	return re.sub(r"\s+", " ", str(value or "")).strip()[:MAX_BILL_NO_LENGTH]
+
+
+def clean_note(value) -> str:
+	"""A note as saved: tidied lines, no tags, at most 500 characters. Empty when there is nothing to keep."""
+	text = re.sub(r"<[^>]*>", " ", str(value or ""))
+	text = re.sub(r"[ \t]+", " ", text)
+	text = re.sub(r"\s*\n\s*", "\n", text).strip()
+	return text[:MAX_NOTE_LENGTH]
 
 
 def clean_day(value) -> tuple[date | None, bool]:

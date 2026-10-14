@@ -39,6 +39,7 @@ EXPECTED_GUARDS = {
 		"get_purchase": ("Purchase Order id", "Purchase Invoice id"),
 		"receive_goods": ("Purchase Order order", "Warehouse warehouse"),
 		"create_direct_bill": ("Supplier supplier", "Warehouse warehouse"),
+		"add_purchase_note": ("Purchase Order id", "Purchase Invoice id"),
 	},
 	"sales_person_api": {
 		"update_sales_person": ("variable name",),

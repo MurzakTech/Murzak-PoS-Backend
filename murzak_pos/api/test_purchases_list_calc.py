@@ -469,6 +469,21 @@ class TestBillFields(unittest.TestCase):
 		self.assertIsNone(rules.default_due_date(None))
 
 
+class TestNotes(unittest.TestCase):
+	def test_a_note_is_tidied(self):
+		self.assertEqual(rules.clean_note("  Paid   half\n\n  in cash  "), "Paid half\nin cash")
+
+	def test_tags_are_removed(self):
+		self.assertEqual(rules.clean_note("<b>Fragile</b> goods"), "Fragile goods")
+
+	def test_a_note_is_cut_at_500_characters(self):
+		self.assertEqual(len(rules.clean_note("x" * 900)), rules.MAX_NOTE_LENGTH)
+
+	def test_nothing_is_an_empty_note(self):
+		self.assertEqual(rules.clean_note(None), "")
+		self.assertEqual(rules.clean_note("   "), "")
+
+
 class TestDirectBill(unittest.TestCase):
 	def test_good_lines_are_kept(self):
 		plan = rules.plan_direct_bill([{"item_code": "A", "qty": 2, "rate": "10.50"}])
