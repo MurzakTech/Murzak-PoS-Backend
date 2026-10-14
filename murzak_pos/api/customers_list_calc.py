@@ -139,7 +139,7 @@ def parse_search(text) -> dict | None:
 	"""
 	What a search box entry means, or None for an empty one.
 
-	text    what to look for in the name and the customer number (lower case, at most 60 characters)
+	text    what to look for in the name, the customer number and the email (lower case, at most 60 characters)
 	mobile  the digits to look for in the mobile number, when the entry looks like a phone number (see mobile_fragment)
 	"""
 	cleaned = " ".join(str(text or "").split())[:MAX_SEARCH_LENGTH].strip()
@@ -162,7 +162,7 @@ def matches_search(row: dict, search: dict | None) -> bool:
 	"""The same test the database makes for the All tab, for a list built in memory. No search matches everything."""
 	if not search:
 		return True
-	haystack = f"{row.get('customer_name') or ''} {row.get('name') or ''}".lower()
+	haystack = f"{row.get('customer_name') or ''} {row.get('name') or ''} {row.get('email_id') or ''}".lower()
 	if search["text"] in haystack:
 		return True
 	return bool(search.get("mobile")) and search["mobile"] in digits_of(row.get("mobile_no"))

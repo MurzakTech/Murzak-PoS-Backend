@@ -125,7 +125,7 @@ def _customer_conditions(company: str, status: str, customer_type, search) -> tu
 		conditions.append("c.customer_type = %(customer_type)s")
 		values["customer_type"] = customer_type
 	if search:
-		text = "(c.customer_name LIKE %(like)s OR c.name LIKE %(like)s"
+		text = "(c.customer_name LIKE %(like)s OR c.name LIKE %(like)s OR c.email_id LIKE %(like)s"
 		values["like"] = f"%{rules.escape_like(search['text'])}%"
 		if search.get("mobile"):
 			text += " OR REPLACE(REPLACE(REPLACE(IFNULL(c.mobile_no, ''), ' ', ''), '-', ''), '+', '') LIKE %(mobile)s"

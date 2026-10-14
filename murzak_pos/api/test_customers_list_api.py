@@ -104,6 +104,11 @@ class TestTheSearch(unittest.TestCase):
 		self.assertFalse(rules.matches_search(row, rules.parse_search("otieno")))
 		self.assertTrue(rules.matches_search(row, None))
 
+	def test_the_search_also_matches_the_email_as_the_old_list_did(self):
+		row = {"name": "C-1", "customer_name": "Amina", "email_id": "amina@demo.test", "mobile_no": ""}
+		self.assertTrue(rules.matches_search(row, rules.parse_search("amina@demo")))
+		self.assertFalse(rules.matches_search(row, rules.parse_search("otieno@demo")))
+
 	def test_a_mobile_saved_with_spaces_still_matches(self):
 		row = {"name": "C", "customer_name": "Amina", "mobile_no": "0712 345 678"}
 		self.assertTrue(rules.matches_search(row, rules.parse_search("712345")))
@@ -1137,6 +1142,7 @@ class TestTheQueries(ApiCase):
 		text = " ".join(conditions)
 		self.assertIn("c.customer_name LIKE %(like)s", text)
 		self.assertIn("c.name LIKE %(like)s", text)
+		self.assertIn("c.email_id LIKE %(like)s", text)
 		self.assertIn("REPLACE(REPLACE(REPLACE(IFNULL(c.mobile_no", text)
 		self.assertEqual(values["mobile"], "%712345%")
 

@@ -10,7 +10,7 @@ editing, credit limits and loyalty.
 - `murzak_pos.api.customers_list_api.get_customer_form_options` : whether the forms show the group and area, and their choices
 
 Code: `murzak_pos/api/customers_list_api.py` (database reads, role checks), `murzak_pos/api/customers_list_calc.py` (all
-rules, no database). Tests: `murzak_pos/api/test_customers_list_api.py` (148 tests, no database).
+rules, no database). Tests: `murzak_pos/api/test_customers_list_api.py` (149 tests, no database).
 
 Dependencies: `overview_calc.py` and `dashboard_overview.py` (ticket P2-1, on `main`). They are imported and never edited. The
 sales branch (P3-7) is not needed: the short receipt number rule is written again, in a few lines, in the calc file.
@@ -56,7 +56,7 @@ reported as not found.
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `tab` | text | `all` | `all` or `owing` (case ignored) |
-| `search` | text | none | a name or customer number (part of it), or part of a mobile number. A search made of digits, spaces, `+`, `-` or brackets with at least 3 digits is also matched against the mobile number ignoring spaces, dashes, the leading 0 and the country code, so `0712 345`, `+254712345` and `712345` find the same people. At most 60 characters; `%` and `_` are plain characters |
+| `search` | text | none | a name, customer number or email (part of it), or part of a mobile number. A search made of digits, spaces, `+`, `-` or brackets with at least 3 digits is also matched against the mobile number ignoring spaces, dashes, the leading 0 and the country code, so `0712 345`, `+254712345` and `712345` find the same people. At most 60 characters; `%` and `_` are plain characters |
 | `customer_type` | text | none | `Individual`, `Company` or `Partnership` (case ignored) |
 | `page` | integer | 1 | below 1 or not a number gives 1; past the last page gives the last page |
 | `page_size` | integer | 20 | below 1 or not a number gives 20; at most 100 |
