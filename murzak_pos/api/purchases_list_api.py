@@ -608,6 +608,9 @@ def _panel(doc) -> dict:
 			"cancel": can_cancel,
 			"return": bool(return_against),
 			"edit_draft": doc.docstatus == 0 and not is_receipt,
+			"make_bill": bool(
+				is_receipt and rules.can_bill_receipt(doc.docstatus, doc.get("status"), is_return)
+			),
 			"print": True,
 		},
 		"return_target": return_against,

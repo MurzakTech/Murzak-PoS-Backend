@@ -319,6 +319,16 @@ class TestLines(unittest.TestCase):
 			)
 		)
 
+	def test_a_goods_received_note_not_yet_billed_can_be_billed(self):
+		self.assertTrue(rules.can_bill_receipt(1, "To Bill"))
+		self.assertTrue(rules.can_bill_receipt(1, "Partly Billed"))
+
+	def test_a_billed_cancelled_draft_or_returned_note_cannot_be_billed(self):
+		self.assertFalse(rules.can_bill_receipt(1, "Completed"))
+		self.assertFalse(rules.can_bill_receipt(2, "Cancelled"))
+		self.assertFalse(rules.can_bill_receipt(0, "Draft"))
+		self.assertFalse(rules.can_bill_receipt(1, "To Bill", True))
+
 	def test_the_first_unpaid_bill_is_the_one_due_soonest(self):
 		bills = [
 			{"id": "X2", "outstanding": 10, "due_date": "2026-11-20", "date": "2026-10-01"},

@@ -683,6 +683,18 @@ class TestGoodsReceivedPanel(PanelCase):
 		self.assertTrue(data["can"]["pay_bill"])
 		self.assertEqual(data["pay"]["invoice"], "ACC-PINV-2026-00020")
 
+	def test_a_note_not_yet_billed_offers_to_make_the_bill(self):
+		self.assertTrue(self.receipt_panel()["can"]["make_bill"])
+
+	def test_a_note_already_billed_does_not(self):
+		self.docs["MAT-PRE-2026-00004"].status = "Completed"
+		self.assertFalse(self.receipt_panel()["can"]["make_bill"])
+
+	def test_an_order_or_a_bill_never_offers_it(self):
+		self.docs["PUR-ORD-2026-00012"] = order_doc()
+		self.db.exists.side_effect = lambda kind, name=None: kind == "Purchase Order"
+		self.assertFalse(api.get_purchase("PUR-ORD-2026-00012")["data"]["can"]["make_bill"])
+
 	def test_the_receipt_is_checked_for_another_business_too(self):
 		self.receipt_panel()
 		self.access.assert_any_call("Purchase Receipt", "MAT-PRE-2026-00004")

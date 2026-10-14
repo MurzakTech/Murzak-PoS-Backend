@@ -13,7 +13,7 @@ changed. They sit in new files and import existing helpers; nothing existing was
 
 Code: `murzak_pos/api/purchases_list_api.py` (database reads and writes, role checks) and
 `murzak_pos/api/purchases_list_calc.py` (all rules, no database). Tests: `test_purchases_list_api.py` and
-`test_purchases_list_calc.py` (269 tests, no database: every Frappe call is mocked).
+`test_purchases_list_calc.py` (274 tests, no database: every Frappe call is mocked).
 
 Period rules come from `murzak_pos/api/overview_calc.py` (on main). Replies follow the usual shape
 `{"message": {"success": true, "data": {...}}}`. An expected refusal is HTTP 200 with
@@ -98,7 +98,7 @@ Dates filter on the order date (orders) or the posting date (bills and returns).
 `id` (required) and `doctype` (`Purchase Order`, `Purchase Invoice` or `Purchase Receipt`; optional, found from the number when
 missing). A goods received note opens too (the redirect table sends `/purchases/grns/:id` and `/purchases/receipts/:id` to
 `?open=:id`): number `#G0004`, status `received` (`billed` once fully billed, `returned` for a return), `orders` naming the order(s)
-it belongs to, `bills` made from it, and `can.pay_bill` when one is unpaid; it offers no receive, cancel or edit.
+it belongs to, `bills` made from it, and `can.pay_bill` when one is unpaid; it offers no receive, cancel or edit, and `can.make_bill` is true while it is not yet fully billed (status To Bill or Partly Billed): the page then offers the existing `murzak_pos.api.purchase.create_purchase_invoice_from_grn` (`grn_no`, `bill_no`, `bill_date`).
 
 ### Response
 

@@ -368,6 +368,11 @@ def can_receive(docstatus, order_status, lines) -> bool:
 	return calc.num(docstatus) == 1 and order_status not in HELD_ORDER_STATUSES and to_arrive_total(lines) > 0
 
 
+def can_bill_receipt(docstatus, receipt_status, is_return=False) -> bool:
+	"""A submitted goods received note that has not been fully billed yet can still be billed (ERPNext's To Bill and Partly Billed)."""
+	return calc.num(docstatus) == 1 and not is_return and receipt_status in ("To Bill", "Partly Billed")
+
+
 def first_unpaid_bill(bills) -> dict | None:
 	"""The bill to pay first: the unpaid one due soonest (a bill with no due date last), then the oldest."""
 	unpaid = [
