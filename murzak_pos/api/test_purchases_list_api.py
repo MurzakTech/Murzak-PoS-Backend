@@ -546,6 +546,52 @@ class TestOpenOrdersOnly(ListCase):
 		self.assertIn("po.supplier = %(supplier)s", self.union_sql())
 
 
+class TestGoodsReceivedAndBillsViews(ListCase):
+	def test_goods_received_notes_are_listed_from_their_own_table(self):
+		api.list_purchases(kind="receipts")
+		sql = self.union_sql()
+		self.assertIn("`tabPurchase Receipt` pr", sql)
+		self.assertNotIn("`tabPurchase Order`", sql)
+		self.assertNotIn("`tabPurchase Invoice`", sql)
+
+	def test_the_period_and_the_supplier_apply_to_goods_received_notes(self):
+		api.list_purchases(kind="receipts", supplier="SUP-1", period="7d")
+		sql = self.union_sql()
+		self.assertIn("pr.posting_date BETWEEN %(from)s AND %(to)s", sql)
+		self.assertIn("pr.supplier = %(supplier)s", sql)
+
+	def test_a_short_number_with_g_finds_a_goods_received_note(self):
+		api.list_purchases(kind="receipts", search="G12")
+		self.assertIn("pr.name REGEXP %(regex)s", self.union_sql())
+
+	def test_a_short_number_for_another_kind_finds_no_goods_received_note(self):
+		api.list_purchases(kind="receipts", search="B12")
+		self.assertNotIn("`tabPurchase Receipt` pr", self.union_sql())
+
+	def test_every_supplier_bill_is_listed_including_those_made_from_an_order(self):
+		api.list_purchases(kind="bills")
+		sql = self.union_sql()
+		self.assertIn("pi.is_return = 0", sql)
+		self.assertNotIn("NOT EXISTS", sql)
+		self.assertNotIn("`tabPurchase Order`", sql)
+
+	def test_a_view_of_its_own_ignores_the_tab(self):
+		api.list_purchases(kind="bills", tab="returns")
+		self.assertIn("pi.is_return = 0", self.union_sql())
+
+	def test_open_only_wins_over_a_view(self):
+		api.list_purchases(kind="receipts", open_only=1)
+		self.assertIn("`tabPurchase Order`", self.union_sql())
+
+	def test_an_unknown_view_is_refused(self):
+		with self.assertRaises(frappe.ValidationError):
+			api.list_purchases(kind="invoices")
+
+	def test_the_default_is_the_tabs(self):
+		api.list_purchases(kind="")
+		self.assertIn("`tabPurchase Order`", self.union_sql())
+
+
 class TestPaymentModes(ApiCase):
 	def test_the_ways_of_paying_come_back_with_their_kind(self):
 		with patch.object(api, "_payment_modes", return_value=[{"name": "M-Pesa", "kind": "mpesa"}]):

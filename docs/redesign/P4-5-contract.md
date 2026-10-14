@@ -13,7 +13,7 @@ changed. They sit in new files and import existing helpers; nothing existing was
 
 Code: `murzak_pos/api/purchases_list_api.py` (database reads and writes, role checks) and
 `murzak_pos/api/purchases_list_calc.py` (all rules, no database). Tests: `test_purchases_list_api.py` and
-`test_purchases_list_calc.py` (259 tests, no database: every Frappe call is mocked).
+`test_purchases_list_calc.py` (269 tests, no database: every Frappe call is mocked).
 
 Period rules come from `murzak_pos/api/overview_calc.py` (on main). Replies follow the usual shape
 `{"message": {"success": true, "data": {...}}}`. An expected refusal is HTTP 200 with
@@ -66,6 +66,7 @@ One of `draft`, `ordered`, `received`, `billed`, `paid`, `returned`, `cancelled`
 | `from_date`, `to_date` | `YYYY-MM-DD`, for `custom` |
 | `page`, `page_size` | from 1; size 20 by default, at most 100; a page past the end is the last page |
 | `company` | optional; a company the caller does not belong to is refused |
+| `kind` | `receipts` lists goods received notes (Purchase Receipts, with or without an order, so stock-only receipts too; short number `#G0004`); `bills` lists every supplier bill (those made from an order too, returns left out). Both ignore the tab. This is how the goods received notes and the bills the All list folds into their order stay reachable in the new look. A rows `doctype` is then `Purchase Receipt` or `Purchase Invoice`; the panel opens them (`get_purchase`) |
 | `open_only` | `1` lists only the orders still waiting for goods (submitted, not Closed, Completed, Cancelled or On Hold, `per_received` below 100), whatever their date; it forces the Orders tab. This is what Receive goods offers to choose from |
 
 Dates filter on the order date (orders) or the posting date (bills and returns). Newest first.
@@ -154,7 +155,7 @@ it belongs to, `bills` made from it, and `can.pay_bill` when one is unpaid; it o
 2. Every item must be on the order and named once. Nothing ticked is refused.
 3. The order must be submitted and not Closed, Completed, Cancelled or On Hold, with something left to arrive.
 4. An order that lists the same item on two lines cannot be received here (the existing GRN helper keys by item code and would
-   put the quantity on both lines). The message sends the person to the current Create GRN screen.
+   put the quantity on both lines). The message sends the person to the earlier Receive goods screen (the current Create GRN screen).
 5. A store of another business is refused. A due date before the bill date is refused.
 
 ### What it does

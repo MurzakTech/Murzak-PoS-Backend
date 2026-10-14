@@ -78,6 +78,8 @@ def _refuse_period(code: str):
 
 
 def _refuse_list(code: str):
+	if code == "bad_kind":
+		frappe.throw(_("Choose to show goods received notes or supplier bills."), frappe.ValidationError)
 	if code == "bad_doctype":
 		frappe.throw(
 			_("Choose Purchase Order, Purchase Invoice or Purchase Receipt."), frappe.ValidationError
@@ -107,6 +109,7 @@ def list_purchases(
 	page_size=20,
 	company=None,
 	open_only=0,
+	kind=None,
 ):
 	"""The Purchases page list for a tab and a period (see the module notes and the contract for the answer)."""
 	_require_buyer()
@@ -114,6 +117,7 @@ def list_purchases(
 
 	try:
 		tab = rules.normalize_tab(tab)
+		kind = rules.normalize_kind(kind)
 	except rules.ListError as error:
 		_refuse_list(error.code)
 	today = calc.nairobi_today(_now_utc())
@@ -125,9 +129,13 @@ def list_purchases(
 	# open_only: the orders still waiting for goods, whatever their date (what Receive goods offers to choose from)
 	open_only = bool(cint(open_only))
 	if open_only:
-		tab = "orders"
+		tab, kind = "orders", ""
+	elif kind:
+		# goods received notes or all supplier bills: a view of their own, so the tab does not apply
+		tab = "all"
 	scope = {
 		"open_only": open_only,
+		"kind": kind,
 		"tab": tab,
 		"company": company,
 		"supplier": supplier or None,
@@ -176,6 +184,25 @@ def _union(scope: dict):
 	if scope["supplier"]:
 		values["supplier"] = scope["supplier"]
 	legs = []
+	kind = scope["kind"]
+
+	if kind == "receipts":
+		if _letter_allows(parsed, "G"):
+			sql = (
+				"SELECT 'Purchase Receipt' AS doctype, pr.name AS name, pr.supplier AS supplier, "
+				"pr.supplier_name AS supplier_name, pr.posting_date AS posting_date, pr.grand_total AS grand_total, "
+				"pr.docstatus AS docstatus, pr.status AS status, pr.is_return AS is_return, 0 AS per_received, "
+				"pr.per_billed AS per_billed, 0 AS outstanding_amount, NULL AS due_date, '' AS bill_no, "
+				"pr.creation AS creation FROM `tabPurchase Receipt` pr "
+				"WHERE pr.company = %(company)s AND pr.posting_date BETWEEN %(from)s AND %(to)s"
+			)
+			if scope["supplier"]:
+				sql += " AND pr.supplier = %(supplier)s"
+			sql += _search_sql("pr", parsed, False, values)
+			legs.append(sql)
+		parts = {"orders": False, "bills": False, "returns": False}
+	elif kind == "bills":
+		parts = {"orders": False, "bills": True, "returns": False}
 
 	if parts["orders"] and _letter_allows(parsed, "O"):
 		sql = (
@@ -208,7 +235,9 @@ def _union(scope: dict):
 			"pi.bill_no AS bill_no, pi.creation AS creation FROM `tabPurchase Invoice` pi "
 			"WHERE pi.company = %(company)s AND pi.posting_date BETWEEN %(from)s AND %(to)s"
 		)
-		if wants_bills and wants_returns:
+		if kind == "bills":
+			sql += " AND pi.is_return = 0"
+		elif wants_bills and wants_returns:
 			sql += (
 				" AND (pi.is_return = 1 OR NOT EXISTS (SELECT 1 FROM `tabPurchase Invoice Item` pii "
 				"WHERE pii.parent = pi.name AND IFNULL(pii.purchase_order, '') != ''))"
@@ -802,7 +831,7 @@ def _receive(order, items, head, company, request, bill_no, bill_day, due_day, w
 		return _refusal(
 			"duplicate_lines",
 			_(
-				"{0} is on this order more than once, so it cannot be received here. Use the current Create GRN screen for this order."
+				"{0} is on this order more than once, so it cannot be received here. Use the earlier Receive goods screen for this order."
 			).format(", ".join(sorted(repeated))),
 		)
 

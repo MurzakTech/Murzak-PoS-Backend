@@ -121,6 +121,13 @@ class TestRequest(unittest.TestCase):
 		with self.assertRaises(rules.ListError):
 			rules.normalize_tab("sessions")
 
+	def test_the_views_are_none_receipts_or_bills(self):
+		self.assertEqual(rules.normalize_kind(None), "")
+		self.assertEqual(rules.normalize_kind("Receipts"), "receipts")
+		self.assertEqual(rules.normalize_kind("bills"), "bills")
+		with self.assertRaises(rules.ListError):
+			rules.normalize_kind("orders")
+
 	def test_the_orders_tab_holds_only_orders(self):
 		self.assertEqual(rules.tab_parts("orders"), {"orders": True, "bills": False, "returns": False})
 

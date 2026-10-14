@@ -27,6 +27,7 @@ KIND_LETTER = {ORDER: "O", INVOICE: "B", RECEIPT: "G"}
 RETURN_LETTER = "R"
 
 TABS = ("all", "orders", "returns")
+KIND_VIEWS = ("", "receipts", "bills")
 STATUSES = ("draft", "ordered", "received", "billed", "paid", "returned", "cancelled")
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
@@ -155,6 +156,14 @@ def normalize_tab(tab) -> str:
 	if tab not in TABS:
 		raise ListError("bad_tab")
 	return tab
+
+
+def normalize_kind(kind) -> str:
+	"""'' (orders, bills and returns, by tab), 'receipts' (goods received notes) or 'bills' (every supplier bill), or a ListError."""
+	kind = str(kind or "").strip().lower()
+	if kind not in KIND_VIEWS:
+		raise ListError("bad_kind")
+	return kind
 
 
 def normalize_doctype(doctype) -> str | None:
