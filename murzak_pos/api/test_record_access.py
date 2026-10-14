@@ -62,6 +62,10 @@ EXPECTED_GUARDS = {
 	"dashboard_overview": {
 		"get_overview": ("Warehouse store",),
 	},
+	"products_list_api": {
+		"list_products": ("Warehouse warehouse",),
+		"create_product_simple": ("Warehouse warehouse",),
+	},
 	"expiry_api": {
 		"get_expiry_alerts": ("Warehouse warehouse",),
 	},
