@@ -22,7 +22,7 @@ from murzak_pos.api import overview_calc as calc
 ORDER = "Purchase Order"
 INVOICE = "Purchase Invoice"
 RECEIPT = "Purchase Receipt"
-KINDS = (ORDER, INVOICE)
+KINDS = (ORDER, INVOICE, RECEIPT)
 KIND_LETTER = {ORDER: "O", INVOICE: "B", RECEIPT: "G"}
 RETURN_LETTER = "R"
 
@@ -158,7 +158,7 @@ def normalize_tab(tab) -> str:
 
 
 def normalize_doctype(doctype) -> str | None:
-	"""Purchase Order, Purchase Invoice or None (not given). Any other value is a ListError."""
+	"""Purchase Order, Purchase Invoice, Purchase Receipt or None (not given). Any other value is a ListError."""
 	if doctype in (None, ""):
 		return None
 	if doctype not in KINDS:
@@ -241,6 +241,10 @@ def derive_status(
 		if is_return:
 			return "returned"
 		return "billed" if calc.num(outstanding) > TOLERANCE else "paid"
+	if doctype == RECEIPT:
+		if is_return:
+			return "returned"
+		return "billed" if calc.num(per_billed) >= 100 - TOLERANCE else "received"
 	if order_status == "Cancelled":
 		return "cancelled"
 	if order_status == "Closed":

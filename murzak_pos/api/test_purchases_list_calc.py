@@ -180,6 +180,18 @@ class TestStatus(unittest.TestCase):
 	def test_a_bill_with_nothing_owed_is_paid(self):
 		self.assertEqual(rules.derive_status(INVOICE, 1, False, None, 0, 0, 0), "paid")
 
+	def test_goods_received_and_not_billed_is_received(self):
+		self.assertEqual(rules.derive_status(RECEIPT, 1, False, "To Bill", 0, 0), "received")
+
+	def test_goods_received_and_fully_billed_is_billed(self):
+		self.assertEqual(rules.derive_status(RECEIPT, 1, False, "Completed", 0, 100), "billed")
+
+	def test_goods_sent_back_are_returned(self):
+		self.assertEqual(rules.derive_status(RECEIPT, 1, True, "Return", 0, 0), "returned")
+
+	def test_a_receipt_is_a_known_kind(self):
+		self.assertEqual(rules.normalize_doctype(RECEIPT), RECEIPT)
+
 	def test_a_return_is_returned(self):
 		self.assertEqual(rules.derive_status(INVOICE, 1, True, None, 0, 0, 0), "returned")
 

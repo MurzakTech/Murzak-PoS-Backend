@@ -183,7 +183,7 @@ class TestWhoMayUseThePurchasesCalls(ApiCase):
 		self.access.assert_any_call("Supplier", "SUP-9")
 
 
-class TestTheList(ApiCase):
+class ListCase(ApiCase):
 	def setUp(self):
 		super().setUp()
 		self.sql_answers = {
@@ -233,6 +233,8 @@ class TestTheList(ApiCase):
 	def union_values(self):
 		return next(v for q, v in self.queries if "SELECT * FROM (" in q)
 
+
+class TestTheList(ListCase):
 	def test_it_returns_rows_total_and_page_information(self):
 		data = api.list_purchases()["data"]
 		self.assertEqual((data["total"], data["page"], data["page_size"], data["pages"]), (45, 1, 20, 3))
@@ -348,7 +350,7 @@ class TestTheList(ApiCase):
 		self.assertTrue(any("SUM(pi.outstanding_amount)" in q for q, _v in self.queries))
 
 
-class TestThePanel(ApiCase):
+class PanelCase(ApiCase):
 	def setUp(self):
 		super().setUp()
 		self.docs["PUR-ORD-2026-00012"] = order_doc(
@@ -385,6 +387,8 @@ class TestThePanel(ApiCase):
 		self.db.exists.side_effect = lambda kind, name=None: kind == doctype
 		return api.get_purchase(id, doctype)["data"]
 
+
+class TestThePanel(PanelCase):
 	def test_each_line_shows_ordered_received_and_still_to_arrive(self):
 		lines = self.panel()["lines"]
 		self.assertEqual(
@@ -518,6 +522,124 @@ class TestThePanel(ApiCase):
 	def test_the_kind_is_found_from_the_number_when_not_given(self):
 		self.db.exists.side_effect = lambda kind, name=None: kind == "Purchase Order"
 		self.assertEqual(api.get_purchase("PUR-ORD-2026-00012")["data"]["doctype"], "Purchase Order")
+
+
+class TestOpenOrdersOnly(ListCase):
+	def test_open_only_reads_orders_still_waiting_for_goods_whatever_their_date(self):
+		api.list_purchases(open_only=1)
+		sql = self.union_sql()
+		self.assertIn("po.per_received < 100", sql)
+		self.assertIn("po.docstatus = 1", sql)
+		self.assertNotIn("po.transaction_date BETWEEN", sql)
+		self.assertNotIn("`tabPurchase Invoice`", sql)
+
+	def test_open_only_leaves_out_held_closed_and_cancelled_orders(self):
+		api.list_purchases(open_only=1)
+		self.assertIn("NOT IN ('Closed', 'Completed', 'Cancelled', 'On Hold')", self.union_sql())
+
+	def test_without_open_only_the_period_applies_to_orders(self):
+		api.list_purchases(tab="orders")
+		self.assertIn("po.transaction_date BETWEEN", self.union_sql())
+
+	def test_open_only_still_follows_the_supplier(self):
+		api.list_purchases(open_only=1, supplier="SUP-1")
+		self.assertIn("po.supplier = %(supplier)s", self.union_sql())
+
+
+class TestPaymentModes(ApiCase):
+	def test_the_ways_of_paying_come_back_with_their_kind(self):
+		with patch.object(api, "_payment_modes", return_value=[{"name": "M-Pesa", "kind": "mpesa"}]):
+			self.assertEqual(api.get_payment_modes()["data"]["modes"], [{"name": "M-Pesa", "kind": "mpesa"}])
+
+	def test_a_cashier_is_refused(self):
+		self.tier = "cashier"
+		with self.assertRaises(frappe.PermissionError):
+			api.get_payment_modes()
+
+	def test_modes_are_classified(self):
+		with (
+			patch.object(
+				api.business_lists,
+				"modes_of_payment_for",
+				return_value=["Cash", "MPESA", "Credit Card", "Cheque"],
+			),
+			patch.object(frappe, "get_all", create=True, return_value=[]),
+		):
+			kinds = {m["name"]: m["kind"] for m in api._payment_modes("Acme")}
+		self.assertEqual(kinds, {"Cash": "cash", "MPESA": "mpesa", "Credit Card": "card", "Cheque": "other"})
+
+	def test_a_business_with_no_modes_gets_an_empty_list(self):
+		with patch.object(api.business_lists, "modes_of_payment_for", return_value=None):
+			self.assertEqual(api._payment_modes("Acme"), [])
+
+
+class TestGoodsReceivedPanel(PanelCase):
+	def setUp(self):
+		super().setUp()
+		self.docs["MAT-PRE-2026-00004"] = Doc(
+			doctype="Purchase Receipt",
+			name="MAT-PRE-2026-00004",
+			docstatus=1,
+			status="To Bill",
+			company="Acme",
+			supplier="SUP-1",
+			supplier_name="Bidco",
+			posting_date=date(2026, 10, 3),
+			is_return=0,
+			per_billed=0,
+			total=1000,
+			total_taxes_and_charges=160,
+			grand_total=1160,
+			items=[row(qty=6, purchase_order="PUR-ORD-2026-00012")],
+		)
+
+	def receipt_panel(self):
+		self.db.exists.side_effect = lambda kind, name=None: kind == "Purchase Receipt"
+		return api.get_purchase("MAT-PRE-2026-00004")["data"]
+
+	def test_a_goods_received_note_opens_in_the_panel(self):
+		data = self.receipt_panel()
+		self.assertEqual(
+			(data["number"], data["doctype"], data["status"], data["date"]),
+			("#G0004", "Purchase Receipt", "received", "2026-10-03"),
+		)
+
+	def test_it_names_the_order_it_belongs_to(self):
+		self.assertEqual(self.receipt_panel()["orders"], [{"id": "PUR-ORD-2026-00012", "number": "#O0012"}])
+
+	def test_its_lines_are_what_arrived(self):
+		line = self.receipt_panel()["lines"][0]
+		self.assertEqual((line["received"], line["to_arrive"]), (6.0, 0.0))
+
+	def test_it_offers_no_receive_cancel_or_edit(self):
+		can = self.receipt_panel()["can"]
+		self.assertFalse(can["receive_goods"] or can["cancel"] or can["edit_draft"])
+
+	def test_it_offers_to_pay_the_bill_made_from_it(self):
+		bill = {
+			"id": "ACC-PINV-2026-00020",
+			"number": "#B0020",
+			"bill_no": "",
+			"bill_date": "",
+			"date": "2026-10-03",
+			"due_date": "2026-11-02",
+			"total": 1160.0,
+			"outstanding": 1160.0,
+			"is_return": False,
+			"docstatus": 1,
+		}
+		with (
+			patch.object(api, "_linked_bill_names", return_value=["ACC-PINV-2026-00020"]),
+			patch.object(api, "_bill_rows", return_value=[{"name": "ACC-PINV-2026-00020"}]),
+			patch.object(api, "_bill_view", return_value=bill),
+		):
+			data = self.receipt_panel()
+		self.assertTrue(data["can"]["pay_bill"])
+		self.assertEqual(data["pay"]["invoice"], "ACC-PINV-2026-00020")
+
+	def test_the_receipt_is_checked_for_another_business_too(self):
+		self.receipt_panel()
+		self.access.assert_any_call("Purchase Receipt", "MAT-PRE-2026-00004")
 
 
 class ReceiveCase(ApiCase):

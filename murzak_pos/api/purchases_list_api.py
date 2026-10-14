@@ -79,7 +79,9 @@ def _refuse_period(code: str):
 
 def _refuse_list(code: str):
 	if code == "bad_doctype":
-		frappe.throw(_("Choose Purchase Order or Purchase Invoice."), frappe.ValidationError)
+		frappe.throw(
+			_("Choose Purchase Order, Purchase Invoice or Purchase Receipt."), frappe.ValidationError
+		)
 	frappe.throw(_("Choose a tab: all, orders or returns."), frappe.ValidationError)
 
 
@@ -104,6 +106,7 @@ def list_purchases(
 	page=1,
 	page_size=20,
 	company=None,
+	open_only=0,
 ):
 	"""The Purchases page list for a tab and a period (see the module notes and the contract for the answer)."""
 	_require_buyer()
@@ -119,7 +122,12 @@ def list_purchases(
 	except calc.PeriodError as error:
 		_refuse_period(error.code)
 	company = resolve_company(company)
+	# open_only: the orders still waiting for goods, whatever their date (what Receive goods offers to choose from)
+	open_only = bool(cint(open_only))
+	if open_only:
+		tab = "orders"
 	scope = {
+		"open_only": open_only,
 		"tab": tab,
 		"company": company,
 		"supplier": supplier or None,
@@ -175,9 +183,15 @@ def _union(scope: dict):
 			"po.supplier_name AS supplier_name, po.transaction_date AS posting_date, po.grand_total AS grand_total, "
 			"po.docstatus AS docstatus, po.status AS status, 0 AS is_return, po.per_received AS per_received, "
 			"po.per_billed AS per_billed, 0 AS outstanding_amount, NULL AS due_date, '' AS bill_no, "
-			"po.creation AS creation FROM `tabPurchase Order` po "
-			"WHERE po.company = %(company)s AND po.transaction_date BETWEEN %(from)s AND %(to)s"
+			"po.creation AS creation FROM `tabPurchase Order` po WHERE po.company = %(company)s"
 		)
+		if scope["open_only"]:
+			sql += (
+				" AND po.docstatus = 1 AND po.status NOT IN ('Closed', 'Completed', 'Cancelled', 'On Hold') "
+				"AND po.per_received < 100"
+			)
+		else:
+			sql += " AND po.transaction_date BETWEEN %(from)s AND %(to)s"
 		if scope["supplier"]:
 			sql += " AND po.supplier = %(supplier)s"
 		sql += _search_sql("po", parsed, False, values)
@@ -286,6 +300,14 @@ def _summary(scope: dict) -> dict:
 	)
 
 
+@frappe.whitelist()
+def get_payment_modes(company=None):
+	"""The ways the shop pays a supplier, for the forms: [{name, kind}] with kind cash, mpesa, card or other."""
+	_require_buyer()
+	company = resolve_company(company)
+	return {"success": True, "data": {"modes": _payment_modes(company)}}
+
+
 # --- one purchase, for the panel ---------------------------------------------------------------------
 
 
@@ -297,6 +319,7 @@ def get_purchase(id, doctype=None):
 	# of that kind has no owner recorded and passes, and the call then says it was not found
 	ensure_record_access("Purchase Order", id)
 	ensure_record_access("Purchase Invoice", id)
+	ensure_record_access("Purchase Receipt", id)
 
 	try:
 		doctype = rules.normalize_doctype(doctype)
@@ -440,9 +463,25 @@ def _can_cancel_bill() -> bool:
 	return user == "Administrator" or bool(CANCEL_PURCHASE_ROLES.intersection(frappe.get_roles(user)))
 
 
+def _linked_bill_names(receipt: str) -> list[str]:
+	"""The submitted bills that carry lines of this goods received note."""
+	found = frappe.db.sql(
+		"SELECT DISTINCT c.parent AS name FROM `tabPurchase Invoice Item` c "
+		"WHERE c.purchase_receipt = %(receipt)s AND c.docstatus = 1",
+		{"receipt": receipt},
+		as_dict=True,
+	)
+	return [r["name"] for r in found]
+
+
+def _order_views(names) -> list[dict]:
+	return [{"id": n, "number": rules.short_number(rules.ORDER, n)} for n in sorted(names)]
+
+
 def _panel(doc) -> dict:
-	"""The panel data for an order or a bill that has been read."""
+	"""The panel data for an order, a bill or a goods received note that has been read."""
 	is_order = doc.doctype == rules.ORDER
+	is_receipt = doc.doctype == rules.RECEIPT
 	is_return = bool(calc.num(doc.get("is_return"))) if not is_order else False
 	status = rules.derive_status(
 		doc.doctype,
@@ -453,7 +492,13 @@ def _panel(doc) -> dict:
 		doc.get("per_billed"),
 		doc.get("outstanding_amount"),
 	)
-	if is_order:
+	orders = []
+	if is_receipt:
+		lines = [rules.bill_line_view(row) for row in doc.items]
+		receipts = _receipt_views([doc.name]) if doc.docstatus == 1 else []
+		bill_rows = [_bill_view(r) for r in _bill_rows(_linked_bill_names(doc.name))]
+		orders = _order_views({row.get("purchase_order") for row in doc.items if row.get("purchase_order")})
+	elif is_order:
 		lines = [rules.line_view(row) for row in doc.items]
 		receipts = _receipt_views(_linked_parents("Purchase Receipt Item", doc.name))
 		bill_rows = [_bill_view(r) for r in _bill_rows(_linked_parents("Purchase Invoice Item", doc.name))]
@@ -466,7 +511,7 @@ def _panel(doc) -> dict:
 		bill_rows = [] if doc.docstatus != 1 else [_bill_view(doc)]
 	bills = [b for b in bill_rows if not b["is_return"]]
 	returns = [b for b in bill_rows if b["is_return"]]
-	if not is_order:
+	if not is_order and not is_receipt:
 		against = frappe.get_all(
 			"Purchase Invoice",
 			filters={"return_against": doc.name, "docstatus": 1},
@@ -487,14 +532,17 @@ def _panel(doc) -> dict:
 	company = doc.get("company")
 
 	can_cancel = False
-	if doc.docstatus == 1 and status != "cancelled":
+	if doc.docstatus == 1 and status != "cancelled" and not is_receipt:
 		if is_order:
 			can_cancel = not receipts and not bills
 		else:
 			can_cancel = (not is_return) and _can_cancel_bill()
 	return_against = None
 	if not is_return and doc.docstatus == 1:
-		return_against = doc.name if not is_order else (bills[0]["id"] if bills else None)
+		if is_order or is_receipt:
+			return_against = bills[0]["id"] if bills else None
+		else:
+			return_against = doc.name
 
 	data = {
 		"id": doc.name,
@@ -507,9 +555,10 @@ def _panel(doc) -> dict:
 			"name": rules.supplier_label(doc.get("supplier_name"), doc.get("supplier")),
 		},
 		"date": rules.date_text(doc.get("transaction_date") if is_order else doc.get("posting_date")),
+		"orders": orders,
 		"bill_no": doc.get("bill_no") or "",
 		"bill_date": rules.date_text(doc.get("bill_date")),
-		"due_date": rules.date_text(doc.get("due_date")) if not is_order else "",
+		"due_date": rules.date_text(doc.get("due_date")) if not (is_order or is_receipt) else "",
 		"is_return": is_return,
 		"reference": doc.name,
 		"return_against": doc.get("return_against") if is_return else None,
@@ -518,7 +567,7 @@ def _panel(doc) -> dict:
 			abs(calc.num(doc.get("total"))),
 			abs(calc.num(doc.get("total_taxes_and_charges"))),
 			abs(calc.num(doc.get("grand_total"))),
-			None if is_order else doc.get("outstanding_amount"),
+			None if (is_order or is_receipt) else doc.get("outstanding_amount"),
 		),
 		"bills": bills,
 		"returns": returns,
@@ -529,7 +578,7 @@ def _panel(doc) -> dict:
 			"pay_bill": to_pay is not None,
 			"cancel": can_cancel,
 			"return": bool(return_against),
-			"edit_draft": doc.docstatus == 0,
+			"edit_draft": doc.docstatus == 0 and not is_receipt,
 			"print": True,
 		},
 		"return_target": return_against,

@@ -1,6 +1,6 @@
 # P4-5 contract: the Purchases page and the guided Receive goods step
 
-Five new server methods (ticket P4-5, acceptance check AC-29). No existing method, record, report or setting is
+Six new server methods (ticket P4-5, acceptance check AC-29). No existing method, record, report or setting is
 changed. They sit in new files and import existing helpers; nothing existing was edited except two additions of rows
 (`translations/sw.csv`, `EXPECTED_GUARDS` in `test_record_access.py`).
 
@@ -9,10 +9,11 @@ changed. They sit in new files and import existing helpers; nothing existing was
 - `murzak_pos.api.purchases_list_api.receive_goods` : the guided step. ONE transaction: goods received note, stock and supplier bill together
 - `murzak_pos.api.purchases_list_api.create_direct_bill` : "I already have the bill": a bill that raises stock at once
 - `murzak_pos.api.purchases_list_api.add_purchase_note` : a note on an order or a bill
+- `murzak_pos.api.purchases_list_api.get_payment_modes` : the ways the shop pays a supplier, for the forms
 
 Code: `murzak_pos/api/purchases_list_api.py` (database reads and writes, role checks) and
 `murzak_pos/api/purchases_list_calc.py` (all rules, no database). Tests: `test_purchases_list_api.py` and
-`test_purchases_list_calc.py` (241 tests, no database: every Frappe call is mocked).
+`test_purchases_list_calc.py` (259 tests, no database: every Frappe call is mocked).
 
 Period rules come from `murzak_pos/api/overview_calc.py` (on main). Replies follow the usual shape
 `{"message": {"success": true, "data": {...}}}`. An expected refusal is HTTP 200 with
@@ -65,6 +66,7 @@ One of `draft`, `ordered`, `received`, `billed`, `paid`, `returned`, `cancelled`
 | `from_date`, `to_date` | `YYYY-MM-DD`, for `custom` |
 | `page`, `page_size` | from 1; size 20 by default, at most 100; a page past the end is the last page |
 | `company` | optional; a company the caller does not belong to is refused |
+| `open_only` | `1` lists only the orders still waiting for goods (submitted, not Closed, Completed, Cancelled or On Hold, `per_received` below 100), whatever their date; it forces the Orders tab. This is what Receive goods offers to choose from |
 
 Dates filter on the order date (orders) or the posting date (bills and returns). Newest first.
 
@@ -92,14 +94,17 @@ Dates filter on the order date (orders) or the posting date (bills and returns).
 
 ### Request (GET)
 
-`id` (required) and `doctype` (`Purchase Order` or `Purchase Invoice`; optional, found from the number when missing).
+`id` (required) and `doctype` (`Purchase Order`, `Purchase Invoice` or `Purchase Receipt`; optional, found from the number when
+missing). A goods received note opens too (the redirect table sends `/purchases/grns/:id` and `/purchases/receipts/:id` to
+`?open=:id`): number `#G0004`, status `received` (`billed` once fully billed, `returned` for a return), `orders` naming the order(s)
+it belongs to, `bills` made from it, and `can.pay_bill` when one is unpaid; it offers no receive, cancel or edit.
 
 ### Response
 
 ```json
 { "success": true, "data": {
   "id": "PUR-ORD-2026-00012", "doctype": "Purchase Order", "number": "#O0012", "status": "ordered",
-  "part_received": true, "reference": "PUR-ORD-2026-00012",
+  "part_received": true, "reference": "PUR-ORD-2026-00012", "orders": [],
   "supplier": { "id": "SUP-0001", "name": "Bidco" }, "date": "2026-10-01",
   "bill_no": "", "bill_date": "", "due_date": "", "is_return": false, "return_against": null,
   "lines": [ { "item_code": "A", "item_name": "Sugar", "unit": "Nos", "ordered": 10.0, "received": 4.0,
@@ -222,6 +227,12 @@ Reply: `{ "invoice", "invoice_number", "total", "outstanding", "repeat" }`. Refu
 A purchase ORDER (stock raised later by Receive goods) is saved with the EXISTING `murzak_pos.api.purchase.upsert_purchase_order`
 with `submit = 1` (the order must be submitted before goods can be received). An order that needs approval stays a draft and the
 reply carries `approval`.
+
+## `get_payment_modes` (GET)
+
+`{ "success": true, "data": { "modes": [ { "name": "M-Pesa", "kind": "mpesa" } ] } }`: the enabled ways of paying that the business may use
+(`business_lists.modes_of_payment_for`), `kind` being `cash`, `mpesa`, `card` or `other`. Owner and manager only. The New purchase form
+uses it for "mark as paid".
 
 ## `add_purchase_note` (POST)
 

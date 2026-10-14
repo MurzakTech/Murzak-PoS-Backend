@@ -36,7 +36,7 @@ EXPECTED_GUARDS = {
 	"profit_api": {"get_profit_summary": ("Warehouse warehouse",)},
 	"purchases_list_api": {
 		"list_purchases": ("Supplier supplier",),
-		"get_purchase": ("Purchase Order id", "Purchase Invoice id"),
+		"get_purchase": ("Purchase Order id", "Purchase Invoice id", "Purchase Receipt id"),
 		"receive_goods": ("Purchase Order order", "Warehouse warehouse"),
 		"create_direct_bill": ("Supplier supplier", "Warehouse warehouse"),
 		"add_purchase_note": ("Purchase Order id", "Purchase Invoice id"),
