@@ -34,6 +34,13 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 EXPECTED_GUARDS = {
 	"print_api": {"get_print": ("variable name",)},
 	"profit_api": {"get_profit_summary": ("Warehouse warehouse",)},
+	"purchases_list_api": {
+		"list_purchases": ("Supplier supplier",),
+		"get_purchase": ("Purchase Order id", "Purchase Invoice id", "Purchase Receipt id"),
+		"receive_goods": ("Purchase Order order", "Warehouse warehouse"),
+		"create_direct_bill": ("Supplier supplier", "Warehouse warehouse"),
+		"add_purchase_note": ("Purchase Order id", "Purchase Invoice id"),
+	},
 	"sales_person_api": {
 		"update_sales_person": ("variable name",),
 		"get_commission_report": ("variable sales_person",),
