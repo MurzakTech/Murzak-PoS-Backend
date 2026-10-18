@@ -247,6 +247,10 @@ EXPECTED_GUARDS = {
 		"remove_warehouse_from_staff": ("Warehouse warehouse",),
 		"set_default_warehouse": ("Warehouse warehouse",),
 	},
+	"till_api": {
+		"get_till_state": ("POS Profile pos_profile", "Warehouse warehouse"),
+		"close_till": ("POS Opening Entry session",),
+	},
 }
 
 # Calls that must be told which kind of record the number is, before they look at it
