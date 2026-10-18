@@ -59,9 +59,8 @@ EXPECTED_GUARDS = {
 	"dashboard_api": {
 		"get_dashboard_metrics": ("Warehouse warehouse",),
 	},
-	"till_api": {
-		"get_till_state": ("POS Profile pos_profile", "Warehouse warehouse"),
-		"close_till": ("POS Opening Entry session",),
+	"dashboard_overview": {
+		"get_overview": ("Warehouse store",),
 	},
 	"expiry_api": {
 		"get_expiry_alerts": ("Warehouse warehouse",),
@@ -247,6 +246,10 @@ EXPECTED_GUARDS = {
 		"get_warehouse_staff": ("Warehouse warehouse",),
 		"remove_warehouse_from_staff": ("Warehouse warehouse",),
 		"set_default_warehouse": ("Warehouse warehouse",),
+	},
+	"till_api": {
+		"get_till_state": ("POS Profile pos_profile", "Warehouse warehouse"),
+		"close_till": ("POS Opening Entry session",),
 	},
 }
 
