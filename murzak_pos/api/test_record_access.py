@@ -272,6 +272,9 @@ EXPECTED_GUARDS = {
 		"list_products": ("Warehouse warehouse",),
 		"create_product_simple": ("Warehouse warehouse",),
 	},
+	"suppliers_list_api": {
+		"get_supplier_overview": ("Supplier supplier",),
+	},
 }
 
 # Calls that must be told which kind of record the number is, before they look at it
