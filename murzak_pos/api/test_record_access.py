@@ -275,6 +275,13 @@ EXPECTED_GUARDS = {
 	"suppliers_list_api": {
 		"get_supplier_overview": ("Supplier supplier",),
 	},
+	"purchases_list_api": {
+		"list_purchases": ("Supplier supplier",),
+		"get_purchase": ("Purchase Order id", "Purchase Invoice id", "Purchase Receipt id"),
+		"receive_goods": ("Purchase Order order", "Warehouse warehouse"),
+		"create_direct_bill": ("Supplier supplier", "Warehouse warehouse"),
+		"add_purchase_note": ("Purchase Order id", "Purchase Invoice id"),
+	},
 }
 
 # Calls that must be told which kind of record the number is, before they look at it
