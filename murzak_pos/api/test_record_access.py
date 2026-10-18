@@ -34,6 +34,11 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 EXPECTED_GUARDS = {
 	"print_api": {"get_print": ("variable name",)},
 	"profit_api": {"get_profit_summary": ("Warehouse warehouse",)},
+	"sales_list_api": {
+		"list_sales": ("Warehouse store",),
+		"get_sale": ("POS Invoice id", "Sales Invoice id"),
+		"take_payment": ("POS Invoice id", "Sales Invoice id"),
+	},
 	"sales_person_api": {
 		"update_sales_person": ("variable name",),
 		"get_commission_report": ("variable sales_person",),
@@ -62,12 +67,20 @@ EXPECTED_GUARDS = {
 	"dashboard_overview": {
 		"get_overview": ("Warehouse store",),
 	},
-	"products_list_api": {
-		"list_products": ("Warehouse warehouse",),
-		"create_product_simple": ("Warehouse warehouse",),
+	"customers_list_api": {
+		"get_customer_overview": ("Customer customer",),
+		"get_customer_statement": ("Customer customer",),
 	},
 	"expiry_api": {
 		"get_expiry_alerts": ("Warehouse warehouse",),
+	},
+	"stock_levels_api": {
+		"get_stock_levels": ("Warehouse warehouse",),
+		"find_products": ("Warehouse warehouse",),
+		"stock_in": ("Item item_code", "Warehouse warehouse"),
+		"stock_out": ("Item item_code", "Warehouse warehouse"),
+		"get_count_sheet": ("Warehouse warehouse",),
+		"submit_count": ("Warehouse warehouse",),
 	},
 	"held_sales_api": {
 		"list_held_sales": ("Warehouse warehouse",),
@@ -250,6 +263,14 @@ EXPECTED_GUARDS = {
 		"get_warehouse_staff": ("Warehouse warehouse",),
 		"remove_warehouse_from_staff": ("Warehouse warehouse",),
 		"set_default_warehouse": ("Warehouse warehouse",),
+	},
+	"till_api": {
+		"get_till_state": ("POS Profile pos_profile", "Warehouse warehouse"),
+		"close_till": ("POS Opening Entry session",),
+	},
+	"products_list_api": {
+		"list_products": ("Warehouse warehouse",),
+		"create_product_simple": ("Warehouse warehouse",),
 	},
 }
 
