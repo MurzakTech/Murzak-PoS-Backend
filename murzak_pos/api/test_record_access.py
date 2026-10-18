@@ -283,6 +283,9 @@ EXPECTED_GUARDS = {
 		"add_purchase_note": ("Purchase Order id", "Purchase Invoice id"),
 	},
 	"expenses_api": {"get_receipt": ("Journal Entry expense",)},
+	"reports_api": {
+		"run_report": ("Warehouse store",),
+	},
 }
 
 # Calls that must be told which kind of record the number is, before they look at it

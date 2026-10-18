@@ -976,6 +976,8 @@
 "Dates must look like 2026-10-13.","Tarehe lazima ziwe kama 2026-10-13."
 "The start date must not be after the end date.","Tarehe ya kuanza haiwezi kuwa baada ya tarehe ya kuisha."
 "Please choose a period of one year or less.","Tafadhali chagua kipindi cha mwaka mmoja au chini."
+"That report does not exist.","Ripoti hiyo haipo."
+"Could not load this report. Please try again.","Imeshindwa kupakia ripoti hii. Tafadhali jaribu tena."
 "The expense was not saved, so nothing was changed.","Gharama haikuhifadhiwa, kwa hiyo hakuna kilichobadilishwa."
 "Choose an expenses list period: today, week, 7d, 30d, month or custom.","Chagua kipindi cha orodha ya gharama: today, week, 7d, 30d, month au custom."
 "This expense could not be checked for a repeat. Please try again.","Gharama hii haikuweza kukaguliwa kama imerudiwa. Tafadhali jaribu tena."
