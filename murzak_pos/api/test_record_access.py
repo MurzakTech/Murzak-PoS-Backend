@@ -278,6 +278,8 @@ EXPECTED_GUARDS = {
 CALL_NEEDS = {
 	("purchase", "create_purchase_invoice"): {"reference_type": "Purchase Order"},
 	("print_api", "get_print"): {"doctype": "Sales Invoice"},
+	# a write-off is refused without a valid reason before the store is looked at, so give it one
+	("stock_levels_api", "stock_out"): {"reason": "lost"},
 }
 
 
