@@ -74,6 +74,14 @@ EXPECTED_GUARDS = {
 	"expiry_api": {
 		"get_expiry_alerts": ("Warehouse warehouse",),
 	},
+	"stock_levels_api": {
+		"get_stock_levels": ("Warehouse warehouse",),
+		"find_products": ("Warehouse warehouse",),
+		"stock_in": ("Item item_code", "Warehouse warehouse"),
+		"stock_out": ("Item item_code", "Warehouse warehouse"),
+		"get_count_sheet": ("Warehouse warehouse",),
+		"submit_count": ("Warehouse warehouse",),
+	},
 	"held_sales_api": {
 		"list_held_sales": ("Warehouse warehouse",),
 		"save_held_sale": ("Warehouse warehouse",),
@@ -266,6 +274,8 @@ EXPECTED_GUARDS = {
 CALL_NEEDS = {
 	("purchase", "create_purchase_invoice"): {"reference_type": "Purchase Order"},
 	("print_api", "get_print"): {"doctype": "Sales Invoice"},
+	# a write-off is refused without a valid reason before the store is looked at, so give it one
+	("stock_levels_api", "stock_out"): {"reason": "lost"},
 }
 
 
