@@ -282,6 +282,7 @@ EXPECTED_GUARDS = {
 		"create_direct_bill": ("Supplier supplier", "Warehouse warehouse"),
 		"add_purchase_note": ("Purchase Order id", "Purchase Invoice id"),
 	},
+	"expenses_api": {"get_receipt": ("Journal Entry expense",)},
 }
 
 # Calls that must be told which kind of record the number is, before they look at it
