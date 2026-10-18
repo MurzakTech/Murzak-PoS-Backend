@@ -34,6 +34,11 @@ OWNER_ROLES = ("System Manager", "Sales Manager", "Sales User", "Accounts Manage
 EXPECTED_GUARDS = {
 	"print_api": {"get_print": ("variable name",)},
 	"profit_api": {"get_profit_summary": ("Warehouse warehouse",)},
+	"sales_list_api": {
+		"list_sales": ("Warehouse store",),
+		"get_sale": ("POS Invoice id", "Sales Invoice id"),
+		"take_payment": ("POS Invoice id", "Sales Invoice id"),
+	},
 	"sales_person_api": {
 		"update_sales_person": ("variable name",),
 		"get_commission_report": ("variable sales_person",),
@@ -250,6 +255,10 @@ EXPECTED_GUARDS = {
 		"get_warehouse_staff": ("Warehouse warehouse",),
 		"remove_warehouse_from_staff": ("Warehouse warehouse",),
 		"set_default_warehouse": ("Warehouse warehouse",),
+	},
+	"till_api": {
+		"get_till_state": ("POS Profile pos_profile", "Warehouse warehouse"),
+		"close_till": ("POS Opening Entry session",),
 	},
 }
 
