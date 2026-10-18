@@ -166,6 +166,7 @@ def get_setup_state(company: str | None = None) -> dict:
 		"in_progress": resuming,
 		"offer": needs or resuming,
 		"suggested_kind": calc.kind_from_industry(signup),
+		"industry_code": signup,
 		"can_edit": tier == role_tiers.OWNER,
 	}
 	return {"success": True, "data": data}

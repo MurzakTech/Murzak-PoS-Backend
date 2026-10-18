@@ -128,6 +128,7 @@ class TestState(SetupCase):
 		self.assertTrue(data["needs_setup"])
 		self.assertTrue(data["offer"])
 		self.assertTrue(data["can_edit"])
+		self.assertIsNone(data["industry_code"])
 		self.assertEqual(data["next_step"], "business")
 		self.assertEqual(data["done_steps"], [])
 		self.assertFalse(data["finished"])
@@ -182,6 +183,7 @@ class TestState(SetupCase):
 		data = setup_api.get_setup_state()["data"]
 		self.assertFalse(data["needs_setup"])
 		self.assertEqual(data["suggested_kind"], "pharmacy")
+		self.assertEqual(data["industry_code"], "PHARMACY")
 		# it is only a suggestion: no feature is turned on by it
 		self.assertFalse(any(data["features"].values()))
 

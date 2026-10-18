@@ -65,6 +65,7 @@ Reply `data` holds everything of `get_business_features` plus:
 | `in_progress` | The wizard was started (a step passed) and not finished, and the business still has no submitted sale and under 5 products |
 | `offer` | `needs_setup` or `in_progress`: whether Home should offer "Set up now" |
 | `suggested_kind` | The kind that the sign-up industry suggests (`PHARMACY` gives `pharmacy`, `GROCERY` gives `retail`, `SALON` gives `services`, and so on), or `null`. A suggestion only; no feature is turned on by it |
+| `industry_code` | The POS Industry code the signed-in person chose when they signed up (`PHARMACY`, `RETAIL`, ...), or `null`. The wizard uses it to link to the starter products of that industry |
 | `done_steps`, `skipped_steps` | Steps completed and steps skipped, in wizard order |
 | `next_step` | The first step not passed (where a refresh continues), or `null` when all six were passed |
 | `finished` | "Finish" or "Skip for now" was pressed |
