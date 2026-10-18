@@ -976,6 +976,7 @@
 "Dates must look like 2026-10-13.","Tarehe lazima ziwe kama 2026-10-13."
 "The start date must not be after the end date.","Tarehe ya kuanza haiwezi kuwa baada ya tarehe ya kuisha."
 "Please choose a period of one year or less.","Tafadhali chagua kipindi cha mwaka mmoja au chini."
+"Only an owner or a manager can see the team.","Mmiliki au meneja pekee ndiye anayeweza kuona timu."
 "Choose Purchase Order, Purchase Invoice or Purchase Receipt.","Chagua Agizo la Ununuzi, Ankara ya Ununuzi au Risiti ya Ununuzi."
 "Choose a purchases list period: today, week, 7d, 30d, month or custom.","Chagua kipindi cha orodha ya manunuzi: today, week, 7d, 30d, month au custom."
 "Choose a tab: all, orders or returns.","Chagua kichupo: all, orders au returns."
