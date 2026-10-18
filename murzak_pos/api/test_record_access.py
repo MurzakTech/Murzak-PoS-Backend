@@ -268,6 +268,10 @@ EXPECTED_GUARDS = {
 		"get_till_state": ("POS Profile pos_profile", "Warehouse warehouse"),
 		"close_till": ("POS Opening Entry session",),
 	},
+	"products_list_api": {
+		"list_products": ("Warehouse warehouse",),
+		"create_product_simple": ("Warehouse warehouse",),
+	},
 }
 
 # Calls that must be told which kind of record the number is, before they look at it
