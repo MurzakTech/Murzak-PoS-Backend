@@ -4,7 +4,7 @@
 Tests for the New look switch. They need no database: every Frappe call is mocked, so they run under
 `bench run-tests` and in plain Python alike.
 
-What they pin down: a business is OFF until an owner turns it on; only an owner may change it; nobody
+What they pin down: a business is ON until an owner turns it off; only an owner may change it; nobody
 can change another business's switch; the switch of one business never leaks to another; and the one
 call that changes anything checks for an owner before it touches the database.
 """
@@ -45,10 +45,20 @@ class NewLookCase(unittest.TestCase):
 
 
 class TestReading(NewLookCase):
-	def test_a_business_that_never_chose_is_off(self):
+	def test_a_business_that_never_chose_is_on(self):
 		self.as_user()
 		result = new_look_api.get_new_look()
-		self.assertEqual(result["data"], {"company": "Shop A", "enabled": False})
+		self.assertEqual(result["data"], {"company": "Shop A", "enabled": True})
+
+	def test_an_empty_stored_value_counts_as_never_chosen(self):
+		self.as_user(stored={new_look_api._key("Shop A"): ""})
+		self.assertTrue(new_look_api.get_new_look()["data"]["enabled"])
+
+	def test_a_business_that_turned_it_off_stays_off(self):
+		for stored in ("0", "false", "no", "off", " OFF "):
+			with self.subTest(stored=stored):
+				self.as_user(stored={new_look_api._key("Shop A"): stored})
+				self.assertFalse(new_look_api.get_new_look()["data"]["enabled"])
 
 	def test_on_and_off_are_read_back(self):
 		self.as_user(stored={new_look_api._key("Shop A"): "1"})
@@ -129,11 +139,12 @@ class TestChanging(NewLookCase):
 		self.as_user("Administrator", roles=(), companies=())
 		self.assertTrue(new_look_api.set_new_look(True, company="Shop B")["data"]["enabled"])
 
-	def test_one_business_never_turns_on_another(self):
+	def test_one_business_never_turns_off_another(self):
 		self.as_user(companies=("Shop A", "Shop B"))
 		new_look_api.set_new_look(True, company="Shop A")
-		self.assertTrue(new_look_api.get_new_look(company="Shop A")["data"]["enabled"])
-		self.assertFalse(new_look_api.get_new_look(company="Shop B")["data"]["enabled"])
+		new_look_api.set_new_look(False, company="Shop A")
+		self.assertFalse(new_look_api.get_new_look(company="Shop A")["data"]["enabled"])
+		self.assertTrue(new_look_api.get_new_look(company="Shop B")["data"]["enabled"])
 
 
 class TestKey(unittest.TestCase):
