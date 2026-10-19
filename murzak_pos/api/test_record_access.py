@@ -268,6 +268,10 @@ EXPECTED_GUARDS = {
 		"get_till_state": ("POS Profile pos_profile", "Warehouse warehouse"),
 		"close_till": ("POS Opening Entry session",),
 	},
+	"product_import_api": {
+		"preview_product_import": ("Warehouse warehouse",),
+		"import_products": ("Warehouse warehouse",),
+	},
 	"products_list_api": {
 		"list_products": ("Warehouse warehouse",),
 		"create_product_simple": ("Warehouse warehouse",),
