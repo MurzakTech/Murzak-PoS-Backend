@@ -43,13 +43,13 @@ CHUNK = 200
 def _problem_words():
 	"""The reason a row is left out, in the caller's language. {0} is the value from the row."""
 	return {
-		"code_required": _("The item code is empty."),
-		"code_long": _("The item code is longer than 140 characters."),
-		"code_bad": _("The item code has hidden characters."),
-		"code_twice": _("This item code was already used on row {0}."),
+		"code_required": _("The product code is empty."),
+		"code_long": _("The product code is longer than 140 characters."),
+		"code_bad": _("The product code has hidden characters."),
+		"code_twice": _("This product code was already used on row {0}."),
 		"code_other_business": _("The code {0} belongs to another business."),
-		"name_required": _("The item name is empty."),
-		"name_long": _("The item name is longer than 140 characters."),
+		"name_required": _("The product name is empty."),
+		"name_long": _("The product name is longer than 140 characters."),
 		"text_long": _("This text is too long: {0}"),
 		"price_bad": _("The price {0} is not a number."),
 		"cost_bad": _("The cost price {0} is not a number."),

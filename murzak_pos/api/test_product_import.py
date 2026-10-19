@@ -837,7 +837,7 @@ class TestPreview(CallCase):
 		self.assertEqual(data["new_brands"], ["Bidco"])
 		self.assertEqual([r["action"] for r in data["rows"]], ["create", "create", "invalid"])
 		self.assertEqual(data["rows"][0]["will"], "Will be added as a new product.")
-		self.assertEqual(data["rows"][2]["problems"][0]["message"], "The item name is empty.")
+		self.assertEqual(data["rows"][2]["problems"][0]["message"], "The product name is empty.")
 		self.assertEqual(data["stock"], {"rows": 1, "units": 10, "stores": ["Stores - A"]})
 		self.assertEqual(self.shop.created, [])
 		self.assertEqual(self.shop.groups, {"Drinks", "All Item Groups"})
