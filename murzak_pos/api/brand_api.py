@@ -40,6 +40,11 @@ DEFAULT_ACCENT = "indigo"
 STYLES = ("thermal80", "thermal58", "a4")
 DEFAULT_STYLE = "thermal80"
 
+# The background of the sign-in page and the Home banner. The patterns and the one photo live in the front end; the server only
+# knows the names. The till always keeps a plain background, whatever is chosen here.
+BACKDROPS = ("plain", "waves", "weave", "market", "sunrise")
+DEFAULT_BACKDROP = "waves"
+
 MAX_TAGLINE = 80
 MAX_FOOTER = 160
 MAX_HANDLE = 30
@@ -54,7 +59,7 @@ _WEBSITE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}(/
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 _SCHEME = re.compile(r"^https?://", re.IGNORECASE)
 
-FIELDS = ("logo", "accent", "tagline", "footer", "style", "social", "website")
+FIELDS = ("logo", "accent", "tagline", "footer", "style", "social", "website", "backdrop")
 
 
 def defaults() -> dict:
@@ -67,6 +72,7 @@ def defaults() -> dict:
 		"style": DEFAULT_STYLE,
 		"social": "",
 		"website": "",
+		"backdrop": DEFAULT_BACKDROP,
 	}
 
 
@@ -99,6 +105,11 @@ def clean_field(name: str, value):
 		text = _plain(value).lower()
 		if text not in STYLES:
 			_refuse(_("Choose one of the receipt styles on the list."))
+		return text
+	if name == "backdrop":
+		text = _plain(value).lower()
+		if text not in BACKDROPS:
+			_refuse(_("Choose one of the backgrounds on the list."))
 		return text
 	if name == "logo":
 		text = _plain(value)

@@ -168,6 +168,20 @@ class TestChecks(BrandCase):
 				self.as_user()
 				self.assertEqual(brand_api.set_brand({"accent": accent.upper()})["data"]["accent"], accent)
 
+	def test_a_background_off_the_list_is_refused_and_the_default_is_waves(self):
+		for backdrop in ("fireworks", "#fff", "", None):
+			with self.subTest(backdrop=backdrop):
+				self.refused({"backdrop": backdrop})
+		self.assertEqual(brand_api.defaults()["backdrop"], "waves")
+
+	def test_every_listed_background_is_accepted_in_any_case(self):
+		for backdrop in brand_api.BACKDROPS:
+			with self.subTest(backdrop=backdrop):
+				self.as_user()
+				self.assertEqual(
+					brand_api.set_brand({"backdrop": backdrop.upper()})["data"]["backdrop"], backdrop
+				)
+
 	def test_a_style_off_the_list_is_refused(self):
 		self.refused({"style": "thermal100"})
 
