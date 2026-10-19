@@ -1,13 +1,17 @@
 """
 The "New look" switch: whether a business sees the redesigned screens.
 
-Each business has its own switch, and it is OFF until a business owner turns it on. Turning it off
-again puts the old screens back at once; nothing in the books changes either way, because this switch
-only decides which screens are drawn.
+Each business has its own switch, and it is ON unless a business owner turned it off. The owner's
+decision to make the redesigned screens the default for every store is what this default expresses: a
+business that never chose, including every business created from now on, sees the new screens. A
+business that turned the switch off keeps the old screens, and turning it off again puts the old screens
+back at once; nothing in the books changes either way, because this switch only decides which screens
+are drawn.
 
 Where it is kept: Frappe's own "DefaultValue" table, under one key per business. That table already
 exists on every site, so installing this adds no document type, no custom field and no migration, and
-it never alters a record that is there today. A business with no key is OFF.
+it never alters a record that is there today. A business with no key is ON; a business whose key says
+off stays off.
 
 Who may do what:
 - anyone signed in may ask whether their own business has it on (the screens need to know)
@@ -42,7 +46,11 @@ def _key(company: str) -> str:
 
 
 def _is_on(company: str) -> bool:
-	return str(frappe.db.get_default(_key(company)) or "0").strip().lower() in _ON
+	"""On unless the business was explicitly switched off. No key at all means the default, which is on."""
+	stored = frappe.db.get_default(_key(company))
+	if stored is None:
+		return True
+	return str(stored).strip().lower() not in _OFF
 
 
 def _as_flag(value) -> bool:
@@ -59,7 +67,7 @@ def _as_flag(value) -> bool:
 
 @frappe.whitelist()
 def get_new_look(company: str | None = None) -> dict:
-	"""Whether the redesigned screens are on for the caller's business. Off unless an owner turned it on."""
+	"""Whether the redesigned screens are on for the caller's business. On unless an owner turned it off."""
 	company = resolve_company(company)
 	return {"success": True, "data": {"company": company, "enabled": _is_on(company)}}
 
