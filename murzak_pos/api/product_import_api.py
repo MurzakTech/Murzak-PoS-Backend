@@ -398,7 +398,7 @@ def preview_product_import(rows=None, company=None, warehouse=None, photos_file=
 def _make_category(name):
 	doc = frappe.new_doc("Item Group")
 	doc.item_group_name = name
-	doc.parent_item_group = rules.NEW_PRODUCT_CATEGORY
+	doc.parent_item_group = getattr(rules, "NEW_PRODUCT_CATEGORY", "All Item Groups")
 	doc.is_group = 0
 	doc.insert(ignore_permissions=True)
 

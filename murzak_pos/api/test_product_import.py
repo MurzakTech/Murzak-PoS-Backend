@@ -1018,3 +1018,7 @@ class TestTheSource(unittest.TestCase):
 			source = handle.read()
 		for old in ("bulk_import_products(", "bulk_create_products("):
 			self.assertNotIn(old, source)
+
+	def test_rules_has_new_product_category(self):
+		self.assertTrue(hasattr(rules, "NEW_PRODUCT_CATEGORY"))
+		self.assertEqual(rules.NEW_PRODUCT_CATEGORY, "All Item Groups")
