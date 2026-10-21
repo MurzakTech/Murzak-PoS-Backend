@@ -39,6 +39,7 @@ from murzak_pos.api.products_list_calc import (
 MAX_ROWS = 2000
 MAX_TEXT = 140  # product code, name, category, brand
 MAX_DESCRIPTION = 2000
+NEW_PRODUCT_CATEGORY = ROOT_CATEGORY
 
 VAT_CLASSES = ("standard", "zero_rated", "exempt")
 
