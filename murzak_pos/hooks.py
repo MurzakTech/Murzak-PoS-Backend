@@ -101,7 +101,8 @@ after_migrate = [
 ]
 
 # before_install = "murzak_pos.install.before_install"
-# after_install = "murzak_pos.install.after_install"
+# A new shop's site only gets `install-app`, never a migrate, so it needs the same two steps (install.py)
+after_install = "murzak_pos.install.after_install"
 
 # Uninstallation
 # ------------
