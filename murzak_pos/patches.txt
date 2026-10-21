@@ -14,3 +14,4 @@ murzak_pos.patches.backfill_price_list_company
 murzak_pos.patches.create_alert_settings
 murzak_pos.patches.bind_users_to_their_company
 murzak_pos.patches.convert_discount_rules_to_pricing_rules
+murzak_pos.patches.ensure_stock_items_are_purchasable

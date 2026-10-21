@@ -111,6 +111,8 @@ def create_purchase_receipt(
 				_("The quantity of {0} must be more than zero.").format(code), frappe.ValidationError
 			)
 		ensure_record_access("Item", code)
+		if not frappe.db.get_value("Item", code, "is_purchase_item"):
+			frappe.db.set_value("Item", code, "is_purchase_item", 1, update_modified=False)
 		target = line.get("warehouse") or warehouse
 		if not target:
 			frappe.throw(_("Choose a warehouse for {0}.").format(code), frappe.ValidationError)

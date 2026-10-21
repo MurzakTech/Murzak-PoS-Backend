@@ -46,6 +46,10 @@ def _order_lines(items, company: str, default_warehouse: str | None, order_date)
 				frappe.ValidationError,
 			)
 
+		# Ensure item is marked as a purchase item in ERPNext
+		if not frappe.db.get_value("Item", code, "is_purchase_item"):
+			frappe.db.set_value("Item", code, "is_purchase_item", 1, update_modified=False)
+
 		warehouse = None
 		if frappe.db.get_value("Item", code, "is_stock_item"):
 			warehouse = (

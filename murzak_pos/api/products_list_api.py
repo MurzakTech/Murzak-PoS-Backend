@@ -467,6 +467,7 @@ def create_product_simple(
 			standard_rate=clean["price"],
 			barcode=clean["barcode"] or None,
 			company=company,
+			is_purchase_item=True,
 		)
 	except frappe.ValidationError as error:
 		# The existing call refuses in words; show them beside the field they are about when that can be told
