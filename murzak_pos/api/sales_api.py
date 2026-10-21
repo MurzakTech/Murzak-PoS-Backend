@@ -873,6 +873,43 @@ def _create_invoice_document(
     return doc
 
 
+def _enrich_item_error_message(message: str, items: Optional[List[Dict]] = None) -> str:
+    """Enrich item code in validation error messages with item name.
+
+    E.g.: 'Row #2: Item ITEM082 has no stock...' -> 'Row #2: Item Beef Pilau (ITEM082) has no stock...'
+    """
+    if not message or not isinstance(message, str) or "Item " not in message:
+        return message
+
+    item_names: Dict[str, str] = {}
+    if items and isinstance(items, list):
+        for it in items:
+            if isinstance(it, dict):
+                c = it.get("item_code")
+                n = it.get("item_name")
+                if c and n and n != c:
+                    item_names[str(c)] = str(n)
+
+    import re
+
+    def _replace(match):
+        code = match.group(1)
+        name = item_names.get(code)
+        if not name:
+            try:
+                name = frappe.db.get_value("Item", code, "item_name")
+            except Exception:
+                name = None
+        if name and name != code:
+            return f"Item {name} ({code})"
+        return match.group(0)
+
+    try:
+        return re.sub(r"\bItem\s+([A-Za-z0-9_\-\./]+)\b", _replace, message)
+    except Exception:
+        return message
+
+
 @frappe.whitelist()
 def create_sales_invoice(
     customer: str,
@@ -1019,23 +1056,25 @@ def create_sales_invoice(
             },
         }
     except frappe.ValidationError as e:
+        enriched_msg = _enrich_item_error_message(str(e), parsed_items if "parsed_items" in locals() else None)
         frappe.log_error(
             "Create Sales Invoice Validation Error",
-            f"Validation error creating Sales Invoice: {str(e)}",
+            f"Validation error creating Sales Invoice: {enriched_msg}",
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {enriched_msg}",
             "error_type": "validation_error",
         }
     except Exception as e:
+        enriched_msg = _enrich_item_error_message(str(e), parsed_items if "parsed_items" in locals() else None)
         frappe.log_error(
             "Create Sales Invoice Error",
             frappe.get_traceback(),
         )
         return {
             "success": False,
-            "message": f"Error creating Sales Invoice: {str(e)}",
+            "message": f"Error creating Sales Invoice: {enriched_msg}",
         }
 
 
@@ -1336,23 +1375,25 @@ def create_pos_invoice(
             },
         }
     except frappe.ValidationError as e:
+        enriched_msg = _enrich_item_error_message(str(e), parsed_items if "parsed_items" in locals() else None)
         frappe.log_error(
             "Create POS Invoice Validation Error",
-            f"Validation error creating POS Invoice: {str(e)}",
+            f"Validation error creating POS Invoice: {enriched_msg}",
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {enriched_msg}",
             "error_type": "validation_error",
         }
     except Exception as e:
+        enriched_msg = _enrich_item_error_message(str(e), parsed_items if "parsed_items" in locals() else None)
         frappe.log_error(
             "Create POS Invoice Error",
-            f"Error creating POS Invoice: {str(e)}",
+            f"Error creating POS Invoice: {enriched_msg}",
         )
         return {
             "success": False,
-            "message": f"Error creating POS Invoice: {str(e)}",
+            "message": f"Error creating POS Invoice: {enriched_msg}",
         }
 
 
@@ -2416,7 +2457,9 @@ def _build_credit_note_items(items: List[Dict], return_against: Optional[str] = 
     # If return_against is provided, try to get original invoice for rate matching
     original_invoice = None
     if return_against:
-        if frappe.db.exists("Sales Invoice", return_against):
+        if frappe.db.exists("POS Invoice", return_against):
+            original_invoice = frappe.get_doc("POS Invoice", return_against)
+        elif frappe.db.exists("Sales Invoice", return_against):
             original_invoice = frappe.get_doc("Sales Invoice", return_against)
     
     for row in items:
@@ -2478,9 +2521,10 @@ TAX_LINE_FIELDS = (
 
 def _copy_tax_lines(source: str, doc) -> None:
     """Give a return the tax lines of the sale it returns, so ERPNext reverses the VAT with the price."""
+    parenttype = "POS Invoice" if frappe.db.exists("POS Invoice", source) else "Sales Invoice"
     lines = frappe.get_all(
         "Sales Taxes and Charges",
-        filters={"parent": source, "parenttype": "Sales Invoice"},
+        filters={"parent": source, "parenttype": parenttype},
         fields=list(TAX_LINE_FIELDS),
         order_by="idx asc",
         limit_page_length=0,
@@ -2503,7 +2547,11 @@ def _check_return_access(company: Optional[str] = None, invoice: Optional[str] =
             frappe.PermissionError,
         )
     if invoice:
-        invoice_company = frappe.db.get_value("Sales Invoice", invoice, "company")
+        invoice_company = (
+            frappe.db.get_value("POS Invoice", invoice, "company")
+            if frappe.db.exists("POS Invoice", invoice)
+            else frappe.db.get_value("Sales Invoice", invoice, "company")
+        )
         if invoice_company:
             if company and company != invoice_company:
                 frappe.throw(_("Invoice {0} belongs to another company.").format(invoice), frappe.ValidationError)
@@ -2557,15 +2605,23 @@ def create_sales_return(
         _validate_items_exist(parsed_items)
 
         # Validate return_against if provided
+        return_doctype = "Sales Invoice"
+        original_invoice = None
         if return_against:
-            if not frappe.db.exists("Sales Invoice", return_against):
+            if frappe.db.exists("POS Invoice", return_against):
+                return_doctype = "POS Invoice"
+                original_invoice = frappe.get_doc("POS Invoice", return_against)
+            elif frappe.db.exists("Sales Invoice", return_against):
+                return_doctype = "Sales Invoice"
+                original_invoice = frappe.get_doc("Sales Invoice", return_against)
+            else:
                 frappe.throw(
-                    _("Sales Invoice {0} does not exist").format(return_against),
+                    _("Invoice {0} does not exist").format(return_against),
                     frappe.ValidationError,
                 )
 
         # Create Credit Note
-        cn = frappe.new_doc("Sales Invoice")
+        cn = frappe.new_doc(return_doctype)
         cn.is_return = 1
         cn.customer = customer
         cn.company = company
@@ -2575,11 +2631,16 @@ def create_sales_return(
             cn.return_against = return_against
             # A POS sale takes stock out at the till; its return must put the stock
             # back the same way, or returned goods never reappear in inventory.
-            cn.update_stock = frappe.db.get_value("Sales Invoice", return_against, "update_stock") or 0
+            if return_doctype == "POS Invoice":
+                cn.update_stock = 1
+                if original_invoice:
+                    cn.pos_profile = original_invoice.pos_profile
+            else:
+                cn.update_stock = frappe.db.get_value("Sales Invoice", return_against, "update_stock") or 0
 
         if reason:
             cn.remarks = reason
-        if return_against:
+        if return_against and return_doctype == "Sales Invoice":
             sales_person_api.copy_sales_team(return_against, cn)
 
         # Build items
@@ -2590,7 +2651,7 @@ def create_sales_return(
         # template for a credit note with no sale behind it
         if return_against:
             _copy_tax_lines(return_against, cn)
-        _apply_sales_taxes(cn, company)
+        _apply_sales_taxes(cn, company, pos_profile=getattr(cn, "pos_profile", None))
 
         # Discounts
         if apply_discount_on:

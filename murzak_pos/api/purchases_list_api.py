@@ -29,7 +29,7 @@ from murzak_pos.api import business_lists, role_tiers
 from murzak_pos.api import overview_calc as calc
 from murzak_pos.api import purchases_list_calc as rules
 from murzak_pos.api.access_control import ensure_record_access
-from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.payment_gateway_common import get_user_companies, resolve_company
 from murzak_pos.api.purchase_orders_api import CANCEL_PURCHASE_ROLES, _order_lines
 
 # --- the clock (small on purpose, so tests can replace it) ------------------------------------------
@@ -340,7 +340,7 @@ def get_payment_modes(company=None):
 # --- one purchase, for the panel ---------------------------------------------------------------------
 
 
-def _resolve_purchase_id(id, doctype=None):
+def _resolve_purchase_id(id, doctype=None, company=None):
 	"""Resolves a document id, which might be a full name (PUR-ORD-2026-00001) or a short number (#O0001, O0001, 1)."""
 	if not id:
 		return doctype, id
@@ -366,32 +366,73 @@ def _resolve_purchase_id(id, doctype=None):
 		else:
 			kinds = list(rules.KINDS)
 
-		regex = rules.number_regex(seq)
-		try:
-			user_company = resolve_company(None)
-		except Exception:
-			user_company = None
+		user_company = None
+		if company:
+			try:
+				user_company = resolve_company(company)
+			except Exception:
+				user_company = None
+		if not user_company:
+			try:
+				user_company = resolve_company(None)
+			except Exception:
+				user_company = None
+
+		allowed_companies = get_user_companies()
+		if user_company:
+			allowed_companies.add(user_company)
 
 		for kind in kinds:
+			regex = rules.number_regex(seq)
 			query_filters = {"regex": regex}
 			where_company = ""
 			if user_company:
 				query_filters["company"] = user_company
 				where_company = "company = %(company)s AND "
+			elif allowed_companies:
+				query_filters["companies"] = tuple(allowed_companies)
+				where_company = "company IN %(companies)s AND "
 
-			rows = frappe.db.sql(
-				f"SELECT name FROM `tab{kind}` WHERE {where_company}name REGEXP %(regex)s ORDER BY creation DESC LIMIT 1",
-				query_filters,
-				as_dict=True,
-			)
-			if rows:
-				return kind, rows[0]["name"]
+			try:
+				rows = frappe.db.sql(
+					f"SELECT name FROM `tab{kind}` WHERE {where_company}name REGEXP %(regex)s ORDER BY creation DESC LIMIT 1",
+					query_filters,
+					as_dict=True,
+				)
+				if rows:
+					return kind, rows[0]["name"]
+			except Exception:
+				pass
+
+			where_like = ""
+			if user_company:
+				where_like = "company = %(company)s AND "
+			elif allowed_companies:
+				where_like = "company IN %(companies)s AND "
+
+			for pattern in (f"%-{seq:05d}%", f"%-{seq:04d}%", f"%-{seq}"):
+				like_filters = {"pattern": pattern}
+				if user_company:
+					like_filters["company"] = user_company
+				elif allowed_companies:
+					like_filters["companies"] = tuple(allowed_companies)
+
+				try:
+					rows = frappe.db.sql(
+						f"SELECT name FROM `tab{kind}` WHERE {where_like}name LIKE %(pattern)s ORDER BY creation DESC LIMIT 1",
+						like_filters,
+						as_dict=True,
+					)
+					if rows:
+						return kind, rows[0]["name"]
+				except Exception:
+					pass
 
 	return doctype, id
 
 
 @frappe.whitelist()
-def get_purchase(id, doctype=None):
+def get_purchase(id, doctype=None, company=None):
 	"""The panel for one purchase (see the contract for the answer)."""
 	_require_buyer()
 	try:
@@ -399,7 +440,7 @@ def get_purchase(id, doctype=None):
 	except rules.ListError as error:
 		_refuse_list(error.code)
 
-	resolved_doctype, real_id = _resolve_purchase_id(id, doctype)
+	resolved_doctype, real_id = _resolve_purchase_id(id, doctype, company=company)
 	if resolved_doctype:
 		doctype = resolved_doctype
 	id = real_id

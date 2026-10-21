@@ -47,6 +47,11 @@ def get_user_companies(user: str | None = None) -> set[str]:
 	):
 		companies.add(row.for_value)
 
+	if not companies:
+		all_companies = frappe.get_all("Company", limit=2, pluck="name")
+		if len(all_companies) == 1:
+			companies.add(all_companies[0])
+
 	return companies
 
 
