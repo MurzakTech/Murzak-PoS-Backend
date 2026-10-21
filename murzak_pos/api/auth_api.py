@@ -1068,17 +1068,36 @@ def get_current_user() -> Dict:
     return response
 
 
-@frappe.whitelist()
-def refresh_token() -> Dict:
-    """Refresh OAuth Bearer Token for current user
+@frappe.whitelist(allow_guest=True)
+def refresh_token(refresh_token: Optional[str] = None) -> Dict:
+    """Refresh OAuth Bearer Token for current user or via refresh_token string
     
+    Args:
+        refresh_token: OAuth refresh token string (optional if authenticated)
+        
     Returns:
         New OAuth Bearer Token
     """
     user = frappe.session.user
     
+    # If user is Guest, look up the user via the provided refresh_token
     if user == "Guest":
-        frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
+        if not refresh_token:
+            frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
+            
+        token_doc_name = frappe.db.get_value(
+            "OAuth Bearer Token",
+            {"refresh_token": refresh_token, "status": "Active"},
+            "name"
+        )
+        if not token_doc_name:
+            frappe.throw(_("Invalid or expired refresh token"), frappe.AuthenticationError)
+            
+        token_doc = frappe.get_doc("OAuth Bearer Token", token_doc_name)
+        user = token_doc.user
+        
+        # Revoke the old token
+        frappe.db.set_value("OAuth Bearer Token", token_doc_name, "status", "Revoked")
     
     # Generate new OAuth Bearer Token
     oauth_token = generate_oauth_bearer_token(user)
