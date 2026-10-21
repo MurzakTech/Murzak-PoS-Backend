@@ -1464,6 +1464,37 @@ def get_stock_quantity(item_code: str, company: str = None, warehouse: str = Non
     }
 
 
+def _squash_name(name):
+	"""A category name with extra spaces removed and case ignored, for matching."""
+	return " ".join(str(name or "").split()).lower()
+
+
+def ensure_category(name, known=None):
+	"""Return the name of an existing category matching `name` (ignoring case and spaces), creating it if none exists.
+
+	A new category is an ordinary Item Group under "All Item Groups" (not a folder). `known` is an optional dict of
+	squashed name to real name that is kept up to date, so rows of one import share a group instead of making two.
+	"""
+	clean = " ".join(str(name or "").split())
+	if not clean:
+		return "All Item Groups"
+	if known is None:
+		known = {}
+	if not known:
+		for group in frappe.get_all("Item Group", pluck="name"):
+			known[_squash_name(group)] = group
+	key = _squash_name(clean)
+	if key in known:
+		return known[key]
+	group = frappe.new_doc("Item Group")
+	group.item_group_name = clean
+	group.parent_item_group = "All Item Groups"
+	group.is_group = 0
+	group.insert(ignore_permissions=True)
+	known[key] = group.name
+	return group.name
+
+
 @frappe.whitelist()
 def bulk_create_products(products: List[Dict], company: str = None) -> Dict:
     """Create multiple products in bulk
