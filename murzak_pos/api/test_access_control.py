@@ -369,6 +369,11 @@ SENSITIVE_CALLS = {
 			"delete_price_list",
 			"create_product_variant",
 		],
+		"ecommerce_api": [
+			"get_ecommerce_settings",
+			"sync_woocommerce_catalog",
+			"get_ecommerce_products",
+		],
 	},
 	"require_stock_role": {
 		"inventory_api": [
@@ -377,6 +382,7 @@ SENSITIVE_CALLS = {
 			"create_material_receipt",
 			"create_material_transfer",
 			"create_stock_reconciliation",
+			"bulk_update_stock",
 			"update_stock_entry",
 			"submit_stock_entry",
 			"cancel_stock_entry",
@@ -415,6 +421,10 @@ SENSITIVE_CALLS = {
 			"create_inventory_discount_rule",
 			"update_inventory_discount_rule",
 			"delete_inventory_discount_rule",
+		],
+		"ecommerce_api": [
+			"save_ecommerce_settings",
+			"test_woocommerce_connection",
 		]
 	},
 }

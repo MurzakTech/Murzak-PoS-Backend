@@ -899,6 +899,216 @@ def create_stock_reconciliation(
 
 
 @frappe.whitelist()
+def bulk_update_stock(
+    items: Union[str, List[Dict]],
+    warehouse: str,
+    company: str = None,
+    mode: str = "set",
+    posting_date: str = None,
+    expense_account: str = None,
+    note: str = None,
+) -> Dict:
+    """
+    Bulk update or adjust stock balances for multiple items in a warehouse.
+
+    Args:
+        items: List or JSON string of dicts with item_code, qty, and optional valuation_rate.
+        warehouse: Warehouse to update stock in.
+        company: Company name (optional, resolved to user's company).
+        mode: "set" (default, reconciles to exact physical count) or "adjust" (relative +/- adjustment).
+        posting_date: Posting date (optional, defaults to today).
+        expense_account: Difference account (optional).
+        note: Remark/reason for the update.
+
+    Returns:
+        dict: Result with reconciliation name, updated_count, unchanged_count, items summary, and failed items.
+    """
+    require_stock_role()
+    if company:
+        company = resolve_company(company)
+    else:
+        company = frappe.defaults.get_user_default("Company")
+        if not company:
+            return {"success": False, "message": _("Company is required")}
+
+    ensure_record_access("Warehouse", warehouse)
+
+    if not frappe.db.exists("Warehouse", warehouse):
+        return {"success": False, "message": _("Warehouse '{0}' does not exist").format(warehouse)}
+
+    if isinstance(items, str):
+        try:
+            items = json.loads(items)
+        except Exception:
+            return {"success": False, "message": _("Invalid JSON format for items")}
+
+    if not isinstance(items, list) or len(items) == 0:
+        return {"success": False, "message": _("Items must be a non-empty list")}
+
+    item_codes = []
+    sanitized_items = []
+    failed_items = []
+
+    for idx, raw in enumerate(items):
+        if not isinstance(raw, dict):
+            failed_items.append({"index": idx, "error": _("Item row must be an object")})
+            continue
+        code = cstr(raw.get("item_code") or raw.get("itemCode") or "").strip()
+        if not code:
+            failed_items.append({"index": idx, "error": _("item_code is required")})
+            continue
+        try:
+            qty = flt(raw.get("qty", 0.0))
+        except (ValueError, TypeError):
+            failed_items.append({"item_code": code, "error": _("Invalid quantity value")})
+            continue
+
+        rate = raw.get("valuation_rate") if raw.get("valuation_rate") is not None else raw.get("valuationRate")
+        if rate is None:
+            rate = raw.get("rate")
+        sanitized_items.append({
+            "item_code": code,
+            "qty": qty,
+            "valuation_rate": flt(rate) if rate is not None else None,
+        })
+        item_codes.append(code)
+
+    if not sanitized_items:
+        return {
+            "success": False,
+            "message": _("No valid items to update"),
+            "data": {"failed_items": failed_items},
+        }
+
+    existing_records = frappe.get_all(
+        "Item",
+        filters={"name": ["in", list(set(item_codes))]},
+        fields=["name", "item_name", "stock_uom", "is_stock_item", "valuation_rate"],
+    )
+    existing_map = {d.name: d for d in existing_records}
+
+    valid_items = []
+    for s_item in sanitized_items:
+        code = s_item["item_code"]
+        meta = existing_map.get(code)
+        if not meta:
+            failed_items.append({"item_code": code, "error": _("Item '{0}' does not exist").format(code)})
+            continue
+        if not meta.get("is_stock_item"):
+            msg = _("Item '{0}' is not a stock item (service or non-inventory)").format(code)
+            failed_items.append({"item_code": code, "error": msg})
+            continue
+        valid_items.append(s_item)
+
+    if not valid_items:
+        return {
+            "success": False,
+            "message": _("None of the specified items are valid stock items"),
+            "data": {"failed_items": failed_items},
+        }
+
+    valid_codes = [v["item_code"] for v in valid_items]
+    balances_res = get_stock_balance_multiple(items=valid_codes, warehouse=warehouse, company=company)
+    current_balances = (balances_res.get("data") or {}) if isinstance(balances_res, dict) else {}
+
+    reconcile_items = []
+    changed_summary = []
+    unchanged_summary = []
+
+    for v_item in valid_items:
+        code = v_item["item_code"]
+        current_qty = flt(current_balances.get(code, 0.0))
+        meta = existing_map[code]
+
+        if mode == "adjust":
+            target_qty = current_qty + v_item["qty"]
+        else:
+            target_qty = v_item["qty"]
+
+        if target_qty < 0:
+            msg = _("Resulting quantity for item '{0}' cannot be negative ({1})").format(code, target_qty)
+            failed_items.append({"item_code": code, "error": msg})
+            continue
+
+        rate = v_item["valuation_rate"] if v_item["valuation_rate"] is not None else meta.get("valuation_rate")
+
+        diff = target_qty - current_qty
+        if abs(diff) > 0.0001:
+            reconcile_items.append({
+                "item_code": code,
+                "qty": target_qty,
+                "valuation_rate": rate,
+            })
+            changed_summary.append({
+                "item_code": code,
+                "item_name": meta.get("item_name") or code,
+                "previous_qty": current_qty,
+                "new_qty": target_qty,
+                "difference": diff,
+            })
+        else:
+            unchanged_summary.append({
+                "item_code": code,
+                "item_name": meta.get("item_name") or code,
+                "qty": current_qty,
+            })
+
+    if not reconcile_items:
+        return {
+            "success": True,
+            "message": _("All item stock levels already match the target. No adjustments needed."),
+            "data": {
+                "warehouse": warehouse,
+                "reconciliation": None,
+                "updated_count": 0,
+                "unchanged_count": len(unchanged_summary),
+                "items": changed_summary,
+                "unchanged_items": unchanged_summary,
+                "failed_items": failed_items,
+            },
+        }
+
+    reco_result = create_stock_reconciliation(
+        items=reconcile_items,
+        warehouse=warehouse,
+        posting_date=posting_date,
+        company=company,
+        expense_account=expense_account,
+        purpose="Stock Reconciliation",
+    )
+
+    if not reco_result or not reco_result.get("success"):
+        return {
+            "success": False,
+            "message": reco_result.get("message") if reco_result else _("Failed to create stock reconciliation"),
+            "data": {"failed_items": failed_items},
+        }
+
+    reco_name = reco_result.get("data", {}).get("name")
+
+    try:
+        from murzak_pos.api.stock_levels_api import _cache_clear
+        _cache_clear(company)
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "message": _("Successfully updated stock for {0} items").format(len(changed_summary)),
+        "data": {
+            "warehouse": warehouse,
+            "reconciliation": reco_name,
+            "total_items": len(valid_items),
+            "updated_count": len(changed_summary),
+            "unchanged_count": len(unchanged_summary),
+            "items": changed_summary,
+            "failed_items": failed_items,
+        },
+    }
+
+
+
+@frappe.whitelist()
 def check_stock_availability(
     item_code: str,
     qty: float,

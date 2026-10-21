@@ -94,6 +94,7 @@ EXPECTED_GUARDS = {
 		"create_material_issue": ("Warehouse source_warehouse",),
 		"create_material_transfer": ("Warehouse source_warehouse", "Warehouse target_warehouse"),
 		"create_stock_reconciliation": ("Warehouse warehouse",),
+		"bulk_update_stock": ("Warehouse warehouse",),
 		"check_stock_availability": ("Warehouse warehouse",),
 		"get_stock_ledger_entries": ("Warehouse warehouse",),
 		"get_stock_summary": ("Warehouse warehouse",),
