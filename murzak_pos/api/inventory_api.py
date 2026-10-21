@@ -171,6 +171,49 @@ def get_stock_balance_multiple(
                     "message": "Company is required. Please set a default company or provide company parameter.",
                 }
         
+        # Fast bulk bin query when warehouse is provided
+        if warehouse and frappe.db.exists("Warehouse", warehouse):
+            bins = frappe.db.get_all(
+                "Bin",
+                filters={"warehouse": warehouse, "item_code": ["in", items]},
+                fields=["item_code", "warehouse", "actual_qty", "reserved_qty", "ordered_qty", "projected_qty", "stock_value", "valuation_rate"]
+            )
+            bin_map = {b["item_code"]: b for b in bins}
+            results = []
+            for item_code in items:
+                b = bin_map.get(item_code)
+                if b:
+                    results.append({
+                        "item_code": item_code,
+                        "warehouse": warehouse,
+                        "balance": flt(b.get("actual_qty", 0), 4),
+                        "actual_qty": flt(b.get("actual_qty", 0), 4),
+                        "reserved_qty": flt(b.get("reserved_qty", 0), 4),
+                        "ordered_qty": flt(b.get("ordered_qty", 0), 4),
+                        "projected_qty": flt(b.get("projected_qty", 0), 4),
+                        "stock_value": flt(b.get("stock_value", 0), 4),
+                        "valuation_rate": flt(b.get("valuation_rate", 0), 4),
+                        "posting_date": nowdate(),
+                    })
+                else:
+                    results.append({
+                        "item_code": item_code,
+                        "warehouse": warehouse,
+                        "balance": 0.0,
+                        "actual_qty": 0.0,
+                        "reserved_qty": 0.0,
+                        "ordered_qty": 0.0,
+                        "projected_qty": 0.0,
+                        "stock_value": 0.0,
+                        "valuation_rate": 0.0,
+                        "posting_date": nowdate(),
+                    })
+            return {
+                "success": True,
+                "data": results,
+                "count": len(results),
+            }
+
         results = []
         for item_code in items:
             result = get_stock_balance_api(

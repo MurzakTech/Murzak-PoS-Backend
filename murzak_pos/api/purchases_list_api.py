@@ -340,20 +340,76 @@ def get_payment_modes(company=None):
 # --- one purchase, for the panel ---------------------------------------------------------------------
 
 
+def _resolve_purchase_id(id, doctype=None):
+	"""Resolves a document id, which might be a full name (PUR-ORD-2026-00001) or a short number (#O0001, O0001, 1)."""
+	if not id:
+		return doctype, id
+
+	# 1. Check exact match
+	for kind in (doctype,) if doctype else rules.KINDS:
+		if frappe.db.exists(kind, id):
+			return kind, id
+
+	# 2. Check if it's a short number
+	parsed = rules.parse_number_query(id)
+	if parsed:
+		letter, seq = parsed
+		kinds = []
+		if letter == "O":
+			kinds = ["Purchase Order"]
+		elif letter == "B":
+			kinds = ["Purchase Invoice"]
+		elif letter in ("G", "R"):
+			kinds = ["Purchase Receipt"] if letter == "G" else ["Purchase Invoice", "Purchase Receipt"]
+		elif doctype:
+			kinds = [doctype]
+		else:
+			kinds = list(rules.KINDS)
+
+		regex = rules.number_regex(seq)
+		try:
+			user_company = resolve_company(None)
+		except Exception:
+			user_company = None
+
+		for kind in kinds:
+			query_filters = {"regex": regex}
+			where_company = ""
+			if user_company:
+				query_filters["company"] = user_company
+				where_company = "company = %(company)s AND "
+
+			rows = frappe.db.sql(
+				f"SELECT name FROM `tab{kind}` WHERE {where_company}name REGEXP %(regex)s ORDER BY creation DESC LIMIT 1",
+				query_filters,
+				as_dict=True,
+			)
+			if rows:
+				return kind, rows[0]["name"]
+
+	return doctype, id
+
+
 @frappe.whitelist()
 def get_purchase(id, doctype=None):
 	"""The panel for one purchase (see the contract for the answer)."""
 	_require_buyer()
+	try:
+		doctype = rules.normalize_doctype(doctype)
+	except rules.ListError as error:
+		_refuse_list(error.code)
+
+	resolved_doctype, real_id = _resolve_purchase_id(id, doctype)
+	if resolved_doctype:
+		doctype = resolved_doctype
+	id = real_id
+
 	# A purchase of another business is refused whichever kind of document it is; a number that is not a document
 	# of that kind has no owner recorded and passes, and the call then says it was not found
 	ensure_record_access("Purchase Order", id)
 	ensure_record_access("Purchase Invoice", id)
 	ensure_record_access("Purchase Receipt", id)
 
-	try:
-		doctype = rules.normalize_doctype(doctype)
-	except rules.ListError as error:
-		_refuse_list(error.code)
 	kind = _kind_of(id, doctype)
 	if kind is None:
 		return _not_found(id)
@@ -750,6 +806,7 @@ def receive_goods(
 	half done. A repeat with the same request_id returns the first result and changes nothing.
 	"""
 	_require_buyer()
+	_, order = _resolve_purchase_id(order, "Purchase Order")
 	ensure_record_access("Purchase Order", order)
 	ensure_record_access("Warehouse", warehouse)
 	if company:
@@ -1095,12 +1152,15 @@ def _direct_reply(invoice, repeat=False) -> dict:
 def add_purchase_note(id, note, doctype=None):
 	"""Write a note on an order or a bill (kept as a comment on it, shown in the panel). Replies with the note as saved."""
 	_require_buyer()
-	ensure_record_access("Purchase Order", id)
-	ensure_record_access("Purchase Invoice", id)
 	try:
 		doctype = rules.normalize_doctype(doctype)
 	except rules.ListError as error:
 		_refuse_list(error.code)
+	resolved_doctype, id = _resolve_purchase_id(id, doctype)
+	if resolved_doctype:
+		doctype = resolved_doctype
+	ensure_record_access("Purchase Order", id)
+	ensure_record_access("Purchase Invoice", id)
 	text = rules.clean_note(note)
 	if not text:
 		return _refusal("no_note", _("Write the note first."))

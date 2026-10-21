@@ -375,6 +375,7 @@ def get_products(
     search_term: str = None,
     page: int = 1,
     page_size: int = 20,
+    limit: int = None,
     price_list: str = None,
     warehouse: str = None
 ) -> Dict:
@@ -396,6 +397,12 @@ def get_products(
     Returns:
         List of products with pagination info
     """
+    if limit is not None:
+        try:
+            page_size = int(limit)
+        except (ValueError, TypeError):
+            pass
+
     # Validate user permissions
     # Refuse a company the caller does not belong to
     if company:
