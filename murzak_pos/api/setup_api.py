@@ -159,6 +159,11 @@ def get_setup_state(company: str | None = None) -> dict:
 		bool(kind or calc.kind_from_industry(signup)), sales, products, progress["finished"]
 	)
 	resuming = calc.should_resume(progress, sales, products)
+	is_owner = tier == role_tiers.OWNER or (
+		frappe.session.user
+		and frappe.session.user != "Guest"
+		and frappe.db.get_value("Company", company, "owner") == frappe.session.user
+	)
 	data = {
 		**_features_payload(company),
 		**_progress_payload(progress),
@@ -167,7 +172,7 @@ def get_setup_state(company: str | None = None) -> dict:
 		"offer": needs or resuming,
 		"suggested_kind": calc.kind_from_industry(signup),
 		"industry_code": signup,
-		"can_edit": tier == role_tiers.OWNER,
+		"can_edit": is_owner,
 	}
 	return {"success": True, "data": data}
 

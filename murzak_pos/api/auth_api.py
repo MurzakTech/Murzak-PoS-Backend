@@ -703,11 +703,29 @@ def get_current_user() -> Dict:
     user_doc = frappe.get_doc("User", user)
     
     # Get user's default company
-    company = frappe.defaults.get_user_default("Company")
+    company = frappe.defaults.get_user_default("Company") or frappe.defaults.get_user_default("company")
     
     # If no default company, check if user is a staff user with custom_company
-    if not company:
+    if not company and frappe.db.has_column("User", "custom_company"):
         company = frappe.db.get_value("User", user, "custom_company")
+    if not company:
+        owned = frappe.get_all("Company", filters={"owner": user}, pluck="name", limit=1)
+        if owned:
+            company = owned[0]
+    if not company:
+        try:
+            from murzak_pos.api.payment_gateway_common import get_user_companies
+            allowed = get_user_companies(user)
+            if allowed:
+                company = sorted(allowed)[0]
+        except Exception:
+            pass
+    if company:
+        try:
+            frappe.defaults.set_user_default("Company", company, user)
+            frappe.defaults.set_user_default("company", company, user)
+        except Exception:
+            pass
     
     company_info = None
     default_warehouse = None

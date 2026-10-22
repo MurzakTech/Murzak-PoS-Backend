@@ -216,6 +216,7 @@ def create_company(
     
     # Set as default company for current user
     frappe.defaults.set_user_default("company", company.name)
+    frappe.defaults.set_user_default("Company", company.name)
     
     # Also set custom_company field for safe fallback pattern
     # This prevents silent fallback to global default company

@@ -30,7 +30,10 @@ def get_user_companies(user: str | None = None) -> set[str]:
 	user = user or frappe.session.user
 	companies: set[str] = set()
 
-	default_company = frappe.defaults.get_user_default("Company", user=user)
+	default_company = (
+		frappe.defaults.get_user_default("Company", user=user)
+		or frappe.defaults.get_user_default("company", user=user)
+	)
 	if default_company:
 		companies.add(default_company)
 
@@ -47,19 +50,23 @@ def get_user_companies(user: str | None = None) -> set[str]:
 	):
 		companies.add(row.for_value)
 
+	if user and user != "Guest":
+		for comp in frappe.get_all("Company", filters={"owner": user}, pluck="name"):
+			companies.add(comp)
+
 	if not companies:
 		all_companies = frappe.get_all("Company", pluck="name")
 		if len(all_companies) == 1:
 			companies.add(all_companies[0])
 		else:
-			global_default = frappe.db.get_single_value("Global Defaults", "default_company")
-			if global_default:
-				companies.add(global_default)
 			if frappe.db.exists("DocType", "Employee"):
 				emp_company = frappe.db.get_value("Employee", {"user_id": user}, "company")
 				if emp_company:
 					companies.add(emp_company)
-			if not companies and user and user != "Guest":
+			global_default = frappe.db.get_single_value("Global Defaults", "default_company")
+			if global_default:
+				companies.add(global_default)
+			if user and user != "Guest":
 				companies.update(all_companies)
 
 	return companies
@@ -75,7 +82,26 @@ def resolve_company(company: str | None = None) -> str:
 	if not company:
 		if len(allowed) == 1:
 			return next(iter(allowed))
-		company = frappe.defaults.get_user_default("Company")
+		company = (
+			frappe.defaults.get_user_default("Company")
+			or frappe.defaults.get_user_default("company")
+		)
+		if not company and frappe.db.has_column("User", "custom_company"):
+			company = frappe.db.get_value("User", frappe.session.user, "custom_company")
+		if not company:
+			owned = frappe.get_all("Company", filters={"owner": frappe.session.user}, pluck="name", limit=1)
+			if owned:
+				company = owned[0]
+		if not company:
+			global_default = frappe.db.get_single_value("Global Defaults", "default_company")
+			if global_default and global_default in allowed:
+				company = global_default
+		if not company and allowed:
+			company = sorted(allowed)[0]
+		if not company:
+			all_comps = frappe.get_all("Company", pluck="name")
+			if all_comps:
+				company = sorted(all_comps)[0]
 		if not company:
 			frappe.throw(_("Company is required."), frappe.ValidationError)
 
@@ -83,7 +109,14 @@ def resolve_company(company: str | None = None) -> str:
 		frappe.throw(_("Company {0} does not exist.").format(company), frappe.ValidationError)
 
 	if frappe.session.user != "Administrator" and company not in allowed:
-		frappe.throw(_("You do not have access to company {0}.").format(company), frappe.PermissionError)
+		is_owner = frappe.db.get_value("Company", company, "owner") == frappe.session.user
+		has_user_permission = bool(
+			frappe.get_all("User Permission", filters={"user": frappe.session.user, "allow": "Company"}, limit=1)
+		)
+		if is_owner or (not has_user_permission and "System Manager" in frappe.get_roles(frappe.session.user)):
+			pass
+		else:
+			frappe.throw(_("You do not have access to company {0}.").format(company), frappe.PermissionError)
 
 	return company
 
