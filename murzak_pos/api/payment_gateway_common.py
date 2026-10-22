@@ -48,9 +48,19 @@ def get_user_companies(user: str | None = None) -> set[str]:
 		companies.add(row.for_value)
 
 	if not companies:
-		all_companies = frappe.get_all("Company", limit=2, pluck="name")
+		all_companies = frappe.get_all("Company", pluck="name")
 		if len(all_companies) == 1:
 			companies.add(all_companies[0])
+		else:
+			global_default = frappe.db.get_single_value("Global Defaults", "default_company")
+			if global_default:
+				companies.add(global_default)
+			if frappe.db.exists("DocType", "Employee"):
+				emp_company = frappe.db.get_value("Employee", {"user_id": user}, "company")
+				if emp_company:
+					companies.add(emp_company)
+			if not companies and user and user != "Guest":
+				companies.update(all_companies)
 
 	return companies
 

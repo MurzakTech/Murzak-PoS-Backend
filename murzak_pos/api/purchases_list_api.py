@@ -350,10 +350,26 @@ def _resolve_purchase_id(id, doctype=None, company=None):
 		if frappe.db.exists(kind, id):
 			return kind, id
 
-	# 2. Check if it's a short number
+	# 2. Check exact match without leading hash
+	raw_str = str(id).strip()
+	if raw_str.startswith("#"):
+		clean = raw_str.lstrip("#").strip()
+		for kind in (doctype,) if doctype else rules.KINDS:
+			if frappe.db.exists(kind, clean):
+				return kind, clean
+
+	# 3. Check if it's a short number or contains a sequence number
+	seq = None
+	letter = None
 	parsed = rules.parse_number_query(id)
 	if parsed:
 		letter, seq = parsed
+	else:
+		digits_match = re.search(r"(\d+)$", raw_str)
+		if digits_match:
+			seq = int(digits_match.group(1))
+
+	if seq is not None:
 		kinds = []
 		if letter == "O":
 			kinds = ["Purchase Order"]
@@ -382,10 +398,20 @@ def _resolve_purchase_id(id, doctype=None, company=None):
 		if user_company:
 			allowed_companies.add(user_company)
 
+		patterns = [
+			f"%-{seq:05d}%",
+			f"%-{seq:04d}%",
+			f"%-{seq}%",
+			f"%{seq:05d}%",
+			f"%{seq:04d}%",
+			f"{seq:05d}",
+			str(seq),
+		]
+
 		for kind in kinds:
-			regex = rules.number_regex(seq)
-			query_filters = {"regex": regex}
+			# 3a. Try with company filter
 			where_company = ""
+			query_filters = {}
 			if user_company:
 				query_filters["company"] = user_company
 				where_company = "company = %(company)s AND "
@@ -393,6 +419,8 @@ def _resolve_purchase_id(id, doctype=None, company=None):
 				query_filters["companies"] = tuple(allowed_companies)
 				where_company = "company IN %(companies)s AND "
 
+			regex = rules.number_regex(seq)
+			query_filters["regex"] = regex
 			try:
 				rows = frappe.db.sql(
 					f"SELECT name FROM `tab{kind}` WHERE {where_company}name REGEXP %(regex)s ORDER BY creation DESC LIMIT 1",
@@ -404,23 +432,37 @@ def _resolve_purchase_id(id, doctype=None, company=None):
 			except Exception:
 				pass
 
-			where_like = ""
-			if user_company:
-				where_like = "company = %(company)s AND "
-			elif allowed_companies:
-				where_like = "company IN %(companies)s AND "
-
-			for pattern in (f"%-{seq:05d}%", f"%-{seq:04d}%", f"%-{seq}"):
-				like_filters = {"pattern": pattern}
-				if user_company:
-					like_filters["company"] = user_company
-				elif allowed_companies:
-					like_filters["companies"] = tuple(allowed_companies)
-
+			for pattern in patterns:
+				like_filters = dict(query_filters)
+				like_filters["pattern"] = pattern
 				try:
 					rows = frappe.db.sql(
-						f"SELECT name FROM `tab{kind}` WHERE {where_like}name LIKE %(pattern)s ORDER BY creation DESC LIMIT 1",
+						f"SELECT name FROM `tab{kind}` WHERE {where_company}name LIKE %(pattern)s ORDER BY creation DESC LIMIT 1",
 						like_filters,
+						as_dict=True,
+					)
+					if rows:
+						return kind, rows[0]["name"]
+				except Exception:
+					pass
+
+			# 3b. Fallback: try without company filter
+			try:
+				rows = frappe.db.sql(
+					f"SELECT name FROM `tab{kind}` WHERE name REGEXP %(regex)s ORDER BY creation DESC LIMIT 1",
+					{"regex": regex},
+					as_dict=True,
+				)
+				if rows:
+					return kind, rows[0]["name"]
+			except Exception:
+				pass
+
+			for pattern in patterns:
+				try:
+					rows = frappe.db.sql(
+						f"SELECT name FROM `tab{kind}` WHERE name LIKE %(pattern)s ORDER BY creation DESC LIMIT 1",
+						{"pattern": pattern},
 						as_dict=True,
 					)
 					if rows:
