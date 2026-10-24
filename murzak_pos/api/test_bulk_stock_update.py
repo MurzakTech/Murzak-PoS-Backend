@@ -22,6 +22,10 @@ class TestBulkStockUpdate(unittest.TestCase):
 		frappe.session.user = "manager@duka.test"
 		frappe.local = MagicMock()
 		frappe.local.response = {}
+		# These tests run with no database: a stand-in takes the place of frappe.db for each test
+		patcher = patch.object(frappe, "db", MagicMock(), create=True)
+		patcher.start()
+		self.addCleanup(patcher.stop)
 
 	@patch("murzak_pos.api.inventory_api.require_stock_role")
 	@patch("murzak_pos.api.inventory_api.ensure_record_access")
@@ -59,13 +63,13 @@ class TestBulkStockUpdate(unittest.TestCase):
 				frappe,
 				"get_all",
 				return_value=[
-					{
+					frappe._dict({
 						"name": "ITEM-1",
 						"item_name": "Sugar 1kg",
 						"stock_uom": "Nos",
 						"is_stock_item": 1,
 						"valuation_rate": 100,
-					}
+					})
 				],
 			):
 				mock_balances.return_value = {"success": True, "data": {"ITEM-1": 15.0}}
@@ -93,20 +97,20 @@ class TestBulkStockUpdate(unittest.TestCase):
 				frappe,
 				"get_all",
 				return_value=[
-					{
+					frappe._dict({
 						"name": "ITEM-1",
 						"item_name": "Sugar 1kg",
 						"stock_uom": "Nos",
 						"is_stock_item": 1,
 						"valuation_rate": 100,
-					},
-					{
+					}),
+					frappe._dict({
 						"name": "ITEM-2",
 						"item_name": "Flour 2kg",
 						"stock_uom": "Nos",
 						"is_stock_item": 1,
 						"valuation_rate": 150,
-					},
+					}),
 				],
 			):
 				mock_balances.return_value = {"success": True, "data": {"ITEM-1": 10.0, "ITEM-2": 5.0}}

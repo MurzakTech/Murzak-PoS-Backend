@@ -1128,6 +1128,8 @@ class TestNewProductWithOnlyANameAndAPrice(NewProductCase):
 					"standard_rate": 120.0,
 					"barcode": None,
 					"company": "Shop A",
+					# Every product can be bought as well as sold (0cc12aa), so a purchase order can list it
+					"is_purchase_item": True,
 				}
 			],
 		)

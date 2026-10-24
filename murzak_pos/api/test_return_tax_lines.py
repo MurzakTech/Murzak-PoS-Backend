@@ -11,6 +11,14 @@ from murzak_pos.api import sales_api
 
 
 class CopyTaxLinesCase(unittest.TestCase):
+	def setUp(self):
+		# No database here: the sale is a Sales Invoice (not a POS Invoice) in both tests
+		db = MagicMock()
+		db.exists.return_value = False
+		patcher = patch.object(frappe, "db", db, create=True)
+		patcher.start()
+		self.addCleanup(patcher.stop)
+
 	def test_each_tax_line_of_the_sale_is_put_on_the_return(self):
 		lines = [
 			frappe._dict(

@@ -23,6 +23,10 @@ class TestEcommerceApi(unittest.TestCase):
 		frappe.session.user = "manager@duka.test"
 		frappe.local = MagicMock()
 		frappe.local.response = {}
+		# These tests run with no database: a stand-in takes the place of frappe.db for each test
+		patcher = patch.object(frappe, "db", MagicMock(), create=True)
+		patcher.start()
+		self.addCleanup(patcher.stop)
 
 	@patch("murzak_pos.api.ecommerce_api.require_catalogue_role")
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
