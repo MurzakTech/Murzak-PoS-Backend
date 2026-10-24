@@ -223,6 +223,12 @@ EMAIL_PATTERN = re.compile(
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=30, seconds=10 * 60)
 def check_email(email):
+    # Only the sign-up page needs this. While sign-up is closed it would only tell strangers who has an account
+    from murzak_pos.api.signup_policy import signup_closed_reply
+
+    closed = signup_closed_reply()
+    if closed:
+        return closed
 
     return {
         "exists":

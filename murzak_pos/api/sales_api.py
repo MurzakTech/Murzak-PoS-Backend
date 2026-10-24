@@ -1,6 +1,6 @@
 """
 Sales Management API
-Handles creation and querying of Sales Invoices and POS Invoices for SavvyPOS
+Handles creation and querying of Sales Invoices and POS Invoices for Murzak POS
 """
 
 from __future__ import annotations

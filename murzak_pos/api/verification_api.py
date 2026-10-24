@@ -140,13 +140,13 @@ def send_email_verification(email: str) -> Dict:
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #333;">Email Verification</h2>
                 <p>Hello,</p>
-                <p>Thank you for registering with SavvyPOS. Please use the verification code below to verify your email address:</p>
+                <p>Thank you for registering with Murzak POS. Please use the verification code below to verify your email address:</p>
                 <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px;">
                     <h1 style="color: #007bff; margin: 0; font-size: 32px; letter-spacing: 5px;">{otp_code}</h1>
                 </div>
                 <p>This code will expire in {expiry_minutes} minutes.</p>
                 <p>If you did not request this verification code, please ignore this email.</p>
-                <p style="color: #666; font-size: 12px; margin-top: 30px;">Best regards,<br>SavvyPOS Team</p>
+                <p style="color: #666; font-size: 12px; margin-top: 30px;">Best regards,<br>Murzak POS Team</p>
             </div>
         """).format(otp_code=otp_code, expiry_minutes=OTP_EXPIRY_MINUTES)
         
@@ -238,7 +238,7 @@ def send_phone_verification(phone: str) -> Dict:
     try:
         from frappe.core.doctype.sms_settings.sms_settings import send_sms
         
-        message = _("Your SavvyPOS verification code is: {otp_code}. Valid for {expiry_minutes} minutes.").format(
+        message = _("Your Murzak POS verification code is: {otp_code}. Valid for {expiry_minutes} minutes.").format(
             otp_code=otp_code,
             expiry_minutes=OTP_EXPIRY_MINUTES
         )
