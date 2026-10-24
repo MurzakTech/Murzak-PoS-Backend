@@ -198,8 +198,8 @@
    "fieldname": "invoice_type",
    "fieldtype": "Select",
    "label": "Invoice Type",
-   "options": "\nSales Invoice\nPOS Invoice",
-   "description": "Type of invoice linked to this transaction"
+   "options": "\nSales Invoice\nPOS Invoice\nSales Order",
+   "description": "Type of invoice or order linked to this transaction"
   },
   {
    "fieldname": "invoice",

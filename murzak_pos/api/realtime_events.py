@@ -61,6 +61,17 @@ def held_message(company, held_id, warehouse, action) -> dict:
 	}
 
 
+def online_order_message(company, order, channel) -> dict:
+	"""What a screen is told about a new online order. Only which order and where it came from."""
+	return {
+		"kind": "online_order",
+		"doctype": "Sales Order",
+		"name": order,
+		"channel": channel,
+		"company": company,
+	}
+
+
 def users_of_company(company: str) -> list[str]:
 	"""Enabled users who work for a business: by their company field, a company permission or a default."""
 	if not company:
@@ -96,6 +107,15 @@ def notify_held_sale(company, held_id, warehouse, action) -> None:
 	except Exception:
 		# A message that cannot be sent must never undo or block a held bill
 		frappe.log_error("Realtime held sale message", frappe.get_traceback())
+
+
+def notify_online_order(company, order, channel) -> None:
+	"""A new online order came in: tell the business's tills so it is seen at once."""
+	try:
+		send(online_order_message(company, order, channel), users_of_company(company))
+	except Exception:
+		# A message that cannot be sent must never undo or block an order
+		frappe.log_error("Realtime online order message", frappe.get_traceback())
 
 
 def _status_changed(doc) -> bool:

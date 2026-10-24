@@ -18,3 +18,4 @@ murzak_pos.patches.ensure_stock_items_are_purchasable
 murzak_pos.patches.unbind_users_from_other_businesses
 murzak_pos.patches.seal_ecommerce_keys
 murzak_pos.patches.move_owners_to_business_owner
+murzak_pos.patches.add_online_order_fields
