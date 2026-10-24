@@ -23,6 +23,53 @@ def _ecommerce_key(company: str) -> str:
 	return f"murzak_ecommerce_{company}"
 
 
+# The WooCommerce keys open the shop's online store. Site-wide defaults are sent to every desk session, so they are
+# kept there encrypted with the site's own key (as Frappe keeps Password fields), never as plain text.
+SEALED_FIELDS = ("consumer_key", "consumer_secret")
+SEALED_PREFIX = "sealed:"
+
+
+def seal(value):
+	from frappe.utils.password import encrypt
+
+	if not value or str(value).startswith(SEALED_PREFIX):
+		return value
+	return SEALED_PREFIX + encrypt(str(value))
+
+
+def unseal(value):
+	"""The plain key; a value saved before keys were sealed is read as it is."""
+	from frappe.utils.password import decrypt
+
+	if not value or not str(value).startswith(SEALED_PREFIX):
+		return value or ""
+	try:
+		return decrypt(str(value)[len(SEALED_PREFIX) :])
+	except Exception:
+		frappe.log_error("E-Commerce keys could not be read", frappe.get_traceback())
+		return ""
+
+
+def read_settings(company: str) -> dict:
+	raw = frappe.db.get_default(_ecommerce_key(company))
+	try:
+		stored = (json.loads(raw) if isinstance(raw, str) else raw) or {}
+	except Exception:
+		stored = {}
+	for field in SEALED_FIELDS:
+		if field in stored:
+			stored[field] = unseal(stored[field])
+	return stored
+
+
+def write_settings(company: str, settings: dict) -> None:
+	sealed = dict(settings)
+	for field in SEALED_FIELDS:
+		if field in sealed:
+			sealed[field] = seal(sealed[field])
+	frappe.db.set_default(_ecommerce_key(company), json.dumps(sealed))
+
+
 def _mask_secret(value: str | None) -> str:
 	if not value:
 		return ""
@@ -63,13 +110,7 @@ def get_ecommerce_settings(company: str | None = None) -> dict[str, Any]:
 		company = resolve_company()
 
 	# Read stored settings from Frappe defaults
-	raw = frappe.db.get_default(_ecommerce_key(company))
-	stored = {}
-	if raw:
-		try:
-			stored = json.loads(raw) if isinstance(raw, str) else raw
-		except Exception:
-			stored = {}
+	stored = read_settings(company)
 
 	# Default warehouse
 	default_wh = stored.get("warehouse")
@@ -152,13 +193,7 @@ def save_ecommerce_settings(
 		return {"success": False, "message": _("Settings must be an object")}
 
 	# Read existing config to retain secrets if masked
-	raw = frappe.db.get_default(_ecommerce_key(company))
-	existing = {}
-	if raw:
-		try:
-			existing = json.loads(raw) if isinstance(raw, str) else raw
-		except Exception:
-			existing = {}
+	existing = read_settings(company)
 
 	# Clean inputs
 	store_url = cstr(settings.get("store_url", "")).strip().rstrip("/")
@@ -208,7 +243,7 @@ def save_ecommerce_settings(
 		"updated_at": str(now_datetime()),
 	}
 
-	frappe.db.set_default(_ecommerce_key(company), json.dumps(payload))
+	write_settings(company, payload)
 	frappe.db.commit()
 
 	return {
@@ -241,13 +276,7 @@ def test_woocommerce_connection(
 		company = resolve_company()
 
 	# Read stored settings if credentials are empty or masked
-	raw = frappe.db.get_default(_ecommerce_key(company))
-	stored = {}
-	if raw:
-		try:
-			stored = json.loads(raw) if isinstance(raw, str) else raw
-		except Exception:
-			stored = {}
+	stored = read_settings(company)
 
 	url = cstr(store_url or stored.get("store_url", "")).strip().rstrip("/")
 	key = cstr(consumer_key or "").strip()
@@ -326,7 +355,7 @@ def test_woocommerce_connection(
 		if stored:
 			stored["last_connection_success"] = True
 			stored["last_connection_time"] = str(now_datetime())
-			frappe.db.set_default(_ecommerce_key(company), json.dumps(stored))
+			write_settings(company, stored)
 			frappe.db.commit()
 
 		environment = wc_info.get("environment", {}) if isinstance(wc_info, dict) else {}
@@ -364,13 +393,7 @@ def sync_woocommerce_catalog(
 	else:
 		company = resolve_company()
 
-	raw = frappe.db.get_default(_ecommerce_key(company))
-	stored = {}
-	if raw:
-		try:
-			stored = json.loads(raw) if isinstance(raw, str) else raw
-		except Exception:
-			stored = {}
+	stored = read_settings(company)
 
 	if not stored.get("enabled"):
 		return {
@@ -453,7 +476,7 @@ def sync_woocommerce_catalog(
 	stored["last_sync"] = str(now_datetime())
 	stored["last_sync_status"] = "success"
 	stored["last_sync_message"] = _("Synced {0} products").format(len(synced_items))
-	frappe.db.set_default(_ecommerce_key(company), json.dumps(stored))
+	write_settings(company, stored)
 	frappe.db.commit()
 
 	return {

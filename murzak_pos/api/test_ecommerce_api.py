@@ -111,5 +111,40 @@ class TestEcommerceApi(unittest.TestCase):
 				get.assert_not_called()
 
 
+class TestKeysAreKeptSealed(unittest.TestCase):
+	def setUp(self):
+		self.saved = {}
+		db = MagicMock()
+		db.get_default.side_effect = lambda key: self.saved.get(key)
+		db.set_default.side_effect = lambda key, value: self.saved.__setitem__(key, value)
+		for p in (
+			patch.object(frappe, "db", db, create=True),
+			patch("frappe.utils.password.encrypt", side_effect=lambda text: f"<{text[::-1]}>"),
+			patch("frappe.utils.password.decrypt", side_effect=lambda text: text[1:-1][::-1]),
+		):
+			p.start()
+			self.addCleanup(p.stop)
+
+	def test_keys_are_stored_sealed_and_read_back_plain(self):
+		ecommerce_api.write_settings(
+			"Shop A", {"store_url": "https://a.test", "consumer_secret": "cs_live_123"}
+		)
+		raw = self.saved["murzak_ecommerce_Shop A"]
+		self.assertNotIn("cs_live_123", raw)
+		self.assertIn("sealed:", raw)
+		self.assertEqual(ecommerce_api.read_settings("Shop A")["consumer_secret"], "cs_live_123")
+
+	def test_keys_saved_before_sealing_still_work_and_are_sealed_on_the_next_save(self):
+		self.saved["murzak_ecommerce_Shop A"] = json.dumps({"consumer_key": "ck_old"})
+		settings = ecommerce_api.read_settings("Shop A")
+		self.assertEqual(settings["consumer_key"], "ck_old")
+		ecommerce_api.write_settings("Shop A", settings)
+		self.assertNotIn("ck_old", self.saved["murzak_ecommerce_Shop A"])
+
+	def test_sealing_twice_does_not_seal_again(self):
+		once = ecommerce_api.seal("ck_1")
+		self.assertEqual(ecommerce_api.seal(once), once)
+
+
 if __name__ == "__main__":
 	unittest.main()
