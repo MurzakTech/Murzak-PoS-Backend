@@ -450,16 +450,9 @@ def get_company(company_name: str = None) -> dict:
     Returns:
         Company details including provisional accounting settings
     """
+    # Only a business the caller belongs to (with none named, their own); its tax PIN and address are private
+    company_name = resolve_company(company_name)
     try:
-        # Get company name if not provided
-        if not company_name:
-            company_name = frappe.defaults.get_user_default("Company")
-            if not company_name:
-                return {
-                    "success": False,
-                    "message": "No company specified and no default company set. Please provide company_name parameter or set a default company.",
-                }
-        
         # Validate company exists
         if not frappe.db.exists("Company", company_name):
             return {

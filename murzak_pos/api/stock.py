@@ -553,10 +553,12 @@ def start_stock_count():
 
 # List Stock Counts - Add Counted Items - Stock Reconciliation Item
 @frappe.whitelist(allow_guest=False)
-def list_stock_counts():
-
+def list_stock_counts(company: str = None):
+    # Only this business's counts
+    company = resolve_company(company)
     counts = frappe.get_all(
         "Stock Reconciliation",
+        filters={"company": company},
         fields=["name", "posting_date", "set_warehouse", "docstatus"],
         order_by="creation desc"
     )
@@ -2113,23 +2115,25 @@ def create_stock_entry_old(
 
 
 @frappe.whitelist()
-def inventory_summary_report():
+def inventory_summary_report(company: str = None):
     """
-    Returns an inventory summary report.
+    Returns an inventory summary report for the caller's business.
     """
-    # Query to get total stock in each warehouse
+    # Only this business's stores: Bin has no company, its warehouse does
+    company = resolve_company(company)
     data = frappe.db.sql("""
         SELECT
-            warehouse,
-            SUM(actual_qty) AS total_qty,
-            SUM(valuation_rate * actual_qty) AS total_value
+            b.warehouse,
+            SUM(b.actual_qty) AS total_qty,
+            SUM(b.valuation_rate * b.actual_qty) AS total_value
         FROM
-            `tabBin`
+            `tabBin` b
+            JOIN `tabWarehouse` w ON w.name = b.warehouse
         WHERE
-            actual_qty > 0
+            b.actual_qty > 0 AND w.company = %(company)s
         GROUP BY
-            warehouse
-    """, as_dict=True)
+            b.warehouse
+    """, {"company": company}, as_dict=True)
 
     return {
         "success": True,
@@ -2138,23 +2142,26 @@ def inventory_summary_report():
 
 
 @frappe.whitelist()
-def inventory_movement_report(start_date: str, end_date: str):
+def inventory_movement_report(start_date: str, end_date: str, company: str = None):
     """
-    Returns a movement report based on the start and end date.
+    Returns a movement report for the caller's business between the start and end date.
     """
+    company = resolve_company(company)
+    # The item and quantity are on the entry's lines; only submitted entries moved stock
     data = frappe.db.sql("""
         SELECT
-            item_code,
-            SUM(CASE WHEN stock_entry_type = 'Material Receipt' THEN qty ELSE 0 END) AS received_qty,
-            SUM(CASE WHEN stock_entry_type = 'Material Issue' THEN qty ELSE 0 END) AS issued_qty,
-            SUM(CASE WHEN stock_entry_type = 'Material Transfer' THEN qty ELSE 0 END) AS transferred_qty
+            d.item_code,
+            SUM(CASE WHEN e.stock_entry_type = 'Material Receipt' THEN d.qty ELSE 0 END) AS received_qty,
+            SUM(CASE WHEN e.stock_entry_type = 'Material Issue' THEN d.qty ELSE 0 END) AS issued_qty,
+            SUM(CASE WHEN e.stock_entry_type = 'Material Transfer' THEN d.qty ELSE 0 END) AS transferred_qty
         FROM
-            `tabStock Entry`
+            `tabStock Entry Detail` d
+            JOIN `tabStock Entry` e ON e.name = d.parent
         WHERE
-            posting_date BETWEEN %s AND %s
+            e.docstatus = 1 AND e.company = %(company)s AND e.posting_date BETWEEN %(start)s AND %(end)s
         GROUP BY
-            item_code
-    """, (start_date, end_date), as_dict=True)
+            d.item_code
+    """, {"company": company, "start": start_date, "end": end_date}, as_dict=True)
 
     return {
         "success": True,
@@ -2162,21 +2169,23 @@ def inventory_movement_report(start_date: str, end_date: str):
     }
 
 @frappe.whitelist()
-def inventory_value_report():
+def inventory_value_report(company: str = None):
     """
-    Returns the total inventory value by warehouse.
+    Returns the total inventory value by warehouse for the caller's business.
     """
+    company = resolve_company(company)
     data = frappe.db.sql("""
         SELECT
-            warehouse,
-            SUM(actual_qty * valuation_rate) AS total_value
+            b.warehouse,
+            SUM(b.actual_qty * b.valuation_rate) AS total_value
         FROM
-            `tabBin`
+            `tabBin` b
+            JOIN `tabWarehouse` w ON w.name = b.warehouse
         WHERE
-            actual_qty > 0
+            b.actual_qty > 0 AND w.company = %(company)s
         GROUP BY
-            warehouse
-    """, as_dict=True)
+            b.warehouse
+    """, {"company": company}, as_dict=True)
 
     return {
         "success": True,
@@ -2186,21 +2195,23 @@ def inventory_value_report():
 
 
 @frappe.whitelist()
-def stock_aging_report():
+def stock_aging_report(company: str = None):
     """
-    Returns a stock aging report based on the stock's age.
+    Returns a stock aging report for the caller's business based on the stock's age.
     """
+    company = resolve_company(company)
     data = frappe.db.sql("""
         SELECT
-            item_code,
-            warehouse,
-            actual_qty,
-            DATEDIFF(CURDATE(), creation) AS age_days
+            b.item_code,
+            b.warehouse,
+            b.actual_qty,
+            DATEDIFF(CURDATE(), b.creation) AS age_days
         FROM
-            `tabBin`
+            `tabBin` b
+            JOIN `tabWarehouse` w ON w.name = b.warehouse
         WHERE
-            actual_qty > 0
-    """, as_dict=True)
+            b.actual_qty > 0 AND w.company = %(company)s
+    """, {"company": company}, as_dict=True)
 
     # Categorize the aging of stock
     categorized_data = {
