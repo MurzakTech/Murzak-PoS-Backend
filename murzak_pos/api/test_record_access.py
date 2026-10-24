@@ -220,6 +220,8 @@ EXPECTED_GUARDS = {
 		"cancel_sales_invoice": ("Sales Invoice name",),
 		"get_pos_invoice": ("POS Invoice name",),
 		"cancel_pos_invoice": ("POS Invoice name",),
+		"update_sales_invoice": ("Sales Invoice name",),
+		"update_pos_invoice": ("POS Invoice name",),
 		"cancel_sales_return": ("Sales Invoice name",),
 		"submit_invoice": ("variable name",),
 		"get_pos_opening_entry": ("POS Opening Entry name",),

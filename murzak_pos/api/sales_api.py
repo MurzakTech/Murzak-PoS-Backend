@@ -2007,9 +2007,10 @@ def update_sales_invoice(
     Returns:
         dict: Updated Sales Invoice details
     """
-    # Refuse a company the caller does not belong to
+    # Refuse a company the caller does not belong to, and an invoice of another business
     if company:
         company = resolve_company(company)
+    ensure_record_access("Sales Invoice", name)
     try:
         if not frappe.db.exists("Sales Invoice", name):
             return {
@@ -2140,9 +2141,10 @@ def update_pos_invoice(
     Returns:
         dict: Updated POS Invoice details
     """
-    # Refuse a company the caller does not belong to
+    # Refuse a company the caller does not belong to, and an invoice of another business
     if company:
         company = resolve_company(company)
+    ensure_record_access("POS Invoice", name)
     try:
         if not frappe.db.exists("POS Invoice", name):
             return {
