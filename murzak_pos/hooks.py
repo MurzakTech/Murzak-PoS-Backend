@@ -173,6 +173,13 @@ doc_events = {
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_sales_invoice_update",
 	},
 	"Purchase Order": {"before_submit": "murzak_pos.api.approvals_api.enforce_on_submit"},
+	# Who belongs to which business is changed only by the app itself (api/company_binding_guard.py)
+	"User": {"validate": "murzak_pos.api.company_binding_guard.guard_user_company"},
+	"User Permission": {
+		"validate": "murzak_pos.api.company_binding_guard.guard_user_permission",
+		"on_trash": "murzak_pos.api.company_binding_guard.guard_user_permission",
+	},
+	"Company": {"validate": "murzak_pos.api.company_binding_guard.guard_company_owner"},
 	# Live screen messages (api/realtime_events.py): payments and kitchen tickets
 	"MPESA Transaction Log": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
 	"POS Gateway Transaction": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
@@ -217,6 +224,13 @@ scheduler_events = {
 # Overriding Methods
 # ------------------------------
 #
+override_whitelisted_methods = {
+	# Frappe's own call sets a person's defaults without checking them; this one refuses a company they do not
+	# belong to (api/session_defaults.py)
+	"frappe.core.doctype.session_default_settings.session_default_settings.set_session_default_values": (
+		"murzak_pos.api.session_defaults.set_session_default_values"
+	),
+}
 # override_whitelisted_methods = {
 #     "/api/inventory/reports/summary": "api/method/murzak_pos.api.report.inventory_summary_report",
 #     "/api/inventory/reports/movement": "murzak_pos.api.inventory_reports.inventory_movement_report",

@@ -77,6 +77,16 @@ def ensure_default_accounts(company):
         company.create_default_accounts()
 
 
+def _make_owner(user: str, company: str) -> None:
+    """Bind `user` to `company` with a company permission, then give them the business roles."""
+    from murzak_pos.api.auth_api import assign_all_business_roles
+    from murzak_pos.api.staff_api import set_company_permission
+
+    set_company_permission(user, company, user)
+    assign_all_business_roles(user)
+    frappe.clear_cache(user=user)
+
+
 @frappe.whitelist()
 def create_company(
     company_name: str,
@@ -126,8 +136,14 @@ def create_company(
             frappe.ValidationError
         )
 
-    # Initialize ERPNext master records on a fresh site
-    initialize_site(country)
+    # Initialize ERPNext master records on a fresh site. The person has no roles until their business exists, and
+    # this only ever runs once per site, so it runs as the Administrator.
+    original_user = frappe.session.user
+    try:
+        frappe.set_user("Administrator")
+        initialize_site(country)
+    finally:
+        frappe.set_user(original_user)
     
     # Create company
     company = frappe.new_doc("Company")
@@ -158,6 +174,10 @@ def create_company(
             frappe.ValidationError
         )
     
+    # Bind the person to their new business first, then give them the business roles. Sign-up gives no roles,
+    # because on a site shared by many businesses the roles of someone bound to no business reach every shop.
+    _make_owner(frappe.session.user, company.name)
+
     # Create company address if provided
     if company_address:
         try:
@@ -325,14 +345,6 @@ def create_company(
             frappe.db.set_value("Company", company.name, "custom_vat_registered", 1)
     except Exception:
         frappe.log_error("Onboarding VAT Setup", frappe.get_traceback())
-
-    # Bind the person who created the business to it, so desk dashboards and reports show only their business
-    try:
-        from murzak_pos.api.staff_api import set_company_permission
-
-        set_company_permission(frappe.session.user, company.name, frappe.session.user)
-    except Exception:
-        frappe.log_error("Onboarding Company Permission", frappe.get_traceback())
 
     # Alert settings with the defaults; the person creating the business is the first to be told
     try:
