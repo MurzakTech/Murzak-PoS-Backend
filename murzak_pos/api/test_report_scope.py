@@ -73,5 +73,14 @@ class TestCompanyDetails(ScopeCase):
 		get_doc.assert_not_called()
 
 
+class TestAbbreviationCheck(ScopeCase):
+	def test_a_taken_abbreviation_does_not_name_the_business_using_it(self):
+		self.db.exists.return_value = True
+		reply = onboarding_api.check_abbreviation_exists("ABC")
+		self.assertTrue(reply["exists"])
+		self.assertNotIn("company", reply)
+		self.db.get_value.assert_not_called()
+
+
 if __name__ == "__main__":
 	unittest.main()

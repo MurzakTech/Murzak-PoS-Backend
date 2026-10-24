@@ -412,24 +412,13 @@ def check_abbreviation_exists(abbr: str) -> dict:
             "valid": False
         }
     
-    # Check if abbreviation exists in any company
-    existing_company = frappe.db.get_value(
-        "Company",
-        {"abbr": abbr},
-        ["name", "company_name", "abbr"],
-        as_dict=True
-    )
-    
-    if existing_company:
+    # Only whether it is taken. This call is open to anyone, so naming the business that uses it would let a
+    # stranger list every business on the site by trying abbreviations.
+    if frappe.db.exists("Company", {"abbr": abbr}):
         return {
             "exists": True,
             "abbr": abbr,
-            "company": {
-                "name": existing_company.name,
-                "company_name": existing_company.company_name,
-                "abbr": existing_company.abbr
-            },
-            "message": _("Abbreviation '{0}' is already used by company '{1}'").format(abbr, existing_company.company_name)
+            "message": _("Abbreviation '{0}' is already taken. Please choose another.").format(abbr),
         }
     else:
         return {

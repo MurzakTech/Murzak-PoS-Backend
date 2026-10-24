@@ -1271,3 +1271,4 @@
 "M-Pesa code {0} is already recorded on sale {1}.","Msimbo wa M-Pesa {0} tayari umerekodiwa kwenye mauzo {1}."
 "cancel a sale","kufuta mauzo"
 "That store address cannot be used. Enter the shop's public web address, like https://myshop.com.","Anwani hiyo ya duka haiwezi kutumika. Weka anwani ya wazi ya tovuti ya duka, kama https://myshop.com."
+"Abbreviation '{0}' is already taken. Please choose another.","Kifupisho '{0}' tayari kimechukuliwa. Tafadhali chagua kingine."
