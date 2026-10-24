@@ -924,12 +924,8 @@ def bulk_update_stock(
         dict: Result with reconciliation name, updated_count, unchanged_count, items summary, and failed items.
     """
     require_stock_role()
-    if company:
-        company = resolve_company(company)
-    else:
-        company = frappe.defaults.get_user_default("Company")
-        if not company:
-            return {"success": False, "message": _("Company is required")}
+    # resolve_company also picks the caller's own business when none is named, and refuses anyone else's
+    company = resolve_company(company)
 
     ensure_record_access("Warehouse", warehouse)
 

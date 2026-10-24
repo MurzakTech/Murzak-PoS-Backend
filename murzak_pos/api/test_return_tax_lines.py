@@ -22,12 +22,18 @@ class CopyTaxLinesCase(unittest.TestCase):
 			)
 		]
 		doc = MagicMock()
-		with patch.object(sales_api.frappe, "get_all", return_value=lines):
+		with (
+			patch.object(sales_api.frappe, "db", MagicMock(), create=True),
+			patch.object(sales_api.frappe, "get_all", return_value=lines),
+		):
 			sales_api._copy_tax_lines("SINV-1", doc)
 		doc.append.assert_called_once_with("taxes", dict(lines[0]))
 
 	def test_a_sale_with_no_tax_lines_adds_nothing(self):
 		doc = MagicMock()
-		with patch.object(sales_api.frappe, "get_all", return_value=[]):
+		with (
+			patch.object(sales_api.frappe, "db", MagicMock(), create=True),
+			patch.object(sales_api.frappe, "get_all", return_value=[]),
+		):
 			sales_api._copy_tax_lines("SINV-1", doc)
 		doc.append.assert_not_called()

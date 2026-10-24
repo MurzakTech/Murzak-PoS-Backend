@@ -1065,6 +1065,7 @@ def get_current_user() -> Dict:
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=30, seconds=10 * 60)
 def refresh_token(refresh_token: Optional[str] = None) -> Dict:
     """Refresh OAuth Bearer Token for current user or via refresh_token string
     
@@ -1095,6 +1096,11 @@ def refresh_token(refresh_token: Optional[str] = None) -> Dict:
         # Revoke the old token
         frappe.db.set_value("OAuth Bearer Token", token_doc_name, "status", "Revoked")
     
+    # A disabled account (a member of staff who has left, say) gets no new sign-in from an old token
+    if not frappe.db.get_value("User", user, "enabled"):
+        frappe.db.commit()  # keep the old token revoked
+        frappe.throw(_("User account is disabled"), frappe.AuthenticationError)
+
     # Generate new OAuth Bearer Token
     oauth_token = generate_oauth_bearer_token(user)
     

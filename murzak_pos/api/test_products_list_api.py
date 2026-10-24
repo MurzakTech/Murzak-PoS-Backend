@@ -1123,6 +1123,7 @@ class TestNewProductWithOnlyANameAndAPrice(NewProductCase):
 					"standard_rate": 120.0,
 					"barcode": None,
 					"company": "Shop A",
+					"is_purchase_item": True,
 				}
 			],
 		)
