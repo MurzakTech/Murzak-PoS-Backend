@@ -42,17 +42,32 @@ def missing_core_fields(get: Callable[[str], object]) -> List[str]:
     return [field for field in CORE_ITEM_FIELDS if _is_blank(get(field))]
 
 
-def relax_etims_mandatory(doc) -> bool:
+def company_uses_etims(company) -> bool:
+    """True when the business has an active eTIMS settings record, i.e. it really sends its products to KRA."""
+    import frappe
+
+    if not company or not frappe.db.exists("DocType", "Navari KRA eTims Settings"):
+        return False
+    return bool(frappe.db.exists("Navari KRA eTims Settings", {"company": company, "is_active": 1}))
+
+
+def relax_etims_mandatory(doc, company_uses_etims: Callable[[str], bool] | None = None) -> bool:
     """
     Let an Item that is not sent to eTIMS save without the eTIMS app's required
     tax fields. Call it just before doc.insert() or doc.save().
+
+    A product is "not sent" when its "do not send to eTIMS" box is ticked, or,
+    when `company_uses_etims` is given, when its business has no active eTIMS
+    settings: such a business has no KRA codes to give, so an older product that
+    was saved without the box ticked must still be editable.
 
     Returns True when the eTIMS fields were made optional for this save. Does
     nothing (returns False) when the product is meant for eTIMS, or when one of
     its core details is missing, so that Frappe still reports that problem.
     """
     if not is_etims_prevented(doc.get("custom_prevent_etims_registration")):
-        return False
+        if company_uses_etims is None or company_uses_etims(doc.get("custom_company")):
+            return False
     if missing_core_fields(doc.get):
         return False
     doc.flags.ignore_mandatory = True

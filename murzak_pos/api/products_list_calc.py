@@ -531,11 +531,16 @@ def pick_warehouse(default, names) -> str | None:
 
 
 def reorder_row(warehouse, level) -> dict:
-	"""The low-stock warning as a row of the product's Reorder table (the field ERPNext and the alerts read)."""
+	"""
+	The low-stock warning as a row of the product's Reorder table (the field ERPNext and the alerts read).
+
+	ERPNext refuses a row that has a level but no reorder quantity ("Row #1: Please set reorder quantity"), so the
+	quantity to reorder is the level itself: when stock falls to the warning, that much is what to buy again.
+	"""
 	return {
 		"warehouse": warehouse,
 		"warehouse_reorder_level": quantity(level),
-		"warehouse_reorder_qty": 0,
+		"warehouse_reorder_qty": quantity(level),
 		"material_request_type": "Purchase",
 	}
 

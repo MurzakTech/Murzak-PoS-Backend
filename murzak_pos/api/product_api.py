@@ -14,7 +14,7 @@ from datetime import datetime
 import erpnext
 import re
 
-from murzak_pos.api.etims_optional import relax_etims_mandatory
+from murzak_pos.api.etims_optional import company_uses_etims, relax_etims_mandatory
 from murzak_pos.api.vat_setup import etims_code_for, item_tax_template_for
 from murzak_pos.api.access_control import ensure_record_access, require_catalogue_role
 from murzak_pos.api.business_lists import (
@@ -1089,6 +1089,7 @@ def update_product(
     if prescription_only is not None and _has_prescription_field():
         item.set(PRESCRIPTION_FIELD, 1 if prescription_only else 0)
     
+    relax_etims_mandatory(item, company_uses_etims)
     item.save(ignore_permissions=True)
     
     # Update buying_price in Inventory Item Details if provided
@@ -1237,6 +1238,7 @@ def add_barcode(item_code: str, barcode: str) -> Dict:
     
     # Add barcode
     item.append("barcodes", {"barcode": barcode})
+    relax_etims_mandatory(item, company_uses_etims)
     item.save(ignore_permissions=True)
     frappe.db.commit()
     
@@ -1273,6 +1275,7 @@ def remove_barcode(item_code: str, barcode: str) -> Dict:
     
     # Remove barcode
     item.barcodes = [b for b in item.barcodes if b.barcode != barcode]
+    relax_etims_mandatory(item, company_uses_etims)
     item.save(ignore_permissions=True)
     frappe.db.commit()
     
