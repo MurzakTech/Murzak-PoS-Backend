@@ -124,3 +124,46 @@ class TestRefreshTokens(unittest.TestCase):
 				with patch.object(module, "generate_oauth_bearer_token", return_value=fresh) as new_token:
 					self.assertEqual(self.refresh(module)["refresh_token"], "r-2")
 				new_token.assert_called_once_with("cashier@shop.test")
+
+
+class TestChangingAPassword(unittest.TestCase):
+	def given(self):
+		self.manager = MagicMock()
+		self.db = MagicMock()
+		tokens = [
+			frappe._dict(name="T1", access_token="this-device"),
+			frappe._dict(name="T2", access_token="old-phone"),
+		]
+		for p in (
+			patch.object(frappe, "session", frappe._dict(user="owner@shop.test"), create=True),
+			patch.object(
+				frappe, "auth", MagicMock(LoginManager=MagicMock(return_value=self.manager)), create=True
+			),
+			patch.object(frappe, "db", self.db, create=True),
+			patch.object(frappe, "get_doc", return_value=MagicMock(), create=True),
+			patch.object(frappe, "get_all", return_value=tokens, create=True),
+			patch.object(frappe, "get_request_header", return_value="Bearer this-device", create=True),
+			patch.object(frappe, "local", MagicMock(response={}), create=True),
+			patch("frappe.translate.get_all_translations", return_value={}),
+		):
+			p.start()
+			self.addCleanup(p.stop)
+
+	def test_a_weak_new_password_is_refused_before_anything_else(self):
+		from murzak_pos.api import auth_api
+
+		for module in (auth_api, auth):
+			with self.subTest(module=module.__name__):
+				self.given()
+				with self.assertRaises(frappe.ValidationError):
+					module.change_password(old_password="Old!pass1", new_password="password")
+				self.manager.authenticate.assert_not_called()
+
+	def test_other_sign_ins_end_and_this_one_stays(self):
+		from murzak_pos.api import auth_api
+
+		for module in (auth_api, auth):
+			with self.subTest(module=module.__name__):
+				self.given()
+				module.change_password(old_password="Old!pass1", new_password="N3w!Strong")
+				self.db.set_value.assert_called_once_with("OAuth Bearer Token", "T2", "status", "Revoked")

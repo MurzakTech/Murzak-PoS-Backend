@@ -802,9 +802,12 @@ def change_password(old_password: str, new_password: str) -> Dict:
     if user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
-    # Validate password strength
-    if len(new_password) < 8:
-        frappe.throw(_("Password must be at least 8 characters long"))
+    from murzak_pos.api.auth_api import validate_password_strength
+
+    # The same rules as at sign-up and password reset
+    unmet = validate_password_strength(new_password or "")
+    if unmet:
+        frappe.throw(_("The new password needs {0}.").format(", ".join(unmet)), frappe.ValidationError)
     
     # Verify old password
     frappe.auth.LoginManager().authenticate(user=user, pwd=old_password)
@@ -813,6 +816,14 @@ def change_password(old_password: str, new_password: str) -> Dict:
     user_doc = frappe.get_doc("User", user)
     user_doc.new_password = new_password
     user_doc.save(ignore_permissions=True)
+
+    # End every other sign-in, in case the old password was known to someone else; this device stays signed in
+    current = (frappe.get_request_header("Authorization") or "").removeprefix("Bearer ").strip()
+    for token in frappe.get_all(
+        "OAuth Bearer Token", filters={"user": user, "status": "Active"}, fields=["name", "access_token"]
+    ):
+        if token.access_token != current:
+            frappe.db.set_value("OAuth Bearer Token", token.name, "status", "Revoked")
     
     # Set HTTP status code for successful password change
     frappe.local.response["http_status_code"] = 200
