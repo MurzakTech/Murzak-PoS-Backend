@@ -1267,3 +1267,5 @@
 "New businesses sign up at {0}, where each business gets its own private till.","Biashara mpya hujisajili kwenye {0}, ambapo kila biashara hupata mfumo wake binafsi wa mauzo."
 "{0} {1} is shared by every business. Only the business that added it can change or remove it.","{0} {1} inatumiwa na kila biashara. Biashara iliyoiongeza pekee ndiyo inayoweza kuibadilisha au kuiondoa."
 "change supplier groups","kubadilisha makundi ya wasambazaji"
+"{0} does not look like an M-Pesa code. A code has 10 letters and numbers, like QK12AB34CD.","{0} haionekani kama msimbo wa M-Pesa. Msimbo una herufi na nambari 10, kama QK12AB34CD."
+"M-Pesa code {0} is already recorded on sale {1}.","Msimbo wa M-Pesa {0} tayari umerekodiwa kwenye mauzo {1}."

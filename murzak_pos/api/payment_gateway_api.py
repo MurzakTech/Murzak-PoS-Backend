@@ -16,6 +16,7 @@ Sales:
 from __future__ import annotations
 
 import json
+import re
 import secrets
 
 import frappe
@@ -542,6 +543,7 @@ def validate_gateway_payments(payments: list[dict] | None, company: str) -> list
 
 	modes = _gateway_modes(company)
 	claims: list[tuple[str, str]] = []
+	manual_codes: set[str] = set()
 
 	for row in payments:
 		info = modes.get(row.get("mode_of_payment"))
@@ -574,6 +576,9 @@ def validate_gateway_payments(payments: list[dict] | None, company: str) -> list
 				row["reference_no"] = log.mpesa_receipt_number or row.get("reference_no")
 				claims.append(("MPESA Transaction Log", log.name))
 			elif code and info.get("allow_manual_code"):
+				# Not confirmed by Safaricom, so at least a real-looking code, used once
+				check_manual_mpesa_code(code, company, manual_codes)
+				manual_codes.add(code)
 				row["reference_no"] = code
 			else:
 				frappe.throw(
@@ -602,6 +607,47 @@ def validate_gateway_payments(payments: list[dict] | None, company: str) -> list
 		seen.add(claim)
 
 	return claims
+
+
+# An M-Pesa receipt code: 10 capital letters and digits, such as QK12AB34CD
+MPESA_CODE = re.compile(r"^[A-Z0-9]{10}$")
+
+
+def check_manual_mpesa_code(code: str, company: str, on_this_sale: set[str] | None = None) -> None:
+	"""
+	Refuse an M-Pesa code a cashier typed that is not shaped like one, or that is already on another sale of this
+	business (or twice on this one). Typed codes are not confirmed by Safaricom, so the same code could otherwise
+	stand for cash that never came in, on sale after sale.
+	"""
+	if not MPESA_CODE.match(code):
+		frappe.throw(
+			_("{0} does not look like an M-Pesa code. A code has 10 letters and numbers, like QK12AB34CD.").format(
+				code
+			),
+			frappe.ValidationError,
+		)
+	if on_this_sale and code in on_this_sale:
+		frappe.throw(_("The same payment cannot be used twice on one sale."), frappe.ValidationError)
+	if not frappe.db.has_column("Sales Invoice Payment", "reference_no"):
+		return
+	used = frappe.db.sql(
+		"""
+		SELECT p.parent
+		FROM `tabSales Invoice Payment` p
+		LEFT JOIN `tabSales Invoice` si ON p.parenttype = 'Sales Invoice' AND si.name = p.parent
+		LEFT JOIN `tabPOS Invoice` pi ON p.parenttype = 'POS Invoice' AND pi.name = p.parent
+		WHERE p.reference_no = %(code)s
+			AND COALESCE(si.company, pi.company) = %(company)s
+			AND COALESCE(si.docstatus, pi.docstatus) != 2
+			AND COALESCE(si.is_return, pi.is_return, 0) = 0
+		LIMIT 1
+		""",
+		{"code": code, "company": company},
+	)
+	if used:
+		frappe.throw(
+			_("M-Pesa code {0} is already recorded on sale {1}.").format(code, used[0][0]), frappe.ValidationError
+		)
 
 
 def _check_claim(record_company, company, status, invoice, paid, amount, label) -> None:
