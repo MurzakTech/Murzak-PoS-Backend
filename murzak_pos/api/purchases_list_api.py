@@ -477,6 +477,8 @@ def _resolve_purchase_id(id, doctype=None, company=None):
 def get_purchase(id, doctype=None, company=None):
 	"""The panel for one purchase (see the contract for the answer)."""
 	_require_buyer()
+	if company:
+		company = resolve_company(company)
 	try:
 		doctype = rules.normalize_doctype(doctype)
 	except rules.ListError as error:
@@ -889,7 +891,8 @@ def receive_goods(
 	half done. A repeat with the same request_id returns the first result and changes nothing.
 	"""
 	_require_buyer()
-	_, order = _resolve_purchase_id(order, "Purchase Order")
+	# Not `_`: that name is the translation function, and naming it here broke every message in this call
+	_kind, order = _resolve_purchase_id(order, "Purchase Order")
 	ensure_record_access("Purchase Order", order)
 	ensure_record_access("Warehouse", warehouse)
 	if company:
