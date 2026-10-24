@@ -19,7 +19,7 @@ from murzak_pos.api.access_control import ensure_record_access, require_any_role
 from murzak_pos.api.payment_gateway_common import resolve_company
 
 # People who may cancel a supplier invoice, which reverses the stock and the books
-CANCEL_PURCHASE_ROLES = frozenset({"System Manager", "Accounts Manager", "Purchase Manager"})
+CANCEL_PURCHASE_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager", "Purchase Manager"})
 SETTINGS_DOCTYPE = "Navari KRA eTims Settings"
 
 

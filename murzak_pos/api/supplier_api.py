@@ -8,6 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
 
+from murzak_pos.api.access_control import require_shared_record_manageable, require_supplier_role
 from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import get_user_companies, resolve_company
 
@@ -597,6 +598,7 @@ def create_supplier_group(
     Returns:
         dict: Created supplier group details
     """
+    require_supplier_role()
     try:
         # Check if supplier group already exists
         existing = frappe.db.exists("Supplier Group", {"supplier_group_name": supplier_group_name})
@@ -686,6 +688,9 @@ def update_supplier_group(
     Returns:
         dict: Update result
     """
+    # Supplier groups are shared by every business on the site: only the business that added one may change it
+    require_supplier_role()
+    require_shared_record_manageable("Supplier Group", name)
     try:
         supplier_group = frappe.get_doc("Supplier Group", name)
         

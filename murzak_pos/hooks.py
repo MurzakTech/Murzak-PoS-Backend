@@ -95,6 +95,8 @@ jinja = {"methods": ["murzak_pos.api.print_api.murzak_qr", "murzak_pos.api.print
 
 # Refresh the print formats (api/print_api.py) after every update
 after_migrate = [
+	# The role a business owner holds instead of System Manager (api/role_tiers.py)
+	"murzak_pos.api.role_tiers.ensure_owner_role",
 	"murzak_pos.api.print_api.install_print_formats",
 	# Switch Swahili on (translations/sw.csv)
 	"murzak_pos.api.language_api.enable_languages",
@@ -161,10 +163,13 @@ override_doctype_class = {
 
 doc_events = {
 	"POS Invoice": {
+		# A cashier's limits on dates and discounts (api/cashier_limits.py)
+		"validate": "murzak_pos.api.cashier_limits.enforce_on_sale",
 		"before_submit": "murzak_pos.overrides.pos_invoice.before_submit",
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_pos_invoice_update",
 	},
 	"Sales Invoice": {
+		"validate": "murzak_pos.api.cashier_limits.enforce_on_sale",
 		"before_submit": [
 			"murzak_pos.overrides.sales_invoice.before_submit",
 			# A refund above the business's limit needs a manager's approval (api/approvals_api.py)

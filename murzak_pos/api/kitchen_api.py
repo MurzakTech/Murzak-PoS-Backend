@@ -23,7 +23,7 @@ from murzak_pos.api.payment_gateway_common import resolve_company
 STATUSES = ("New", "Preparing", "Ready", "Served")
 ORDER_TYPES = ("table", "counter")
 # Who may change the stations, the categories each serves and whether station screens are used
-SETTINGS_ROLES = {"System Manager", "Accounts Manager", "Sales Manager"}
+SETTINGS_ROLES = {"Business Owner", "System Manager", "Accounts Manager", "Sales Manager"}
 
 MAX_TICKETS = 20  # in one send: one per station, with room to spare
 MAX_LINES = 100  # per ticket

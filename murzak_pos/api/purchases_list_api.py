@@ -397,78 +397,25 @@ def _resolve_purchase_id(id, doctype=None, company=None):
 		allowed_companies = get_user_companies()
 		if user_company:
 			allowed_companies.add(user_company)
+		if not allowed_companies:
+			return doctype, id
 
-		patterns = [
-			f"%-{seq:05d}%",
-			f"%-{seq:04d}%",
-			f"%-{seq}%",
-			f"%{seq:05d}%",
-			f"%{seq:04d}%",
-			f"{seq:05d}",
-			str(seq),
-		]
-
+		# Only a document of the caller's business whose number ENDS with this one (O12 is ...-00012, never
+		# ...-00120 or ...-01234), the newest first. No looser match: receiving goods against the wrong order
+		# moves the wrong stock, and another business's documents are never looked at.
+		regex = rules.number_regex(seq)
 		for kind in kinds:
-			# 3a. Try with company filter
-			where_company = ""
-			query_filters = {}
-			if user_company:
-				query_filters["company"] = user_company
-				where_company = "company = %(company)s AND "
-			elif allowed_companies:
-				query_filters["companies"] = tuple(allowed_companies)
-				where_company = "company IN %(companies)s AND "
-
-			regex = rules.number_regex(seq)
-			query_filters["regex"] = regex
-			try:
-				rows = frappe.db.sql(
-					f"SELECT name FROM `tab{kind}` WHERE {where_company}name REGEXP %(regex)s ORDER BY creation DESC LIMIT 1",
-					query_filters,
-					as_dict=True,
-				)
-				if rows:
-					return kind, rows[0]["name"]
-			except Exception:
-				pass
-
-			for pattern in patterns:
-				like_filters = dict(query_filters)
-				like_filters["pattern"] = pattern
-				try:
-					rows = frappe.db.sql(
-						f"SELECT name FROM `tab{kind}` WHERE {where_company}name LIKE %(pattern)s ORDER BY creation DESC LIMIT 1",
-						like_filters,
-						as_dict=True,
-					)
-					if rows:
-						return kind, rows[0]["name"]
-				except Exception:
-					pass
-
-			# 3b. Fallback: try without company filter
-			try:
-				rows = frappe.db.sql(
-					f"SELECT name FROM `tab{kind}` WHERE name REGEXP %(regex)s ORDER BY creation DESC LIMIT 1",
-					{"regex": regex},
-					as_dict=True,
-				)
-				if rows:
-					return kind, rows[0]["name"]
-			except Exception:
-				pass
-
-			for pattern in patterns:
-				try:
-					rows = frappe.db.sql(
-						f"SELECT name FROM `tab{kind}` WHERE name LIKE %(pattern)s ORDER BY creation DESC LIMIT 1",
-						{"pattern": pattern},
-						as_dict=True,
-					)
-					if rows:
-						return kind, rows[0]["name"]
-				except Exception:
-					pass
+			rows = frappe.db.sql(
+				f"SELECT name FROM `tab{kind}` WHERE company IN %(companies)s AND name REGEXP %(regex)s "
+				"ORDER BY creation DESC LIMIT 1",
+				{
+					"companies": (user_company,) if user_company else tuple(sorted(allowed_companies)),
+					"regex": regex,
+				},
+				as_dict=True,
+			)
+			if rows:
+				return kind, rows[0]["name"]
 
 	return doctype, id
 

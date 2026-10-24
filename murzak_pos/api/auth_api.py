@@ -23,12 +23,14 @@ from murzak_pos.api.access_control import require_manager
 
 # OAuth Configuration
 OAUTH_TOKEN_EXPIRATION_HOURS = 24 * 7  # 7 days
+# A refresh token gives a new sign-in for this many days after it was issued; then the person signs in again
+REFRESH_TOKEN_DAYS = 30
 OAUTH_CLIENT_NAME = "SavvyPOS API Client"
 OAUTH_SCOPES = "all"
 
 # Standard roles to assign to registered business owners for full access
 STANDARD_BUSINESS_ROLES = [
-    "System Manager",  # Full system access
+    "Business Owner",  # Runs their own business. Never System Manager, which reaches every business on a site
     "Item Manager",    # For Warehouse, Item creation and management
     "Stock Manager",   # For stock/inventory management
     "Stock User",      # Basic stock operations
@@ -1102,6 +1104,13 @@ def refresh_token(refresh_token: Optional[str] = None) -> Dict:
         
         # Revoke the old token
         frappe.db.set_value("OAuth Bearer Token", token_doc_name, "status", "Revoked")
+
+        # Each refresh issues a new one, so this only refuses a token unused for REFRESH_TOKEN_DAYS
+        from frappe.utils import add_days, get_datetime, now_datetime
+
+        if token_doc.creation and get_datetime(token_doc.creation) < add_days(now_datetime(), -REFRESH_TOKEN_DAYS):
+            frappe.db.commit()  # keep it revoked
+            frappe.throw(_("Invalid or expired refresh token"), frappe.AuthenticationError)
     
     # A disabled account (a member of staff who has left, say) gets no new sign-in from an old token
     if not frappe.db.get_value("User", user, "enabled"):
@@ -1227,9 +1236,10 @@ def change_password(old_password: str, new_password: str) -> Dict:
     if user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
-    # Validate password strength
-    if len(new_password) < 8:
-        frappe.throw(_("Password must be at least 8 characters long"))
+    # The same rules as at sign-up and password reset
+    unmet = validate_password_strength(new_password or "")
+    if unmet:
+        frappe.throw(_("The new password needs {0}.").format(", ".join(unmet)), frappe.ValidationError)
     
     # Verify old password
     frappe.auth.LoginManager().authenticate(user=user, pwd=old_password)
@@ -1238,6 +1248,14 @@ def change_password(old_password: str, new_password: str) -> Dict:
     user_doc = frappe.get_doc("User", user)
     user_doc.new_password = new_password
     user_doc.save(ignore_permissions=True)
+
+    # End every other sign-in, in case the old password was known to someone else; this device stays signed in
+    current = (frappe.get_request_header("Authorization") or "").removeprefix("Bearer ").strip()
+    for token in frappe.get_all(
+        "OAuth Bearer Token", filters={"user": user, "status": "Active"}, fields=["name", "access_token"]
+    ):
+        if token.access_token != current:
+            frappe.db.set_value("OAuth Bearer Token", token.name, "status", "Revoked")
     
     # Set HTTP status code for successful password change
     frappe.local.response["http_status_code"] = 200

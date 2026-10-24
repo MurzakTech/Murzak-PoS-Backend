@@ -412,24 +412,13 @@ def check_abbreviation_exists(abbr: str) -> dict:
             "valid": False
         }
     
-    # Check if abbreviation exists in any company
-    existing_company = frappe.db.get_value(
-        "Company",
-        {"abbr": abbr},
-        ["name", "company_name", "abbr"],
-        as_dict=True
-    )
-    
-    if existing_company:
+    # Only whether it is taken. This call is open to anyone, so naming the business that uses it would let a
+    # stranger list every business on the site by trying abbreviations.
+    if frappe.db.exists("Company", {"abbr": abbr}):
         return {
             "exists": True,
             "abbr": abbr,
-            "company": {
-                "name": existing_company.name,
-                "company_name": existing_company.company_name,
-                "abbr": existing_company.abbr
-            },
-            "message": _("Abbreviation '{0}' is already used by company '{1}'").format(abbr, existing_company.company_name)
+            "message": _("Abbreviation '{0}' is already taken. Please choose another.").format(abbr),
         }
     else:
         return {
@@ -450,16 +439,9 @@ def get_company(company_name: str = None) -> dict:
     Returns:
         Company details including provisional accounting settings
     """
+    # Only a business the caller belongs to (with none named, their own); its tax PIN and address are private
+    company_name = resolve_company(company_name)
     try:
-        # Get company name if not provided
-        if not company_name:
-            company_name = frappe.defaults.get_user_default("Company")
-            if not company_name:
-                return {
-                    "success": False,
-                    "message": "No company specified and no default company set. Please provide company_name parameter or set a default company.",
-                }
-        
         # Validate company exists
         if not frappe.db.exists("Company", company_name):
             return {

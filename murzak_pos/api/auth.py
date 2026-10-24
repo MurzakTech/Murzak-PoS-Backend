@@ -23,12 +23,14 @@ from murzak_pos.api.access_control import require_manager
 
 # OAuth Configuration
 OAUTH_TOKEN_EXPIRATION_HOURS = 24 * 7  # 7 days
+# A refresh token gives a new sign-in for this many days after it was issued; then the person signs in again
+REFRESH_TOKEN_DAYS = 30
 OAUTH_CLIENT_NAME = "SavvyPOS API Client"
 OAUTH_SCOPES = "all"
 
 # Standard roles to assign to registered business owners for full access
 STANDARD_BUSINESS_ROLES = [
-    "System Manager",  # Full system access
+    "Business Owner",  # Runs their own business. Never System Manager, which reaches every business on a site
     "Item Manager",    # For Warehouse, Item creation and management
     "Stock Manager",   # For stock/inventory management
     "Stock User",      # Basic stock operations
@@ -410,58 +412,18 @@ def register_user(
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=30, seconds=10 * 60)
-def login_user(email: str, password: str) -> Dict:
-    """Login user and generate OAuth Bearer Token
-    
-    Args:
-        email: User email
-        password: User password
-        
-    Returns:
-        User details and OAuth Bearer Token
+def login_user(email: str, password: str, otp: Optional[str] = None) -> Dict:
+    """Older address of auth_api.login_user, kept for callers that still use it.
+
+    It hands over to auth_api.login_user, so the lockout after repeated failures and the two-step code
+    apply here too; before, this address skipped both. The rate limit above already counted this call,
+    so the undecorated function is called rather than counting it twice.
     """
-    # Authenticate user
-    user = frappe.auth.LoginManager()
-    user.authenticate(user=email, pwd=password)
-    
-    if not user.user:
-        frappe.throw(_("Invalid email or password"), frappe.AuthenticationError)
-    
-    # Check if user is enabled
-    if not frappe.db.get_value("User", user.user, "enabled"):
-        frappe.throw(_("User account is disabled"), frappe.AuthenticationError)
-    
-    # Get or generate API keys
-    api_key = frappe.db.get_value("User", user.user, "api_key")
-    if not api_key:
-        api_keys = generate_keys(user.user)
-        api_key = api_keys.get("api_key")
-    
-    # Generate OAuth Bearer Token
-    oauth_token = generate_oauth_bearer_token(user.user)
-    
-    # Get user details
-    user_doc = frappe.get_doc("User", user.user)
-    
-    # Set HTTP status code for successful login
-    frappe.local.response["http_status_code"] = 200
-    
-    return {
-        "user": {
-            "name": user_doc.name,
-            "email": user_doc.email,
-            "first_name": user_doc.first_name,
-            "last_name": user_doc.last_name,
-            "full_name": user_doc.full_name,
-        },
-        "api_key": api_key,
-        "access_token": oauth_token["access_token"],
-        "token_type": oauth_token["token_type"],
-        "expires_in": oauth_token["expires_in"],
-        "expires_at": oauth_token["expires_at"],
-        "refresh_token": oauth_token["refresh_token"],
-        "message": _("Login successful")
-    }
+    import inspect
+
+    from murzak_pos.api import auth_api
+
+    return inspect.unwrap(auth_api.login_user)(email=email, password=password, otp=otp)
 
 
 @frappe.whitelist()
@@ -708,6 +670,13 @@ def refresh_token(refresh_token: Optional[str] = None) -> Dict:
         
         # Revoke the old token
         frappe.db.set_value("OAuth Bearer Token", token_doc_name, "status", "Revoked")
+
+        # Each refresh issues a new one, so this only refuses a token unused for REFRESH_TOKEN_DAYS
+        from frappe.utils import add_days, get_datetime, now_datetime
+
+        if token_doc.creation and get_datetime(token_doc.creation) < add_days(now_datetime(), -REFRESH_TOKEN_DAYS):
+            frappe.db.commit()  # keep it revoked
+            frappe.throw(_("Invalid or expired refresh token"), frappe.AuthenticationError)
     
     # A disabled account (a member of staff who has left, say) gets no new sign-in from an old token
     if not frappe.db.get_value("User", user, "enabled"):
@@ -833,9 +802,12 @@ def change_password(old_password: str, new_password: str) -> Dict:
     if user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
-    # Validate password strength
-    if len(new_password) < 8:
-        frappe.throw(_("Password must be at least 8 characters long"))
+    from murzak_pos.api.auth_api import validate_password_strength
+
+    # The same rules as at sign-up and password reset
+    unmet = validate_password_strength(new_password or "")
+    if unmet:
+        frappe.throw(_("The new password needs {0}.").format(", ".join(unmet)), frappe.ValidationError)
     
     # Verify old password
     frappe.auth.LoginManager().authenticate(user=user, pwd=old_password)
@@ -844,6 +816,14 @@ def change_password(old_password: str, new_password: str) -> Dict:
     user_doc = frappe.get_doc("User", user)
     user_doc.new_password = new_password
     user_doc.save(ignore_permissions=True)
+
+    # End every other sign-in, in case the old password was known to someone else; this device stays signed in
+    current = (frappe.get_request_header("Authorization") or "").removeprefix("Bearer ").strip()
+    for token in frappe.get_all(
+        "OAuth Bearer Token", filters={"user": user, "status": "Active"}, fields=["name", "access_token"]
+    ):
+        if token.access_token != current:
+            frappe.db.set_value("OAuth Bearer Token", token.name, "status", "Revoked")
     
     # Set HTTP status code for successful password change
     frappe.local.response["http_status_code"] = 200

@@ -269,7 +269,7 @@
    "idx": 20
   }
  ],
- "modified": "2026-10-11 21:00:00.000000",
+ "modified": "2026-10-24 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Murzak POS",
  "name": "Murzak POS",
@@ -308,6 +308,9 @@
  "public": 1,
  "quick_lists": [],
  "roles": [
+  {
+   "role": "Business Owner"
+  },
   {
    "role": "System Manager"
   },

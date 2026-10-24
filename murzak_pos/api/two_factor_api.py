@@ -170,7 +170,9 @@ def disable_two_factor(otp: str | None = None) -> dict:
 def reset_two_factor_for_user(user: str) -> dict:
 	"""For a staff member who lost their phone: an owner or System Manager turns it off for them."""
 	_signed_in_user()
-	if frappe.session.user != "Administrator" and "System Manager" not in frappe.get_roles():
+	from murzak_pos.api.role_tiers import OWNER_ROLES
+
+	if frappe.session.user != "Administrator" and not OWNER_ROLES & set(frappe.get_roles()):
 		frappe.throw(_("Only the owner can reset two-step sign-in for someone else."), frappe.PermissionError)
 	from murzak_pos.api.payment_gateway_common import get_user_companies
 

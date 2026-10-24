@@ -37,7 +37,7 @@ DEFAULT_ALIAS = {
 	"Purchase Order": "purchase_order",
 }
 NO_LETTERHEAD = {"receipt"}  # the till receipt prints its own compact header
-LETTERHEAD_ROLES = frozenset({"System Manager", "Accounts Manager"})
+LETTERHEAD_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager"})
 
 
 # --- helpers for the templates ---------------------------------------------------------------------

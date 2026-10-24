@@ -24,7 +24,7 @@ from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_ru
     get_applicable_inventory_discount,
 )
 from murzak_pos.api import sales_person_api
-from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.access_control import ensure_record_access, require_any_role
 from murzak_pos.api.business_lists import (
     caller_company,
     first_mode_of_payment,
@@ -1508,6 +1508,8 @@ def cancel_sales_invoice(name: str, reason: Optional[str] = None) -> Dict:
         name: Sales Invoice name
         reason: Optional cancellation reason (stored in remarks)
     """
+    # Cancelling a finished sale takes it off the books, so it is for a manager, like a return
+    require_any_role(RETURN_ROLES, _("cancel a sale"))
     ensure_record_access("Sales Invoice", name)
     try:
         if not frappe.db.exists("Sales Invoice", name):
@@ -2007,9 +2009,10 @@ def update_sales_invoice(
     Returns:
         dict: Updated Sales Invoice details
     """
-    # Refuse a company the caller does not belong to
+    # Refuse a company the caller does not belong to, and an invoice of another business
     if company:
         company = resolve_company(company)
+    ensure_record_access("Sales Invoice", name)
     try:
         if not frappe.db.exists("Sales Invoice", name):
             return {
@@ -2140,9 +2143,10 @@ def update_pos_invoice(
     Returns:
         dict: Updated POS Invoice details
     """
-    # Refuse a company the caller does not belong to
+    # Refuse a company the caller does not belong to, and an invoice of another business
     if company:
         company = resolve_company(company)
+    ensure_record_access("POS Invoice", name)
     try:
         if not frappe.db.exists("POS Invoice", name):
             return {
@@ -2403,6 +2407,8 @@ def cancel_pos_invoice(name: str, reason: Optional[str] = None) -> Dict:
         name: POS Invoice name
         reason: Optional cancellation reason (stored in remarks)
     """
+    # Cancelling a finished sale takes it off the books, so it is for a manager, like a return
+    require_any_role(RETURN_ROLES, _("cancel a sale"))
     ensure_record_access("POS Invoice", name)
     try:
         if not frappe.db.exists("POS Invoice", name):
@@ -2534,7 +2540,7 @@ def _copy_tax_lines(source: str, doc) -> None:
 
 
 # Returns hand money back, so only managers and owners may record or cancel them.
-RETURN_ROLES = {"System Manager", "Sales Manager", "Accounts Manager"}
+RETURN_ROLES = {"Business Owner", "System Manager", "Sales Manager", "Accounts Manager"}
 
 
 def _check_return_access(company: Optional[str] = None, invoice: Optional[str] = None) -> str:
@@ -3363,7 +3369,7 @@ def close_pos_opening_entry(
 
 
 # Roles that may close or cancel any shift of their own business, not only their own
-SHIFT_MANAGER_ROLES = {"System Manager", "Accounts Manager", "Sales Manager"}
+SHIFT_MANAGER_ROLES = {"Business Owner", "System Manager", "Accounts Manager", "Sales Manager"}
 
 
 def _ensure_can_manage_shift(opening_entry) -> None:

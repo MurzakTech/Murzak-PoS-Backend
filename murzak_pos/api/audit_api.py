@@ -24,7 +24,7 @@ from murzak_pos.api.audit_events import (
 from murzak_pos.api.payment_gateway_common import resolve_company
 
 # Roles that may read the audit trail. Business owners hold System Manager.
-AUDIT_ROLES = {"System Manager", "Accounts Manager", "Auditor"}
+AUDIT_ROLES = {"Business Owner", "System Manager", "Accounts Manager", "Auditor"}
 
 MAX_PAGE_LENGTH = 100
 # When filtering by an action that is only known after reading a Version, stop

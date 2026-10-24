@@ -57,7 +57,7 @@ WALK_IN = "Walk-in Customer"  # the name the till gives a sale with no named cus
 TOLERANCE = 0.005
 
 # Who may record a return today (sales_api.RETURN_ROLES); the receipt only offers "Return items" to them
-RETURN_ROLES = frozenset({"System Manager", "Sales Manager", "Accounts Manager"})
+RETURN_ROLES = frozenset({"Business Owner", "System Manager", "Sales Manager", "Accounts Manager"})
 
 STATUSES = ("paid", "unpaid", "overdue", "part-returned", "returned")
 

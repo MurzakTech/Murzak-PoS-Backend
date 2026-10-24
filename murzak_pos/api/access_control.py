@@ -19,8 +19,7 @@ import frappe
 from frappe import _
 
 from murzak_pos.api.payment_gateway_common import get_user_companies
-
-MANAGER_ROLE = "System Manager"
+from murzak_pos.api.role_tiers import OWNER_ROLES
 
 # The field that says which company owns a record. Most records have `company`; customers, items, price lists and
 # suppliers carry their owner in `custom_company` (added by this app).
@@ -36,10 +35,11 @@ OWNER_FIELD = {
 # (src/config/roleAccessConfig.js in the Murzak-PoS-Frontend repository) so the server and the screens
 # agree. "All" is left out on purpose: Frappe gives that role to every user, including cashiers.
 CATALOGUE_ROLES = frozenset(
-	{"System Manager", "Sales Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
+	{"Business Owner", "System Manager", "Sales Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
 )
 STOCK_ROLES = frozenset(
 	{
+		"Business Owner",
 		"System Manager",
 		"Purchase Manager",
 		"Stock Manager",
@@ -49,10 +49,11 @@ STOCK_ROLES = frozenset(
 	}
 )
 STOCK_COUNT_ROLES = frozenset(
-	{"System Manager", "Purchase Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
+	{"Business Owner", "System Manager", "Purchase Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
 )
 CREDIT_ROLES = frozenset(
 	{
+		"Business Owner",
 		"System Manager",
 		"Sales Manager",
 		"Accounts Manager",
@@ -61,8 +62,10 @@ CREDIT_ROLES = frozenset(
 		"Agent Manager",
 	}
 )
-LOYALTY_ROLES = frozenset({"System Manager", "Accounts Manager"})
-TRANSFER_ROLES = frozenset({"System Manager", "Stock Manager", "Stock User"})
+# The frontend's full Suppliers screens (supplier groups among them); Purchase User only views suppliers
+SUPPLIER_ROLES = frozenset({"Business Owner", "System Manager", "Purchase Manager"})
+LOYALTY_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager"})
+TRANSFER_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager", "Stock User"})
 
 
 def require_manager() -> None:
@@ -72,7 +75,7 @@ def require_manager() -> None:
 		frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
 	if user == "Administrator":
 		return
-	if MANAGER_ROLE not in frappe.get_roles(user):
+	if not OWNER_ROLES & set(frappe.get_roles(user)):
 		frappe.throw(
 			_("Only a business owner or System Manager can do this."),
 			frappe.PermissionError,
@@ -146,6 +149,38 @@ def require_any_role(roles, action: str) -> None:
 def require_catalogue_role() -> None:
 	"""Changing prices, the product list, or importing products in bulk."""
 	require_any_role(CATALOGUE_ROLES, _("change prices or the product catalogue"))
+
+
+def require_supplier_role() -> None:
+	"""Adding or changing supplier groups."""
+	require_any_role(SUPPLIER_ROLES, _("change supplier groups"))
+
+
+def require_shared_record_manageable(doctype: str, name) -> None:
+	"""
+	Refuse renaming or deleting a record every business on the site shares: a unit, a product category, a brand or
+	a supplier group. Changing one changes it for all of them, so only the Administrator may, or someone from the
+	business that added it. On a shop's own site (one business) its people may, as nobody else uses the record.
+	"""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
+	if user == "Administrator" or not name:
+		return
+	creator = frappe.db.get_value(doctype, name, "owner")
+	if not creator or creator == user:
+		return  # no such record: the call says so in its own words
+	mine = get_user_companies(user)
+	if mine and frappe.db.count("Company") == 1:
+		return
+	if creator != "Administrator" and mine & get_user_companies(creator):
+		return
+	frappe.throw(
+		_("{0} {1} is shared by every business. Only the business that added it can change or remove it.").format(
+			_(doctype), name
+		),
+		frappe.PermissionError,
+	)
 
 
 def require_stock_role() -> None:

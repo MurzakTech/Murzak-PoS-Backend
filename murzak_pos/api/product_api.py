@@ -16,7 +16,11 @@ import re
 
 from murzak_pos.api.etims_optional import company_uses_etims, relax_etims_mandatory
 from murzak_pos.api.vat_setup import etims_code_for, item_tax_template_for
-from murzak_pos.api.access_control import ensure_record_access, require_catalogue_role
+from murzak_pos.api.access_control import (
+    ensure_record_access,
+    require_catalogue_role,
+    require_shared_record_manageable,
+)
 from murzak_pos.api.business_lists import (
     OWNER_FIELD as PRICE_LIST_OWNER_FIELD,
     caller_company,
@@ -2379,6 +2383,8 @@ def create_uom(uom_name: str, must_be_whole_number: bool = False) -> Dict:
     Returns:
         Created UOM details
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -2520,6 +2526,8 @@ def update_uom(
     Returns:
         Updated UOM details
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -2572,6 +2580,9 @@ def update_uom(
                 "message": _("Unit of measure '{0}' does not exist. Please check the UOM name and try again.").format(current_identifier)
             }
     
+    # Shared by every business on the site: only the business that added it may change it
+    require_shared_record_manageable("UOM", uom_doc.name)
+
     # Handle renaming if new name is provided and different from current
     if new_name and new_name != uom_doc.uom_name:
         # Validate new name doesn't already exist
@@ -2752,6 +2763,8 @@ def delete_uom(uom_name: str) -> Dict:
     Returns:
         Success message
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -2786,6 +2799,9 @@ def delete_uom(uom_name: str) -> Dict:
                 "message": _("Unit of measure '{0}' does not exist. Please check the UOM name and try again.").format(uom_name)
             }
     
+    # Shared by every business on the site: only the business that added it may change it
+    require_shared_record_manageable("UOM", uom_doc_name)
+
     # Check if UOM is used in any items
     items_using_uom = frappe.get_all(
         "Item",
@@ -2852,6 +2868,8 @@ def create_item_group(
     Returns:
         Created item group details
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -2904,6 +2922,8 @@ def update_item_group(
     Returns:
         Updated item group details
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
@@ -2936,6 +2956,8 @@ def update_item_group(
         frappe.throw(_("Item group '{0}' does not exist. Please check the item group name and try again.").format(current_name), frappe.ValidationError)
     
     # Get the item group document
+    # Shared by every business on the site: only the business that added it may change it
+    require_shared_record_manageable("Item Group", current_name)
     item_group = frappe.get_doc("Item Group", current_name)
     
     # Handle renaming if new name is provided
@@ -3021,6 +3043,8 @@ def delete_item_group(name: str = None, item_group_name: str = None) -> Dict:
     Returns:
         Success message or error details
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.local.response["http_status_code"] = 401
         return {
@@ -3057,6 +3081,9 @@ def delete_item_group(name: str = None, item_group_name: str = None) -> Dict:
             "error_type": "not_found"
         }
     
+    # Shared by every business on the site: only the business that added it may change it
+    require_shared_record_manageable("Item Group", group_name_to_delete)
+
     # Check if item group is used by any items - get item details for user-friendly response
     try:
         items_using_group = frappe.get_all(
@@ -3332,6 +3359,8 @@ def create_brand(brand_name: str) -> Dict:
     Returns:
         Created brand details
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
@@ -3365,6 +3394,8 @@ def update_brand(brand_name: str, new_brand_name: str, company: str = None) -> D
     Returns:
         Updated brand details
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
@@ -3399,6 +3430,9 @@ def update_brand(brand_name: str, new_brand_name: str, company: str = None) -> D
     if not frappe.db.exists("Brand", brand_name):
         frappe.throw(_("Brand '{0}' does not exist. Please check the brand name and try again.").format(brand_name), frappe.ValidationError)
     
+    # Shared by every business on the site: only the business that added it may change it
+    require_shared_record_manageable("Brand", brand_name)
+
     # Validate new brand name doesn't already exist
     if frappe.db.exists("Brand", new_brand_name):
         frappe.throw(_("A brand with the name '{0}' already exists. Please choose a different name for the brand.").format(new_brand_name), frappe.ValidationError)
@@ -3496,6 +3530,8 @@ def delete_brand(brand_name: str) -> Dict:
     Returns:
         Success message
     """
+    # Units, categories and brands are the product catalogue's (access_control.CATALOGUE_ROLES)
+    require_catalogue_role()
     if frappe.session.user == "Guest":
         frappe.local.response["http_status_code"] = 401
         return {
@@ -3526,6 +3562,9 @@ def delete_brand(brand_name: str) -> Dict:
             "error_type": "not_found"
         }
     
+    # Shared by every business on the site: only the business that added it may change it
+    require_shared_record_manageable("Brand", brand_name)
+
     # Check if brand is used by any items - get item details for user-friendly response
     try:
         items_using_brand = frappe.get_all(
@@ -3751,7 +3790,9 @@ def seed_global_products(company: str = None, products_data: list = None) -> Dic
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
     # Only System Managers can seed products
-    if "System Manager" not in frappe.get_roles():
+    from murzak_pos.api.role_tiers import OWNER_ROLES
+
+    if not OWNER_ROLES & set(frappe.get_roles()):
         frappe.throw(_("Only System Managers can seed products"), frappe.PermissionError)
     
     # Try to use global products seeding if available

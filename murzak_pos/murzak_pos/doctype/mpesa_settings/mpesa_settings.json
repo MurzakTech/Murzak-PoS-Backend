@@ -248,11 +248,11 @@
    "description": "Test phone number for sandbox testing (format: 254712345678)"
   },
   {
-   "default": "1",
+   "default": "0",
    "fieldname": "allow_manual_code",
    "fieldtype": "Check",
    "label": "Allow Cashier To Enter M-Pesa Code",
-   "description": "When the phone prompt fails, the cashier can record the code from the customer's M-Pesa message."
+   "description": "When the phone prompt fails, the cashier can record the code from the customer's M-Pesa message. Safaricom does not confirm a typed code, so check them against the M-Pesa statement."
   },
   {
    "default": "0",
@@ -307,7 +307,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-08 12:00:00.000000",
+ "modified": "2026-10-24 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Murzak POS",
  "name": "MPESA Settings",

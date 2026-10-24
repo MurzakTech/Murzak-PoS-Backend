@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from murzak_pos.api.language_api import enable_languages
 from murzak_pos.api.print_api import install_print_formats
+from murzak_pos.api.role_tiers import ensure_owner_role
 
 
 def after_install() -> None:
-	"""Set up the print formats and the languages on a freshly installed shop. Safe to run again."""
+	"""Set up the owner role, the print formats and the languages on a freshly installed shop. Safe to run again."""
+	ensure_owner_role()
 	install_print_formats()
 	enable_languages()
