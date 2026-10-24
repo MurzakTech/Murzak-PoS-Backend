@@ -29,6 +29,7 @@ from murzak_pos.api.business_lists import (
 )
 from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.error_handler import safe_error_message
 
 
 PRESCRIPTION_FIELD = "custom_prescription_only"
@@ -1572,7 +1573,7 @@ def bulk_create_products(products: List[Dict], company: str = None) -> Dict:
         except Exception as e:
             failed.append({
                 "item_code": product_data.get("item_code"),
-                "error": str(e)
+                "error": safe_error_message(e)
             })
     
     # Set HTTP status code
@@ -1759,7 +1760,7 @@ def bulk_update_prices(price_updates: List[Dict], price_list: str, currency: str
             
             updated.append({"item_code": item_code, "price": price})
         except Exception as e:
-            failed.append({"item_code": update.get("item_code"), "error": str(e)})
+            failed.append({"item_code": update.get("item_code"), "error": safe_error_message(e)})
     
     frappe.db.commit()
     frappe.local.response["http_status_code"] = 200
@@ -1841,7 +1842,7 @@ def create_product_variant(
             "message": _("Product variant created successfully")
         }
     except Exception as e:
-        frappe.throw(_("Error creating variant: {0}").format(str(e)))
+        frappe.throw(_("Error creating variant: {0}").format(safe_error_message(e)))
 
 
 @frappe.whitelist()
@@ -1997,7 +1998,7 @@ def bulk_import_opening_stock(
             })
             added_items.append(item_code)
         except Exception as e:
-            failed_items.append({"item_code": stock_item.get("item_code"), "error": str(e)})
+            failed_items.append({"item_code": stock_item.get("item_code"), "error": safe_error_message(e)})
     
     if not added_items:
         frappe.throw(_("No valid items to import"))
@@ -3833,7 +3834,7 @@ def seed_global_products(company: str = None, products_data: list = None) -> Dic
         raise
     except Exception as e:
         frappe.log_error("Seed Global Products", f"Error seeding global products: {str(e)}")
-        frappe.throw(_("Error seeding products: {0}").format(str(e)), frappe.ValidationError)
+        frappe.throw(_("Error seeding products: {0}").format(safe_error_message(e)), frappe.ValidationError)
 
 
 @frappe.whitelist()

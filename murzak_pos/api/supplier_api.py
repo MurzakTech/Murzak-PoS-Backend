@@ -11,6 +11,7 @@ from frappe.query_builder import DocType
 from murzak_pos.api.access_control import require_shared_record_manageable, require_supplier_role
 from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import get_user_companies, resolve_company
+from murzak_pos.api.error_handler import safe_error_message
 
 # Every kind of purchase document that names a supplier and a company
 PURCHASE_DOCUMENTS = ("Purchase Order", "Purchase Receipt", "Purchase Invoice")
@@ -212,7 +213,7 @@ def get_suppliers(
         frappe.log_error("Get Suppliers Error", f"Error getting suppliers: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting suppliers: {str(e)}",
+            "message": f"Error getting suppliers: {safe_error_message(e)}",
         }
 
 
@@ -271,7 +272,7 @@ def get_supplier_details(name: str) -> dict:
     except Exception as e:
         return {
             "success": False,
-            "message": f"Error fetching supplier details: {str(e)}",
+            "message": f"Error fetching supplier details: {safe_error_message(e)}",
         }
 
 
@@ -575,7 +576,7 @@ def get_supplier_groups(
         frappe.log_error("Get Supplier Groups Error", f"Error getting supplier groups: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting supplier groups: {str(e)}",
+            "message": f"Error getting supplier groups: {safe_error_message(e)}",
         }
 
 
@@ -655,14 +656,14 @@ def create_supplier_group(
         frappe.log_error("Supplier Group Creation Validation Error", f"Validation error creating supplier group: {str(e)}")
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Supplier Group Creation Error", f"Error creating supplier group: {str(e)}")
         return {
             "success": False,
-            "message": f"Error creating supplier group: {str(e)}",
+            "message": f"Error creating supplier group: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -730,14 +731,14 @@ def update_supplier_group(
         frappe.log_error("Supplier Group Update Validation Error", f"Validation error updating supplier group: {str(e)}")
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Supplier Group Update Error", f"Error updating supplier group: {str(e)}")
         return {
             "success": False,
-            "message": f"Error updating supplier group: {str(e)}",
+            "message": f"Error updating supplier group: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -773,6 +774,6 @@ def get_supplier_group_details(name: str) -> dict:
     except Exception as e:
         return {
             "success": False,
-            "message": f"Error fetching supplier group details: {str(e)}",
+            "message": f"Error fetching supplier group details: {safe_error_message(e)}",
         }
 

@@ -1278,3 +1278,6 @@
 "The discount on {0} is more than the {1}% a cashier may give. A manager must ring up this sale.","Punguzo kwa {0} ni zaidi ya {1}% ambayo keshia anaweza kutoa. Meneja lazima arekodi mauzo haya."
 "the whole sale","mauzo yote"
 "The limit must be between 0 and 100 percent.","Kikomo lazima kiwe kati ya asilimia 0 na 100."
+"That record already exists.","Rekodi hiyo tayari ipo."
+"Something went wrong. Please try again, and contact Murzak support if it keeps happening.","Kuna tatizo limetokea. Tafadhali jaribu tena, na uwasiliane na msaada wa Murzak likiendelea."
+"The list of business types could not be loaded. Please try again.","Orodha ya aina za biashara haikuweza kupakiwa. Tafadhali jaribu tena."

@@ -10,6 +10,7 @@ from frappe.query_builder import DocType
 from typing import Dict, List, Optional, Union
 
 from murzak_pos.api.access_control import require_manager, require_role_manageable
+from murzak_pos.api.error_handler import safe_error_message
 
 
 @frappe.whitelist()
@@ -89,7 +90,7 @@ def create_role(
         frappe.log_error("Create Role Error", f"Error creating role: {str(e)}")
         return {
             "success": False,
-            "message": f"Error creating role: {str(e)}"
+            "message": f"Error creating role: {safe_error_message(e)}"
         }
 
 
@@ -171,7 +172,7 @@ def update_role(
         frappe.log_error("Update Role Error", f"Error updating role: {str(e)}")
         return {
             "success": False,
-            "message": f"Error updating role: {str(e)}"
+            "message": f"Error updating role: {safe_error_message(e)}"
         }
 
 
@@ -226,7 +227,7 @@ def delete_role(role_name: str) -> Dict:
         frappe.log_error("Delete Role Error", f"Error deleting role: {str(e)}")
         return {
             "success": False,
-            "message": f"Error deleting role: {str(e)}"
+            "message": f"Error deleting role: {safe_error_message(e)}"
         }
 
 
@@ -274,7 +275,7 @@ def disable_role(role_name: str) -> Dict:
         frappe.log_error("Disable Role Error", f"Error disabling role: {str(e)}")
         return {
             "success": False,
-            "message": f"Error disabling role: {str(e)}"
+            "message": f"Error disabling role: {safe_error_message(e)}"
         }
 
 
@@ -318,7 +319,7 @@ def enable_role(role_name: str) -> Dict:
         frappe.log_error("Enable Role Error", f"Error enabling role: {str(e)}")
         return {
             "success": False,
-            "message": f"Error enabling role: {str(e)}"
+            "message": f"Error enabling role: {safe_error_message(e)}"
         }
 
 
@@ -462,7 +463,7 @@ def assign_permissions_to_role(
         frappe.log_error("Assign Permissions Error", f"Error assigning permissions: {str(e)}")
         return {
             "success": False,
-            "message": f"Error assigning permissions: {str(e)}"
+            "message": f"Error assigning permissions: {safe_error_message(e)}"
         }
 
 
@@ -572,7 +573,7 @@ def get_role_permissions(
         frappe.log_error("Get Role Permissions Error", f"Error getting role permissions: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting role permissions: {str(e)}"
+            "message": f"Error getting role permissions: {safe_error_message(e)}"
         }
 
 
@@ -640,7 +641,7 @@ def remove_permissions_from_role(
         frappe.log_error("Remove Permissions Error", f"Error removing permissions: {str(e)}")
         return {
             "success": False,
-            "message": f"Error removing permissions: {str(e)}"
+            "message": f"Error removing permissions: {safe_error_message(e)}"
         }
 
 
@@ -748,7 +749,7 @@ def list_roles(
         frappe.log_error("List Roles Error", f"Error listing roles: {str(e)}")
         return {
             "success": False,
-            "message": f"Error listing roles: {str(e)}"
+            "message": f"Error listing roles: {safe_error_message(e)}"
         }
 
 
@@ -810,5 +811,5 @@ def get_role_details(role_name: str) -> Dict:
         frappe.log_error("Get Role Details Error", f"Error getting role details: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting role details: {str(e)}"
+            "message": f"Error getting role details: {safe_error_message(e)}"
         }

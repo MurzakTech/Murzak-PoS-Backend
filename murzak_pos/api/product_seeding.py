@@ -16,6 +16,7 @@ from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.vat_setup import item_tax_template_for
 from murzak_pos.api.seed_results import readable_seed_error, seed_result_status
 from murzak_pos.api.seed_rules import resolve_uom, starter_product, stock_flag
+from murzak_pos.api.error_handler import safe_error_message
 
 
 def ensure_fiscal_year_exists(company: str, posting_date: str = None) -> str:
@@ -102,58 +103,11 @@ def ensure_fiscal_year_exists(company: str, posting_date: str = None) -> str:
 
 
 @frappe.whitelist(allow_guest=True)
-def get_pos_industries(is_active: bool = False) -> Dict:
-    """Get list of all POS industries
-    
-    Args:
-        is_active: Filter by active status (default: False)
-        
-    Returns:
-        List of POS industries with details
-    """
-    try:
-        # Convert the `is_active` to an integer (if it is True, use 1; otherwise, 0)
-        filters = {}
-        if is_active:
-            filters["is_active"] = 1
-        else:
-            filters["is_active"] = 0
-        
-        print(f'\nIndustry Status....{filters}')
-        
-        industries = frappe.get_all(
-            "POS Industry",
-            filters=filters,
-            fields=[
-                "name",
-                "industry_code",
-                "industry_name",
-                "description",
-                "serving_location",
-                "is_active",
-                "sort_order"
-            ],
-            order_by="sort_order asc, industry_name asc"
-        )
-        
-        frappe.local.response["http_status_code"] = 200
-        
-        return {
-            "success": True,
-            "industries": industries,
-            "count": len(industries),
-            "message": _("Industries retrieved successfully")
-        }
-    
-    except Exception as e:
-        frappe.log_error("Get POS Industries", f"Error getting POS industries: {str(e)}")
-        frappe.local.response["http_status_code"] = 500  # Internal Server Error
-        
-        return {
-            "success": False,
-            "message": _("Something went wrong while retrieving POS industries."),
-            "error_details": str(e)  
-        }
+def get_pos_industries(is_active: bool = True) -> Dict:
+    """The list of business types, active ones by default. An older address of industry_api.get_pos_industries."""
+    from murzak_pos.api.industry_api import get_pos_industries as industries
+
+    return industries(is_active=is_active)
 
 
 @frappe.whitelist(methods=["GET", "POST"])
@@ -353,7 +307,7 @@ def bulk_upload_products():
                     failed_items.append({
                         "industry": industry_key,
                         "item_code": item_code,
-                        "error": str(e)
+                        "error": safe_error_message(e)
                     })
 
         if not dry_run:
@@ -399,7 +353,7 @@ def bulk_upload_products():
     except Exception as e:
         return {
             "status": "error",
-            "message": _("Unexpected error: {0}").format(str(e))
+            "message": _("Unexpected error: {0}").format(safe_error_message(e))
         }
 
 
@@ -760,7 +714,7 @@ def create_seed_item(company: str = None):
             failed.append({
                 "item_code": original_code,
                 "prefixed_item_code": prefixed_code,
-                "error": str(e)
+                "error": safe_error_message(e)
             })
 
     # Create Material Receipt Stock Entry if there are items with qty
@@ -823,7 +777,7 @@ def create_seed_item(company: str = None):
             # Add to failed items but don't fail the entire operation
             failed.append({
                 "item_code": "STOCK_ENTRY",
-                "error": _("Failed to create stock entry: {0}").format(str(e))
+                "error": _("Failed to create stock entry: {0}").format(safe_error_message(e))
             })
 
     # frappe.db.commit()
@@ -1175,7 +1129,7 @@ def create_seed_item(company: str = None):
                 stock_entry_status = {"created": True, "name": stock_entry.name, "error": None}
 
             except Exception as e:
-                stock_entry_status = {"created": False, "name": None, "error": str(e)}
+                stock_entry_status = {"created": False, "name": None, "error": safe_error_message(e)}
 
         # ----------------------
         # Final response
@@ -1218,7 +1172,7 @@ def create_seed_item(company: str = None):
         return {
             "status": "error",
             "error_type": "Exception",
-            "message": str(e)
+            "message": safe_error_message(e)
         }
 
 

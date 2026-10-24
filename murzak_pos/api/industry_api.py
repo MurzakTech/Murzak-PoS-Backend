@@ -47,9 +47,10 @@ def get_pos_industries(is_active: bool = True) -> Dict:
             "count": len(industries),
             "message": _("Industries retrieved successfully")
         }
-    except Exception as e:
-        frappe.log_error("Get POS Industries", f"Error getting POS industries: {str(e)}")
-        frappe.throw(_("Error retrieving industries: {0}").format(str(e)), frappe.ValidationError)
+    except Exception:
+        # Open to anyone, so the reason stays in the error log
+        frappe.log_error("Get POS Industries", frappe.get_traceback())
+        frappe.throw(_("The list of business types could not be loaded. Please try again."), frappe.ValidationError)
 
 
 @frappe.whitelist()

@@ -9,6 +9,7 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import now, today
 from erpnext.setup.setup_wizard import setup_wizard
 from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.error_handler import safe_error_message
 from murzak_pos.api.payment_gateway_common import resolve_company
 
 
@@ -559,7 +560,7 @@ def get_company(company_name: str = None) -> dict:
         frappe.log_error("Get Company Error", f"Error getting company details: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting company details: {str(e)}",
+            "message": f"Error getting company details: {safe_error_message(e)}",
         }
 
 
@@ -858,14 +859,14 @@ def update_company(
         frappe.log_error("Update Company Validation Error", f"Validation error updating company: {str(e)}")
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Update Company Error", f"Error updating company: {str(e)}")
         return {
             "success": False,
-            "message": f"Error updating company: {str(e)}",
+            "message": f"Error updating company: {safe_error_message(e)}",
         }
 
 

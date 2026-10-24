@@ -24,6 +24,7 @@ from frappe import _
 from frappe.utils import cint, flt, now, nowdate
 
 from murzak_pos.api import paypal_client, pesapal_client
+from murzak_pos.api.error_handler import safe_error_message
 from murzak_pos.api.payment_gateway_common import (
 	build_callback_url,
 	callback_url_problem,
@@ -217,7 +218,7 @@ def test_gateway(company: str | None = None, gateway: str | None = None) -> dict
 			result = paypal_client.test_connection(settings)
 		ok, message = True, result["message"]
 	except GatewayError as e:
-		ok, message = False, str(e)
+		ok, message = False, safe_error_message(e)
 
 	frappe.db.set_value(
 		"POS Gateway Settings", settings.name, {"last_tested_on": now(), "last_test_result": message}
@@ -441,7 +442,7 @@ def create_gateway_checkout(
 		txn.result_description = str(e)
 		txn.save(ignore_permissions=True)
 		frappe.db.commit()
-		return {"success": False, "message": str(e), "transaction": _txn_dict(txn)}
+		return {"success": False, "message": safe_error_message(e), "transaction": _txn_dict(txn)}
 
 	txn.gateway_order_id = result["gateway_order_id"]
 	txn.checkout_url = result["checkout_url"]

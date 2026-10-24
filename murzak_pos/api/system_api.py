@@ -4,6 +4,7 @@ Handles system-level operations like listing doctypes, modules, etc.
 """
 
 import frappe
+from murzak_pos.api.error_handler import safe_error_message
 from frappe import _
 from typing import Dict, List, Optional
 from frappe.utils import cint
@@ -155,7 +156,7 @@ def list_doctypes(
         frappe.local.response["http_status_code"] = 500
         return {
             "success": False,
-            "message": f"Error listing doctypes: {str(e)}"
+            "message": f"Error listing doctypes: {safe_error_message(e)}"
         }
 
 
@@ -284,7 +285,7 @@ def get_doctype_details(doctype: str) -> Dict:
         frappe.local.response["http_status_code"] = 500
         return {
             "success": False,
-            "message": f"Error getting doctype details: {str(e)}"
+            "message": f"Error getting doctype details: {safe_error_message(e)}"
         }
 
 
@@ -331,6 +332,6 @@ def list_modules() -> Dict:
         frappe.local.response["http_status_code"] = 500
         return {
             "success": False,
-            "message": f"Error listing modules: {str(e)}"
+            "message": f"Error listing modules: {safe_error_message(e)}"
         }
 

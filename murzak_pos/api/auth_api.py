@@ -395,7 +395,8 @@ def register_user(
                 if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
                     frappe.throw(_("Email verification failed. The verification code is incorrect or has expired. Please request a new verification code."), frappe.ValidationError)
                 else:
-                    frappe.throw(_("Email verification failed: {0}. Please try again or contact support if the problem persists.").format(error_msg), frappe.ValidationError)
+                    frappe.log_error("Sign-up email verification", error_msg)
+                    frappe.throw(_("Email verification failed. The verification code is incorrect or has expired. Please request a new verification code."), frappe.ValidationError)
         
         # Verify phone if required and provided
         if require_phone_verification and phone:
@@ -412,7 +413,8 @@ def register_user(
                 if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
                     frappe.throw(_("Phone verification failed. The verification code is incorrect or has expired. Please request a new verification code."), frappe.ValidationError)
                 else:
-                    frappe.throw(_("Phone verification failed: {0}. Please try again or contact support if the problem persists.").format(error_msg), frappe.ValidationError)
+                    frappe.log_error("Sign-up phone verification", error_msg)
+                    frappe.throw(_("Phone verification failed. The verification code is incorrect or has expired. Please request a new verification code."), frappe.ValidationError)
         
         # Temporarily switch to Administrator to bypass permission checks
         original_user = frappe.session.user
@@ -1368,9 +1370,10 @@ def loginuser(identifier: str, password: str, otp: Optional[str] = None):
             "error_code": "PERMISSION_ERROR"
         }
 
-    except Exception as e:
+    except Exception:
+        # Open to anyone, so the reason stays in the error log
+        frappe.log_error("Sign-in error", frappe.get_traceback())
         return {
             "success": False,
             "message": _("An unexpected error occurred."),
-            "error": str(e)
         }

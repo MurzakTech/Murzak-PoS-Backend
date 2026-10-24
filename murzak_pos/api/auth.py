@@ -19,6 +19,7 @@ from frappe.utils import (
 )
 
 from murzak_pos.api.access_control import require_manager
+from murzak_pos.api.error_handler import safe_error_message
 
 
 # OAuth Configuration
@@ -289,7 +290,8 @@ def register_user(
                     frappe.throw(_("Email verification failed. The code you entered is incorrect or expired. Please try again or request a new code."), frappe.ValidationError)
             except Exception as e:
                 error_msg = str(e)
-                frappe.throw(_("Email verification failed: {0}.".format(error_msg)), frappe.ValidationError)
+                frappe.log_error("Sign-up email verification", error_msg)
+                frappe.throw(_("Email verification failed. The verification code is incorrect or has expired. Please request a new verification code."), frappe.ValidationError)
         
         # Phone verification if required
         if require_phone_verification and phone:
@@ -303,7 +305,8 @@ def register_user(
                     frappe.throw(_("Phone verification failed. The code you entered is incorrect or expired."), frappe.ValidationError)
             except Exception as e:
                 error_msg = str(e)
-                frappe.throw(_("Phone verification failed: {0}.".format(error_msg)), frappe.ValidationError)
+                frappe.log_error("Sign-up phone verification", error_msg)
+                frappe.throw(_("Phone verification failed. The verification code is incorrect or has expired. Please request a new verification code."), frappe.ValidationError)
         
         # Temporarily switch to Administrator to bypass permission checks
         original_user = frappe.session.user
@@ -392,7 +395,7 @@ def register_user(
     except frappe.ValidationError as e:
         # Return user-friendly validation error
         return {
-            "error": str(e),
+            "error": safe_error_message(e),
             "error_type": "ValidationError"
         }
     except frappe.DuplicateEntryError as e:

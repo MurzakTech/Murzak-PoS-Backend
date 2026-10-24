@@ -12,6 +12,7 @@ from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_i
 from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice as make_pi_from_pr
 
 from murzak_pos.api.stock import create_stock_entry
+from murzak_pos.api.error_handler import safe_error_message
 from murzak_pos.api.api_response import pos_response
 from murzak_pos.api.error_handler import handle_pos_exception
 from murzak_pos.api.constants import POSErrorCode
@@ -496,7 +497,7 @@ def get_purchase_order(po_name: str = None):
 
     except Exception as e:
         frappe.log_error("Get Purchase Order API Error", frappe.get_traceback())
-        return {"status": "error", "message": f"Internal server error: {str(e)}"}
+        return {"status": "error", "message": f"Internal server error: {safe_error_message(e)}"}
 
 
 
@@ -573,7 +574,7 @@ def get_purchase_order_no_grn(po_name: str = None):
 
     except Exception as e:
         frappe.log_error("Get Purchase Order API Error", frappe.get_traceback())
-        return {"status": "error", "message": f"Internal server error: {str(e)}"}
+        return {"status": "error", "message": f"Internal server error: {safe_error_message(e)}"}
 
 
 
@@ -598,7 +599,7 @@ def list_purchase_orders(filters=None, limit_start=0, limit_page_length=20):
             try:
                 filters_dict = frappe.parse_json(filters)
             except Exception as e:
-                return {"status": "error", "message": f"Invalid JSON for filters: {str(e)}"}
+                return {"status": "error", "message": f"Invalid JSON for filters: {safe_error_message(e)}"}
 
         # Permission: Only fetch POs the user can read
         allowed_conditions = "1=1"
@@ -628,7 +629,7 @@ def list_purchase_orders(filters=None, limit_start=0, limit_page_length=20):
 
     except Exception as e:
         frappe.log_error("List Purchase Orders API Error", frappe.get_traceback())
-        return {"status": "error", "message": f"Internal server error: {str(e)}"}
+        return {"status": "error", "message": f"Internal server error: {safe_error_message(e)}"}
 
 
 
@@ -1010,7 +1011,7 @@ def create_stock_receipt(grn_no):
         return pos_response(
             status="error", 
             code=POSErrorCode.INVALID_REQUEST, 
-            message=f"Validation error: {str(e)}",
+            message=f"Validation error: {safe_error_message(e)}",
             grn_no=grn_no
         )
 
@@ -1023,7 +1024,7 @@ def create_stock_receipt(grn_no):
         return pos_response(
             status="error",
             code=POSErrorCode.UNKNOWN_ERROR,
-            message=f"An unexpected error occurred while processing your request. Error: {str(e)}. Please try again later. If the problem persists, contact support.",
+            message=f"An unexpected error occurred while processing your request. Error: {safe_error_message(e)}. Please try again later. If the problem persists, contact support.",
             grn_no=grn_no
         )
         
@@ -1310,7 +1311,7 @@ def get_grn_list(
 
         return {
             "status": "error",
-            "message": str(e)
+            "message": safe_error_message(e)
         }
 
 
@@ -1405,13 +1406,13 @@ def create_purchase_invoice(reference_type, reference_name):
 
     except frappe.exceptions.ValidationError as e:
         # Handle validation issues more specifically
-        return {"status": "error", "message": f"Validation error: {str(e)}"}
+        return {"status": "error", "message": f"Validation error: {safe_error_message(e)}"}
 
     except Exception as e:
         # General catch-all for unexpected errors
         return {
             "status": "error",
-            "message": f"An unexpected error occurred: {str(e)}"
+            "message": f"An unexpected error occurred: {safe_error_message(e)}"
         }
 
 
@@ -1593,7 +1594,7 @@ def create_purchase_invoice_from_grn(
         return pos_response(
             status="error",
             code=POSErrorCode.INVALID_REQUEST,
-            message=f"Validation error: {str(e)}",
+            message=f"Validation error: {safe_error_message(e)}",
             grn_no=grn_no
         )
     
@@ -1606,7 +1607,7 @@ def create_purchase_invoice_from_grn(
         return pos_response(
             status="error",
             code=POSErrorCode.UNKNOWN_ERROR,
-            message=f"An unexpected error occurred: {str(e)}",
+            message=f"An unexpected error occurred: {safe_error_message(e)}",
             grn_no=grn_no
         )
 
@@ -1788,7 +1789,7 @@ def list_purchase_invoices(
         frappe.log_error("List Purchase Invoices Error", frappe.get_traceback())
         return {
             "status": "error",
-            "message": f"Error fetching purchase invoices: {str(e)}"
+            "message": f"Error fetching purchase invoices: {safe_error_message(e)}"
         }
 
 
@@ -2019,7 +2020,7 @@ def get_purchase_invoice_details(invoice_no):
         return pos_response(
             status="error",
             code=POSErrorCode.UNKNOWN_ERROR,
-            message=f"Error fetching purchase invoice details: {str(e)}",
+            message=f"Error fetching purchase invoice details: {safe_error_message(e)}",
             data={}
         )
 
@@ -2235,7 +2236,7 @@ def update_purchase_invoice(
         return pos_response(
             status="error",
             code=POSErrorCode.INVALID_REQUEST,
-            message=f"Validation error: {str(e)}",
+            message=f"Validation error: {safe_error_message(e)}",
             data={}
         )
     
@@ -2266,7 +2267,7 @@ def update_purchase_invoice(
         return pos_response(
             status="error",
             code=POSErrorCode.UNKNOWN_ERROR,
-            message=f"An unexpected error occurred: {str(e)}",
+            message=f"An unexpected error occurred: {safe_error_message(e)}",
             data={}
         )
 
@@ -2325,7 +2326,7 @@ def create_delivery_note_from_po(purchase_order_name):
     except Exception as e:
         return {
             "status": "error",
-            "message": f"An error occurred: {str(e)}"
+            "message": f"An error occurred: {safe_error_message(e)}"
         }
 
 
@@ -2528,7 +2529,7 @@ def pay_purchase_invoice(
         return pos_response(
             status="error",
             code=POSErrorCode.INVALID_REQUEST,
-            message=f"Validation error: {str(e)}",
+            message=f"Validation error: {safe_error_message(e)}",
             data={}
         )
     except Exception as e:
@@ -2540,7 +2541,7 @@ def pay_purchase_invoice(
         return pos_response(
             status="error",
             code=POSErrorCode.UNKNOWN_ERROR,
-            message=f"Error creating Payment Entry: {str(e)}",
+            message=f"Error creating Payment Entry: {safe_error_message(e)}",
             data={}
         )
 
