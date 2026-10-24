@@ -24,7 +24,7 @@ from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_ru
     get_applicable_inventory_discount,
 )
 from murzak_pos.api import sales_person_api
-from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.access_control import ensure_record_access, require_any_role
 from murzak_pos.api.business_lists import (
     caller_company,
     first_mode_of_payment,
@@ -1508,6 +1508,8 @@ def cancel_sales_invoice(name: str, reason: Optional[str] = None) -> Dict:
         name: Sales Invoice name
         reason: Optional cancellation reason (stored in remarks)
     """
+    # Cancelling a finished sale takes it off the books, so it is for a manager, like a return
+    require_any_role(RETURN_ROLES, _("cancel a sale"))
     ensure_record_access("Sales Invoice", name)
     try:
         if not frappe.db.exists("Sales Invoice", name):
@@ -2405,6 +2407,8 @@ def cancel_pos_invoice(name: str, reason: Optional[str] = None) -> Dict:
         name: POS Invoice name
         reason: Optional cancellation reason (stored in remarks)
     """
+    # Cancelling a finished sale takes it off the books, so it is for a manager, like a return
+    require_any_role(RETURN_ROLES, _("cancel a sale"))
     ensure_record_access("POS Invoice", name)
     try:
         if not frappe.db.exists("POS Invoice", name):

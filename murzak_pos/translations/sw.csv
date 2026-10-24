@@ -1269,3 +1269,4 @@
 "change supplier groups","kubadilisha makundi ya wasambazaji"
 "{0} does not look like an M-Pesa code. A code has 10 letters and numbers, like QK12AB34CD.","{0} haionekani kama msimbo wa M-Pesa. Msimbo una herufi na nambari 10, kama QK12AB34CD."
 "M-Pesa code {0} is already recorded on sale {1}.","Msimbo wa M-Pesa {0} tayari umerekodiwa kwenye mauzo {1}."
+"cancel a sale","kufuta mauzo"
