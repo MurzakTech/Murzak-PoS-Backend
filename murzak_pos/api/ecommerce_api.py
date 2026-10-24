@@ -45,7 +45,7 @@ def get_ecommerce_settings(company: str | None = None) -> dict[str, Any]:
 	if company:
 		company = resolve_company(company)
 	else:
-		company = frappe.defaults.get_user_default("Company")
+		company = resolve_company()
 
 	# Read stored settings from Frappe defaults
 	raw = frappe.db.get_default(_ecommerce_key(company))
@@ -125,7 +125,7 @@ def save_ecommerce_settings(
 	if company:
 		company = resolve_company(company)
 	else:
-		company = frappe.defaults.get_user_default("Company")
+		company = resolve_company()
 
 	if isinstance(settings, str):
 		try:
@@ -220,7 +220,7 @@ def test_woocommerce_connection(
 	if company:
 		company = resolve_company(company)
 	else:
-		company = frappe.defaults.get_user_default("Company")
+		company = resolve_company()
 
 	# Read stored settings if credentials are empty or masked
 	raw = frappe.db.get_default(_ecommerce_key(company))
@@ -339,7 +339,7 @@ def sync_woocommerce_catalog(
 	if company:
 		company = resolve_company(company)
 	else:
-		company = frappe.defaults.get_user_default("Company")
+		company = resolve_company()
 
 	raw = frappe.db.get_default(_ecommerce_key(company))
 	stored = {}
@@ -461,7 +461,7 @@ def get_ecommerce_products(
 	if company:
 		company = resolve_company(company)
 	else:
-		company = frappe.defaults.get_user_default("Company")
+		company = resolve_company()
 
 	page = max(1, int(page or 1))
 	page_size = min(100, max(1, int(page_size or 20)))

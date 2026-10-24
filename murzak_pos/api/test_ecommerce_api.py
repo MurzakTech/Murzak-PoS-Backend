@@ -19,10 +19,14 @@ class TestEcommerceApi(unittest.TestCase):
 	"""Test e-commerce / WooCommerce configuration and sync endpoints."""
 
 	def setUp(self):
-		frappe.session = MagicMock()
-		frappe.session.user = "manager@duka.test"
-		frappe.local = MagicMock()
-		frappe.local.response = {}
+		# Patched for each test and put back afterwards, so nothing leaks into other test files
+		for p in (
+			patch.object(frappe, "session", frappe._dict(user="manager@duka.test"), create=True),
+			patch.object(frappe, "db", MagicMock(), create=True),
+			patch("frappe.translate.get_all_translations", return_value={}),
+		):
+			p.start()
+			self.addCleanup(p.stop)
 
 	@patch("murzak_pos.api.ecommerce_api.require_catalogue_role")
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
@@ -47,9 +51,10 @@ class TestEcommerceApi(unittest.TestCase):
 		self.assertFalse(res["success"])
 		self.assertIn("valid website URL", res["message"])
 
+	@patch("murzak_pos.api.ecommerce_api.now_datetime", return_value="2026-10-24 10:00:00")
 	@patch("murzak_pos.api.ecommerce_api.require_manager")
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
-	def test_save_settings_success(self, mock_co, mock_role):
+	def test_save_settings_success(self, mock_co, mock_role, mock_now):
 		with patch.object(frappe.db, "exists", return_value=True):
 			with patch.object(frappe.db, "get_default", return_value=None):
 				with patch.object(frappe.db, "set_default") as mock_set:

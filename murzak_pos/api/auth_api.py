@@ -261,6 +261,13 @@ def register_user(
     Returns:
         User details and API credentials
     """
+    # Each business gets its own site from murzaktech.tech, so sign-up over the web is closed (signup_policy.py)
+    from murzak_pos.api.signup_policy import signup_closed_reply
+
+    closed = signup_closed_reply()
+    if closed:
+        return closed
+
     try:
         # Validate required fields
         if not email or not email.strip():
@@ -426,23 +433,14 @@ def register_user(
             # Set user type
             user.user_type = "System User"
             
-            # Assign all standard business roles BEFORE insert to ensure full permissions
-            # This ensures registered users have all necessary permissions from the start
-            for role in STANDARD_BUSINESS_ROLES:
-                # Check if role exists before adding
-                if frappe.db.exists("Role", role):
-                    user.append("roles", {"role": role})
-            
-            # Insert user with all roles assigned
+            # No roles yet. Anyone can sign up, and on a site shared by many businesses the business roles would
+            # open every shop's records to them. Creating their own business (onboarding_api.create_company)
+            # binds them to it first and then gives them the roles.
             user.insert(ignore_permissions=True)
             
             # Set password
             user.new_password = password
             user.save(ignore_permissions=True)
-            
-            # Double-check: Ensure all roles are assigned (in case any were missed)
-            # This is a safety measure to ensure all permissions are granted
-            assign_all_business_roles(user.name)
             
             # Generate API keys
             api_keys = generate_keys(user.name)
@@ -702,25 +700,12 @@ def get_current_user() -> Dict:
     
     user_doc = frappe.get_doc("User", user)
     
-    # Get user's default company
-    company = frappe.defaults.get_user_default("Company") or frappe.defaults.get_user_default("company")
-    
-    # If no default company, check if user is a staff user with custom_company
-    if not company and frappe.db.has_column("User", "custom_company"):
-        company = frappe.db.get_value("User", user, "custom_company")
-    if not company:
-        owned = frappe.get_all("Company", filters={"owner": user}, pluck="name", limit=1)
-        if owned:
-            company = owned[0]
-    if not company:
-        try:
-            from murzak_pos.api.payment_gateway_common import get_user_companies
-            allowed = get_user_companies(user)
-            if allowed:
-                company = sorted(allowed)[0]
-        except Exception:
-            pass
-    if company:
+    # The business this person works for: only one they belong to, never just their default (anyone can set
+    # their own default) and never someone else's. A new owner who has not created their business yet has none.
+    from murzak_pos.api.payment_gateway_common import get_user_companies, preferred_company
+
+    company = preferred_company(get_user_companies(user), user)
+    if company and company != frappe.defaults.get_user_default("Company"):
         try:
             frappe.defaults.set_user_default("Company", company, user)
             frappe.defaults.set_user_default("company", company, user)
@@ -1118,6 +1103,11 @@ def refresh_token(refresh_token: Optional[str] = None) -> Dict:
         # Revoke the old token
         frappe.db.set_value("OAuth Bearer Token", token_doc_name, "status", "Revoked")
     
+    # A disabled account (a member of staff who has left, say) gets no new sign-in from an old token
+    if not frappe.db.get_value("User", user, "enabled"):
+        frappe.db.commit()  # keep the old token revoked
+        frappe.throw(_("User account is disabled"), frappe.AuthenticationError)
+
     # Generate new OAuth Bearer Token
     oauth_token = generate_oauth_bearer_token(user)
     

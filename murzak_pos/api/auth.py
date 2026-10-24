@@ -204,6 +204,13 @@ def register_user(
     require_phone_verification: bool = False
 ) -> Dict:
     """Register a new user"""
+    # Each business gets its own site from murzaktech.tech, so sign-up over the web is closed (signup_policy.py)
+    from murzak_pos.api.signup_policy import signup_closed_reply
+
+    closed = signup_closed_reply()
+    if closed:
+        return closed
+
     try:
         # Validate required fields
         if not email or not email.strip():
@@ -314,18 +321,12 @@ def register_user(
                 user.custom_pos_industry = industry
             user.user_type = "System User"
             
-            for role in STANDARD_BUSINESS_ROLES:
-                if frappe.db.exists("Role", role):
-                    user.append("roles", {"role": role})
-            
+            # No roles until the person creates their own business (see auth_api.register_user)
             user.insert(ignore_permissions=True)
             
             # Set password
             user.new_password = password
             user.save(ignore_permissions=True)
-            
-            # Double-check roles
-            assign_all_business_roles(user.name)
             
             # Generate API keys
             api_keys = generate_keys(user.name)
@@ -484,12 +485,10 @@ def get_current_user() -> Dict:
     
     user_doc = frappe.get_doc("User", user)
     
-    # Get user's default company
-    company = frappe.defaults.get_user_default("Company")
-    
-    # If no default company, check if user is a staff user with custom_company
-    if not company:
-        company = frappe.db.get_value("User", user, "custom_company")
+    # Only a business this person belongs to (see auth_api.get_current_user)
+    from murzak_pos.api.payment_gateway_common import get_user_companies, preferred_company
+
+    company = preferred_company(get_user_companies(user), user)
     
     company_info = None
     default_warehouse = None
@@ -710,6 +709,11 @@ def refresh_token(refresh_token: Optional[str] = None) -> Dict:
         # Revoke the old token
         frappe.db.set_value("OAuth Bearer Token", token_doc_name, "status", "Revoked")
     
+    # A disabled account (a member of staff who has left, say) gets no new sign-in from an old token
+    if not frappe.db.get_value("User", user, "enabled"):
+        frappe.db.commit()  # keep the old token revoked
+        frappe.throw(_("User account is disabled"), frappe.AuthenticationError)
+
     # Generate new OAuth Bearer Token
     oauth_token = generate_oauth_bearer_token(user)
     
