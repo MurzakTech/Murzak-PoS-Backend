@@ -83,6 +83,13 @@ def send_email_verification(email: str) -> Dict:
     Returns:
         Success message
     """
+    # Only sign-up uses these codes, and sign-up over the web is closed (signup_policy.py)
+    from murzak_pos.api.signup_policy import signup_closed_reply
+
+    closed = signup_closed_reply()
+    if closed:
+        return closed
+
     # Validate email format
     if not email or "@" not in email:
         frappe.throw(_("Please provide a valid email address"), frappe.ValidationError)
@@ -176,6 +183,13 @@ def send_phone_verification(phone: str) -> Dict:
     Returns:
         Success message
     """
+    # Only sign-up uses these codes, and sign-up over the web is closed (signup_policy.py)
+    from murzak_pos.api.signup_policy import signup_closed_reply
+
+    closed = signup_closed_reply()
+    if closed:
+        return closed
+
     # Validate phone format (basic validation)
     if not phone or len(phone) < 10:
         frappe.throw(_("Please provide a valid phone number"), frappe.ValidationError)

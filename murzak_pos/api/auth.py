@@ -204,6 +204,13 @@ def register_user(
     require_phone_verification: bool = False
 ) -> Dict:
     """Register a new user"""
+    # Each business gets its own site from murzaktech.tech, so sign-up over the web is closed (signup_policy.py)
+    from murzak_pos.api.signup_policy import signup_closed_reply
+
+    closed = signup_closed_reply()
+    if closed:
+        return closed
+
     try:
         # Validate required fields
         if not email or not email.strip():

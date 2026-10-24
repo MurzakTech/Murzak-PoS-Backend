@@ -121,7 +121,12 @@ def create_company(
             _("Please log in to create a company. Your session has expired or you need to authenticate first."),
             frappe.AuthenticationError
         )
-    
+
+    # No new business on a site that already has its businesses; each one gets its own site (signup_policy.py)
+    from murzak_pos.api.signup_policy import refuse_new_business_if_closed
+
+    refuse_new_business_if_closed()
+
     # Check if company already exists
     if frappe.db.exists("Company", company_name):
         frappe.throw(
