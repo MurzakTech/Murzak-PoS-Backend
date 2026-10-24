@@ -460,6 +460,8 @@ def _set_level(doc, store, level):
 	for row in doc.get("reorder_levels") or []:
 		if row.get("warehouse") == store:
 			row.warehouse_reorder_level = listing.quantity(level)
+			if not row.get("warehouse_reorder_qty"):
+				row.warehouse_reorder_qty = listing.quantity(level)  # ERPNext needs a quantity beside the level
 			return
 	doc.append("reorder_levels", listing.reorder_row(store, level))
 

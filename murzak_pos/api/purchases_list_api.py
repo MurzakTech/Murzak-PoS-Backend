@@ -891,6 +891,7 @@ def receive_goods(
 	half done. A repeat with the same request_id returns the first result and changes nothing.
 	"""
 	_require_buyer()
+	# Not `_`: that name is the translation function, and naming it here broke every message in this call
 	_kind, order = _resolve_purchase_id(order, "Purchase Order")
 	ensure_record_access("Purchase Order", order)
 	ensure_record_access("Warehouse", warehouse)

@@ -532,13 +532,18 @@ class TestStoreChoiceAndLines(unittest.TestCase):
 		self.assertEqual(rules.pick_warehouse(None, ["Back - A", "Shelf - A"]), "Back - A")
 		self.assertIsNone(rules.pick_warehouse(None, []))
 
+	def test_the_warning_row_has_a_quantity_because_erpnext_refuses_one_without(self):
+		row = rules.reorder_row("Stores - A", 12)
+		self.assertEqual(row["warehouse_reorder_qty"], 12)
+		self.assertGreater(row["warehouse_reorder_qty"], 0)
+
 	def test_the_warning_is_a_row_the_alerts_can_read(self):
 		self.assertEqual(
 			rules.reorder_row("Stores - A", 5),
 			{
 				"warehouse": "Stores - A",
 				"warehouse_reorder_level": 5,
-				"warehouse_reorder_qty": 0,
+				"warehouse_reorder_qty": 5,
 				"material_request_type": "Purchase",
 			},
 		)

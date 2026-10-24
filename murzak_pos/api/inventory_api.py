@@ -924,7 +924,7 @@ def bulk_update_stock(
         dict: Result with reconciliation name, updated_count, unchanged_count, items summary, and failed items.
     """
     require_stock_role()
-    # resolve_company also picks the caller's own business when none is named, and refuses anyone else's
+    # Refuses a company the caller does not belong to; with none named, the caller's own
     company = resolve_company(company)
 
     ensure_record_access("Warehouse", warehouse)
@@ -975,6 +975,10 @@ def bulk_update_stock(
             "message": _("No valid items to update"),
             "data": {"failed_items": failed_items},
         }
+
+    # A product of another business may not be counted into this one's store
+    for code in set(item_codes):
+        ensure_record_access("Item", code)
 
     existing_records = frappe.get_all(
         "Item",

@@ -54,6 +54,22 @@ class TestEtimsOptional(unittest.TestCase):
         self.assertFalse(relax_etims_mandatory(doc))
         self.assertFalse(getattr(doc.flags, "ignore_mandatory", False))
 
+    def test_an_older_product_saves_when_the_business_is_not_set_up_for_etims(self):
+        doc = _Doc(**CORE, custom_prevent_etims_registration=0)
+        self.assertTrue(relax_etims_mandatory(doc, company_uses_etims=lambda company: False))
+        self.assertTrue(doc.flags.ignore_mandatory)
+
+    def test_the_rules_stay_for_a_business_that_sends_to_etims(self):
+        doc = _Doc(**CORE, custom_prevent_etims_registration=0)
+        asked = []
+        self.assertFalse(relax_etims_mandatory(doc, company_uses_etims=lambda company: asked.append(company) or True))
+        self.assertEqual(asked, ["Empire Sly"])
+        self.assertFalse(getattr(doc.flags, "ignore_mandatory", False))
+
+    def test_a_missing_core_detail_is_still_reported_for_a_business_not_on_etims(self):
+        doc = _Doc(**dict(CORE, item_group=""), custom_prevent_etims_registration=0)
+        self.assertFalse(relax_etims_mandatory(doc, company_uses_etims=lambda company: False))
+
 
 if __name__ == "__main__":
     unittest.main()
