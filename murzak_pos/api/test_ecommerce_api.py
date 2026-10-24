@@ -32,7 +32,9 @@ class TestEcommerceApi(unittest.TestCase):
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
 	def test_get_settings_defaults(self, mock_co, mock_role):
 		with patch.object(frappe.db, "get_default", return_value=None):
-			with patch.object(frappe.db, "count", return_value=12):
+			with patch.object(frappe.db, "count", return_value=3), patch.object(
+				ecommerce_api.online_catalogue, "count_items", return_value=12
+			):
 				with patch.object(frappe.db, "get_value", return_value="Main - TC"):
 					res = ecommerce_api.get_ecommerce_settings(company="Test Company")
 					self.assertTrue(res["success"])

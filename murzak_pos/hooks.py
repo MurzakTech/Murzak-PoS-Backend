@@ -169,6 +169,9 @@ doc_events = {
 		"validate": "murzak_pos.api.cashier_limits.enforce_on_sale",
 		"before_submit": "murzak_pos.overrides.pos_invoice.before_submit",
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_pos_invoice_update",
+		# Stock moved: tell the business's online shop (api/ecommerce_api.py)
+		"on_submit": "murzak_pos.api.ecommerce_api.queue_stock_push",
+		"on_cancel": "murzak_pos.api.ecommerce_api.queue_stock_push",
 	},
 	"Sales Invoice": {
 		"validate": "murzak_pos.api.cashier_limits.enforce_on_sale",
@@ -178,6 +181,13 @@ doc_events = {
 			"murzak_pos.api.approvals_api.enforce_on_submit",
 		],
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_sales_invoice_update",
+		"on_submit": "murzak_pos.api.ecommerce_api.queue_stock_push",
+		"on_cancel": "murzak_pos.api.ecommerce_api.queue_stock_push",
+	},
+	# An online order reserves stock, so the other shops see less of it
+	"Sales Order": {
+		"on_submit": "murzak_pos.api.ecommerce_api.queue_stock_push",
+		"on_cancel": "murzak_pos.api.ecommerce_api.queue_stock_push",
 	},
 	"Purchase Order": {"before_submit": "murzak_pos.api.approvals_api.enforce_on_submit"},
 	# Who belongs to which business is changed only by the app itself (api/company_binding_guard.py)
@@ -188,7 +198,13 @@ doc_events = {
 	},
 	"Company": {"validate": "murzak_pos.api.company_binding_guard.guard_company_owner"},
 	# Live screen messages (api/realtime_events.py): payments and kitchen tickets
-	"MPESA Transaction Log": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
+	"MPESA Transaction Log": {
+		"on_update": [
+			"murzak_pos.api.realtime_events.on_payment_update",
+			# A paid M-Pesa prompt for an online order marks the order paid (api/online_orders.py)
+			"murzak_pos.api.online_orders.on_payment_update",
+		]
+	},
 	"POS Gateway Transaction": {"on_update": "murzak_pos.api.realtime_events.on_payment_update"},
 	"Kitchen Ticket": {"on_update": "murzak_pos.api.realtime_events.on_kitchen_ticket_update"},
 	# A summary email when a shift is closed (api/alerts.py)
@@ -214,6 +230,8 @@ scheduler_events = {
 	"hourly": [
 		# Expiry, low-stock and unsent-invoice alerts for every business that has them switched on
 		"murzak_pos.api.alerts.run_hourly_alerts",
+		# Stock that moved without a sale (deliveries, counts) reaches each business's online shop
+		"murzak_pos.api.ecommerce_api.run_hourly_stock_sync",
 	],
 	"daily": [
 		# Removes held bills (open tabs) that were abandoned more than 30 days ago
