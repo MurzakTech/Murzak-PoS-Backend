@@ -553,7 +553,7 @@ def start_stock_count():
 
 # List Stock Counts - Add Counted Items - Stock Reconciliation Item
 @frappe.whitelist(allow_guest=False)
-def list_stock_counts(company: str = None):
+def list_stock_counts(company: str | None = None):
     # Only this business's counts
     company = resolve_company(company)
     counts = frappe.get_all(
@@ -2115,7 +2115,7 @@ def create_stock_entry_old(
 
 
 @frappe.whitelist()
-def inventory_summary_report(company: str = None):
+def inventory_summary_report(company: str | None = None):
     """
     Returns an inventory summary report for the caller's business.
     """
@@ -2142,7 +2142,7 @@ def inventory_summary_report(company: str = None):
 
 
 @frappe.whitelist()
-def inventory_movement_report(start_date: str, end_date: str, company: str = None):
+def inventory_movement_report(start_date: str, end_date: str, company: str | None = None):
     """
     Returns a movement report for the caller's business between the start and end date.
     """
@@ -2169,7 +2169,7 @@ def inventory_movement_report(start_date: str, end_date: str, company: str = Non
     }
 
 @frappe.whitelist()
-def inventory_value_report(company: str = None):
+def inventory_value_report(company: str | None = None):
     """
     Returns the total inventory value by warehouse for the caller's business.
     """
@@ -2195,7 +2195,7 @@ def inventory_value_report(company: str = None):
 
 
 @frappe.whitelist()
-def stock_aging_report(company: str = None):
+def stock_aging_report(company: str | None = None):
     """
     Returns a stock aging report for the caller's business based on the stock's age.
     """
