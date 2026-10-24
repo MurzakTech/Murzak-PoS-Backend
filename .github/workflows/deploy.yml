@@ -9,7 +9,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # A push to main used to go straight to the server. Nothing was checked first, so a failing test
+  # (for example a business able to read another business's records) reached customers. The same
+  # unit tests the pull request runs now have to pass before the deploy starts.
+  unit-tests:
+    name: Unit tests (no database)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install "frappe @ git+https://github.com/frappe/frappe.git@version-15"
+      - run: pip install --no-deps "erpnext @ git+https://github.com/frappe/erpnext.git@version-15"
+      - run: python .github/scripts/run_unit_tests.py
+
   deploy:
+    needs: unit-tests
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
@@ -46,8 +64,27 @@ jobs:
             echo "Deploying $(git log --oneline -1)"
 
             cd ~/frappe-bench
-            bench --site api.pos.murzaktech.tech migrate
+
+            # Every business bought on murzaktech.tech has its own site and its own database, as well as the
+            # shared site. Each one has to be migrated, or its tables, fields and print formats fall behind the
+            # code (a shop built before an update never got it). One that fails does not stop the others; the
+            # deploy is marked failed at the end.
+            failed=""
+            for dir in sites/*/; do
+              site="$(basename "$dir")"
+              [ -f "sites/$site/site_config.json" ] || continue
+              if bench --site "$site" list-apps 2>/dev/null | awk '{print $1}' | grep -qx murzak_pos; then
+                echo "Migrating $site"
+                bench --site "$site" migrate || failed="$failed $site"
+              fi
+            done
+
             bench build --app murzak_pos
             bench restart
 
-            echo "Deployed murzak_pos $(git -C apps/murzak_pos rev-parse --short HEAD) to api.pos.murzaktech.tech"
+            if [ -n "$failed" ]; then
+              echo "::error::Migrate failed on:$failed. The app is restarted on the new code; fix those sites and run 'bench --site <site> migrate'."
+              exit 1
+            fi
+
+            echo "Deployed murzak_pos $(git -C apps/murzak_pos rev-parse --short HEAD) to every site that runs it"
