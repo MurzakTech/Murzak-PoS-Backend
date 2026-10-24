@@ -76,3 +76,69 @@ class TestCodes(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestLockoutIsPerAddress(unittest.TestCase):
+	"""A stranger elsewhere cannot lock a cashier out; guessing from many addresses is still capped."""
+
+	def setUp(self):
+		from unittest.mock import MagicMock, patch
+
+		import frappe
+
+		store = {}
+		cache = MagicMock()
+		cache.get_value.side_effect = store.get
+		cache.set_value.side_effect = lambda key, value, expires_in_sec=None: store.__setitem__(key, value)
+		cache.delete_value.side_effect = lambda key: store.pop(key, None)
+		self.local = MagicMock(request_ip="41.90.0.1")
+		for p in (
+			patch.object(frappe, "cache", return_value=cache, create=True),
+			patch.object(frappe, "local", self.local, create=True),
+			patch("frappe.translate.get_all_translations", return_value={}),
+		):
+			p.start()
+			self.addCleanup(p.stop)
+		from murzak_pos.api import two_factor_api
+
+		self.api = two_factor_api
+		self.frappe = frappe
+
+	def fail(self, times, address):
+		self.local.request_ip = address
+		for _ in range(times):
+			self.api.note_failure("till@shop.ke")
+
+	def locked_at(self, address):
+		self.local.request_ip = address
+		try:
+			self.api.check_not_locked("till@shop.ke")
+		except self.frappe.AuthenticationError:
+			return True
+		return False
+
+	def test_failures_from_one_address_lock_only_that_address(self):
+		self.fail(5, "102.0.0.9")  # a stranger somewhere else
+		self.assertTrue(self.locked_at("102.0.0.9"))
+		self.assertFalse(self.locked_at("41.90.0.1"))  # the shop still signs in
+
+	def test_the_owner_of_the_account_is_still_locked_after_their_own_failures(self):
+		self.fail(5, "41.90.0.1")
+		self.assertTrue(self.locked_at("41.90.0.1"))
+
+	def test_many_addresses_together_lock_the_account_everywhere(self):
+		for n in range(8):
+			self.fail(4, f"102.0.0.{n}")  # under the limit at each address, 32 in all
+		self.assertTrue(self.locked_at("41.90.0.1"))
+
+
+class TestALockIsKept(unittest.TestCase):
+	def test_more_failures_while_locked_do_not_lift_the_lock(self):
+		from murzak_pos.api.login_guard import lock_seconds_left, record_failure
+
+		record = None
+		for second in range(5):
+			record = record_failure(record, 1000.0 + second)
+		self.assertGreater(lock_seconds_left(record, 1010.0), 0)
+		record = record_failure(record, 1010.0)
+		self.assertGreater(lock_seconds_left(record, 1011.0), 0)

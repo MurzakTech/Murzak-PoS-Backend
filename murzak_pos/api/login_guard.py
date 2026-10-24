@@ -4,9 +4,12 @@ Sign-in protection: account lockout after repeated failures, and authenticator-a
 Kept free of Frappe imports so it can be tested on its own. auth_api.py and
 two_factor_api.py wire these rules to Frappe's cache and user settings.
 
-Lockout: 5 wrong passwords or codes for one account within 15 minutes lock that
-account for 15 minutes. It is counted per account, not per network address,
-because a whole shop usually shares one internet connection.
+Lockout: 5 wrong passwords or codes for one account from one network address within
+15 minutes lock that account, from that address, for 15 minutes. Counting per account
+keeps the people of a shop (who share one internet connection) from locking each other
+out; counting per address too stops a stranger elsewhere locking a cashier out just by
+typing their email with wrong passwords. ACCOUNT_MAX_FAILURES wrong tries from any mix of
+addresses still lock the account everywhere, so guessing from many addresses is capped.
 
 Codes: standard time-based one-time passwords (RFC 6238, the 6-digit codes shown
 by Google Authenticator, Microsoft Authenticator and similar apps).
@@ -23,6 +26,7 @@ import time
 from urllib.parse import quote
 
 MAX_FAILURES = 5
+ACCOUNT_MAX_FAILURES = 30
 WINDOW_SECONDS = 15 * 60
 LOCK_SECONDS = 15 * 60
 
@@ -37,8 +41,10 @@ TOTP_DRIFT_STEPS = 1
 # ---------------------------------------------------------------------------
 
 
-def failure_key(user: str) -> str:
-	return f"pos_login_failures:{(user or '').strip().lower()}"
+def failure_key(user: str, address: str | None = None) -> str:
+	"""The counter for one account from one address, or (no address) for the account from everywhere."""
+	key = f"pos_login_failures:{(user or '').strip().lower()}"
+	return f"{key}:{address}" if address else key
 
 
 def lock_seconds_left(record: dict | None, now: float) -> int:
@@ -48,12 +54,14 @@ def lock_seconds_left(record: dict | None, now: float) -> int:
 	return max(0, int(record["locked_until"] - now))
 
 
-def record_failure(record: dict | None, now: float) -> dict:
-	"""Add one failure; lock the account when the limit is reached inside the window."""
+def record_failure(record: dict | None, now: float, limit: int = MAX_FAILURES) -> dict:
+	"""Add one failure; lock when `limit` is reached inside the window. A lock in force stays as it is."""
+	if lock_seconds_left(record, now):
+		return record
 	recent = [t for t in (record or {}).get("failures", []) if now - t < WINDOW_SECONDS]
 	recent.append(now)
 	updated = {"failures": recent, "locked_until": None}
-	if len(recent) >= MAX_FAILURES:
+	if len(recent) >= limit:
 		updated = {"failures": [], "locked_until": now + LOCK_SECONDS}
 	return updated
 

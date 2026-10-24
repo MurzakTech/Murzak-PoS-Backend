@@ -1,6 +1,6 @@
 """
 Sales Management API
-Handles creation and querying of Sales Invoices and POS Invoices for SavvyPOS
+Handles creation and querying of Sales Invoices and POS Invoices for Murzak POS
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from murzak_pos.api.business_lists import (
     modes_of_payment_for,
 )
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.error_handler import safe_error_message
 
 
 def _get_default_company() -> Optional[str]:
@@ -1423,7 +1424,7 @@ def get_sales_invoice(name: str) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error fetching Sales Invoice: {str(e)}",
+            "message": f"Error fetching Sales Invoice: {safe_error_message(e)}",
         }
 
 
@@ -1495,7 +1496,7 @@ def list_sales_invoices(
         )
         return {
             "success": False,
-            "message": f"Error listing Sales Invoices: {str(e)}",
+            "message": f"Error listing Sales Invoices: {safe_error_message(e)}",
         }
 
 
@@ -1551,7 +1552,7 @@ def cancel_sales_invoice(name: str, reason: Optional[str] = None) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error cancelling Sales Invoice: {str(e)}",
+            "message": f"Error cancelling Sales Invoice: {safe_error_message(e)}",
         }
 
 
@@ -2096,7 +2097,7 @@ def update_sales_invoice(
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
@@ -2106,7 +2107,7 @@ def update_sales_invoice(
         )
         return {
             "success": False,
-            "message": f"Error updating Sales Invoice: {str(e)}",
+            "message": f"Error updating Sales Invoice: {safe_error_message(e)}",
         }
 
 
@@ -2224,7 +2225,7 @@ def update_pos_invoice(
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
@@ -2234,7 +2235,7 @@ def update_pos_invoice(
         )
         return {
             "success": False,
-            "message": f"Error updating POS Invoice: {str(e)}",
+            "message": f"Error updating POS Invoice: {safe_error_message(e)}",
         }
 
 
@@ -2265,7 +2266,7 @@ def get_pos_invoice(name: str) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error fetching POS Invoice: {str(e)}",
+            "message": f"Error fetching POS Invoice: {safe_error_message(e)}",
         }
 
 
@@ -2394,7 +2395,7 @@ def list_pos_invoices(
         )
         return {
             "success": False,
-            "message": f"Error listing POS Invoices: {str(e)}",
+            "message": f"Error listing POS Invoices: {safe_error_message(e)}",
         }
 
 
@@ -2452,7 +2453,7 @@ def cancel_pos_invoice(name: str, reason: Optional[str] = None) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error cancelling POS Invoice: {str(e)}",
+            "message": f"Error cancelling POS Invoice: {safe_error_message(e)}",
         }
 
 
@@ -2707,7 +2708,7 @@ def create_sales_return(
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
@@ -2717,7 +2718,7 @@ def create_sales_return(
         )
         return {
             "success": False,
-            "message": f"Error creating Sales Return: {str(e)}",
+            "message": f"Error creating Sales Return: {safe_error_message(e)}",
         }
 
 
@@ -2759,7 +2760,7 @@ def get_sales_return(name: str) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error fetching Sales Return: {str(e)}",
+            "message": f"Error fetching Sales Return: {safe_error_message(e)}",
         }
 
 
@@ -2829,7 +2830,7 @@ def list_sales_returns(
         )
         return {
             "success": False,
-            "message": f"Error listing Sales Returns: {str(e)}",
+            "message": f"Error listing Sales Returns: {safe_error_message(e)}",
         }
 
 
@@ -2895,7 +2896,7 @@ def cancel_sales_return(name: str, reason: Optional[str] = None) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error cancelling Sales Return: {str(e)}",
+            "message": f"Error cancelling Sales Return: {safe_error_message(e)}",
         }
 
 
@@ -2982,7 +2983,7 @@ def submit_invoice(name: str, invoice_type: Optional[str] = None) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error submitting invoice: {str(e)}",
+            "message": f"Error submitting invoice: {safe_error_message(e)}",
         }
 
 
@@ -3063,14 +3064,14 @@ def create_pos_opening_entry(
         frappe.log_error("POS Opening Entry Validation Error", frappe.get_traceback())
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("POS Opening Entry Error", frappe.get_traceback())
         return {
             "success": False,
-            "message": f"Error creating POS Opening Entry: {str(e)}",
+            "message": f"Error creating POS Opening Entry: {safe_error_message(e)}",
         }
 
 
@@ -3168,7 +3169,7 @@ def list_pos_opening_entries(
         )
         return {
             "success": False,
-            "message": f"Error listing POS Opening Entries: {str(e)}",
+            "message": f"Error listing POS Opening Entries: {safe_error_message(e)}",
         }
 
 
@@ -3226,7 +3227,7 @@ def get_pos_opening_entry(name: str) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error fetching POS Opening Entry: {str(e)}",
+            "message": f"Error fetching POS Opening Entry: {safe_error_message(e)}",
         }
 
 
@@ -3743,7 +3744,7 @@ def create_payment_entry_for_invoice(
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
@@ -3753,7 +3754,7 @@ def create_payment_entry_for_invoice(
         )
         return {
             "success": False,
-            "message": f"Error creating Payment Entry: {str(e)}",
+            "message": f"Error creating Payment Entry: {safe_error_message(e)}",
             "error_type": "server_error",
         }
 
@@ -3833,7 +3834,7 @@ def get_invoice_payment_status(sales_invoice: str) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error getting payment status: {str(e)}",
+            "message": f"Error getting payment status: {safe_error_message(e)}",
             "error_type": "server_error",
         }
 

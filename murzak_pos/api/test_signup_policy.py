@@ -73,6 +73,16 @@ class TestSignUp(PolicyCase):
 			self.assertEqual(verification_api.send_phone_verification("0712345678")["code"], "SIGNUP_CLOSED")
 		sendmail.assert_not_called()
 
+	def test_nobody_can_ask_whether_an_email_has_an_account_while_sign_up_is_closed(self):
+		self.given()
+		self.assertEqual(auth_api.check_email("someone@shop.test")["code"], "SIGNUP_CLOSED")
+		frappe.db.exists.assert_not_called()
+
+	def test_the_sign_up_page_can_check_an_email_when_sign_up_is_open(self):
+		self.given(conf={"murzak_pos_signup_open": 1})
+		frappe.db.exists.return_value = None
+		self.assertEqual(auth_api.check_email("someone@shop.test"), {"exists": None})
+
 
 class TestNewBusiness(PolicyCase):
 	def test_someone_with_no_business_cannot_add_one_to_a_site_that_has_businesses(self):

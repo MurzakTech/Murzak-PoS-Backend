@@ -24,6 +24,7 @@ from frappe import _
 from typing import Optional, Dict, List, Tuple
 from frappe.utils import cint
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.error_handler import safe_error_message
 
 
 @frappe.whitelist()
@@ -90,7 +91,7 @@ def get_provisional_accounting_status(company: str) -> Dict:
         frappe.log_error("Get Provisional Accounting Status Error", f"Error getting provisional accounting status: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting provisional accounting status: {str(e)}",
+            "message": f"Error getting provisional accounting status: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -220,14 +221,14 @@ def set_default_provisional_account(
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Set Default Provisional Account Error", f"Error setting default provisional account: {str(e)}")
         return {
             "success": False,
-            "message": f"Error setting default provisional account: {str(e)}",
+            "message": f"Error setting default provisional account: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -323,7 +324,7 @@ def list_available_provisional_accounts(
         frappe.log_error("List Provisional Accounts Error", f"Error listing available provisional accounts: {str(e)}")
         return {
             "success": False,
-            "message": f"Error listing available provisional accounts: {str(e)}",
+            "message": f"Error listing available provisional accounts: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -510,7 +511,7 @@ def auto_configure_provisional_account(
         )
         return {
             "success": False,
-            "message": f"Error auto-configuring provisional account: {str(e)}",
+            "message": f"Error auto-configuring provisional account: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -669,7 +670,7 @@ def validate_provisional_accounting_setup(company: str) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error validating provisional accounting setup: {str(e)}",
+            "message": f"Error validating provisional accounting setup: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -780,7 +781,7 @@ def validate_and_get_provisional_account(company: str, auto_fix: bool = False) -
         )
         error_dict = {
             "success": False,
-            "message": f"Error validating provisional account: {str(e)}",
+            "message": f"Error validating provisional account: {safe_error_message(e)}",
             "error_type": "validation_error",
             "company": company,
         }

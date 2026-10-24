@@ -9,6 +9,7 @@ from frappe.query_builder import DocType
 
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.error_handler import safe_error_message
 
 
 def is_staff_user(user_email: str = None) -> bool:
@@ -243,14 +244,14 @@ def create_warehouse(
         frappe.log_error("Warehouse Creation Validation Error", f"Validation error creating warehouse: {str(e)}")
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Warehouse Creation Error", f"Error creating warehouse: {str(e)}")
         return {
             "success": False,
-            "message": f"Error creating warehouse: {str(e)}",
+            "message": f"Error creating warehouse: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -413,7 +414,7 @@ def list_warehouses(
         frappe.log_error("List Warehouses Error", f"Error listing warehouses: {str(e)}")
         return {
             "success": False,
-            "message": f"Error listing warehouses: {str(e)}",
+            "message": f"Error listing warehouses: {safe_error_message(e)}",
         }
 
 
@@ -508,7 +509,7 @@ def get_warehouse_details(name: str) -> dict:
         frappe.log_error("Get Warehouse Details Error", f"Error fetching warehouse details: {str(e)}")
         return {
             "success": False,
-            "message": f"Error fetching warehouse details: {str(e)}",
+            "message": f"Error fetching warehouse details: {safe_error_message(e)}",
         }
 
 
@@ -641,14 +642,14 @@ def update_warehouse(
         frappe.log_error("Warehouse Update Validation Error", f"Validation error updating warehouse: {str(e)}")
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Warehouse Update Error", f"Error updating warehouse: {str(e)}")
         return {
             "success": False,
-            "message": f"Error updating warehouse: {str(e)}",
+            "message": f"Error updating warehouse: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -751,7 +752,7 @@ def assign_warehouses_to_staff(
         frappe.log_error("Assign Warehouses Error", f"Error assigning warehouses to staff: {str(e)}")
         return {
             "success": False,
-            "message": f"Error assigning warehouses to staff: {str(e)}",
+            "message": f"Error assigning warehouses to staff: {safe_error_message(e)}",
         }
 
 
@@ -831,7 +832,7 @@ def get_staff_warehouses(user_email: str = None) -> dict:
         frappe.log_error("Get Staff Warehouses Error", f"Error getting staff warehouses: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting staff warehouses: {str(e)}",
+            "message": f"Error getting staff warehouses: {safe_error_message(e)}",
         }
 
 
@@ -899,7 +900,7 @@ def get_warehouse_staff(warehouse: str) -> dict:
         frappe.log_error("Get Warehouse Staff Error", f"Error getting warehouse staff: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting warehouse staff: {str(e)}",
+            "message": f"Error getting warehouse staff: {safe_error_message(e)}",
         }
 
 
@@ -947,7 +948,7 @@ def remove_warehouse_from_staff(
         frappe.log_error("Remove Warehouse Error", f"Error removing warehouse from staff: {str(e)}")
         return {
             "success": False,
-            "message": f"Error removing warehouse from staff: {str(e)}",
+            "message": f"Error removing warehouse from staff: {safe_error_message(e)}",
         }
 
 
@@ -1004,7 +1005,7 @@ def list_warehouse_types() -> dict:
         frappe.log_error("List Warehouse Types Error", f"Error listing warehouse types: {str(e)}")
         return {
             "success": False,
-            "message": f"Error listing warehouse types: {str(e)}",
+            "message": f"Error listing warehouse types: {safe_error_message(e)}",
         }
 
 
@@ -1183,7 +1184,7 @@ def set_default_warehouse(company: str, warehouse: str) -> dict:
         frappe.log_error("Set Default Warehouse API Error", f"Error setting default warehouse: {str(e)}")
         return {
             "success": False,
-            "message": f"Error setting default warehouse: {str(e)}",
+            "message": f"Error setting default warehouse: {safe_error_message(e)}",
         }
 
 
@@ -1236,6 +1237,6 @@ def get_default_warehouse(company: str) -> dict:
         frappe.log_error("Get Default Warehouse API Error", f"Error getting default warehouse: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting default warehouse: {str(e)}",
+            "message": f"Error getting default warehouse: {safe_error_message(e)}",
         }
 

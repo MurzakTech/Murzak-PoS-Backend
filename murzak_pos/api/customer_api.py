@@ -11,6 +11,7 @@ from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import resolve_company
 from typing import Optional, Dict, List
 from murzak_pos.api.access_control import require_credit_role
+from murzak_pos.api.error_handler import safe_error_message
 
 
 @frappe.whitelist()
@@ -206,14 +207,14 @@ def create_customer(
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Customer Creation Error", f"Error creating customer: {str(e)}")
         return {
             "success": False,
-            "message": f"Error creating customer: {str(e)}",
+            "message": f"Error creating customer: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -410,7 +411,7 @@ def list_customers(
         frappe.log_error("List Customers Error", f"Error listing customers: {str(e)}")
         return {
             "success": False,
-            "message": f"Error listing customers: {str(e)}",
+            "message": f"Error listing customers: {safe_error_message(e)}",
         }
 
 
@@ -578,7 +579,7 @@ def get_customer(name: str, company: str = None) -> Dict:
         frappe.log_error("Get Customer Error", f"Error fetching customer: {str(e)}")
         return {
             "success": False,
-            "message": f"Error fetching customer: {str(e)}",
+            "message": f"Error fetching customer: {safe_error_message(e)}",
         }
 
 
@@ -692,14 +693,14 @@ def update_customer(
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Customer Update Error", f"Error updating customer: {str(e)}")
         return {
             "success": False,
-            "message": f"Error updating customer: {str(e)}",
+            "message": f"Error updating customer: {safe_error_message(e)}",
             "error_type": "general_error",
         }
 
@@ -810,7 +811,7 @@ def set_customer_credit_limit(
         )
         return {
             "success": False,
-            "message": f"Validation error: {str(e)}",
+            "message": f"Validation error: {safe_error_message(e)}",
             "error_type": "validation_error",
         }
     except Exception as e:
@@ -820,7 +821,7 @@ def set_customer_credit_limit(
         )
         return {
             "success": False,
-            "message": f"Error setting credit limit: {str(e)}",
+            "message": f"Error setting credit limit: {safe_error_message(e)}",
             "error_type": "server_error",
         }
 
@@ -947,7 +948,7 @@ def get_customer_credit_limit(customer: str, company: str = None) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error getting credit limit: {str(e)}",
+            "message": f"Error getting credit limit: {safe_error_message(e)}",
             "error_type": "server_error",
         }
 
@@ -1126,7 +1127,7 @@ def get_customer_credit_history(
         )
         return {
             "success": False,
-            "message": f"Error getting credit history: {str(e)}",
+            "message": f"Error getting credit history: {safe_error_message(e)}",
             "error_type": "server_error",
         }
 
@@ -1211,7 +1212,7 @@ def remove_customer_credit_limit(customer: str, company: str) -> Dict:
         )
         return {
             "success": False,
-            "message": f"Error removing credit limit: {str(e)}",
+            "message": f"Error removing credit limit: {safe_error_message(e)}",
             "error_type": "server_error",
         }
 

@@ -16,7 +16,9 @@ from frappe import _
 from frappe.utils.password import decrypt, encrypt
 
 from murzak_pos.api.login_guard import (
+	ACCOUNT_MAX_FAILURES,
 	LOCK_SECONDS,
+	MAX_FAILURES,
 	failure_key,
 	lock_message,
 	lock_seconds_left,
@@ -34,21 +36,35 @@ PENDING_KEY = "_pos_totp_pending"
 # ---------------------------------------------------------------------------
 
 
+def _address() -> str:
+	return getattr(frappe.local, "request_ip", None) or "unknown"
+
+
 def check_not_locked(user: str) -> None:
-	"""Refuse sign-in while the account is locked after repeated failures."""
-	left = lock_seconds_left(frappe.cache().get_value(failure_key(user)), time.time())
+	"""Refuse sign-in while the account is locked, from this address or (after many failures) everywhere."""
+	cache, now = frappe.cache(), time.time()
+	left = max(
+		lock_seconds_left(cache.get_value(failure_key(user, _address())), now),
+		lock_seconds_left(cache.get_value(failure_key(user)), now),
+	)
 	if left:
 		frappe.throw(_(lock_message(left)), frappe.AuthenticationError)
 
 
 def note_failure(user: str) -> None:
-	cache = frappe.cache()
-	key = failure_key(user)
-	cache.set_value(key, record_failure(cache.get_value(key), time.time()), expires_in_sec=LOCK_SECONDS * 2)
+	cache, now = frappe.cache(), time.time()
+	for key, limit in (
+		(failure_key(user, _address()), MAX_FAILURES),
+		(failure_key(user), ACCOUNT_MAX_FAILURES),
+	):
+		cache.set_value(
+			key, record_failure(cache.get_value(key), now, limit), expires_in_sec=LOCK_SECONDS * 2
+		)
 
 
 def clear_failures(user: str) -> None:
-	frappe.cache().delete_value(failure_key(user))
+	"""A right password from this address clears its count; the account-wide count runs out on its own."""
+	frappe.cache().delete_value(failure_key(user, _address()))
 
 
 # ---------------------------------------------------------------------------

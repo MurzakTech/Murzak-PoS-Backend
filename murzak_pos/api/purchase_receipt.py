@@ -4,6 +4,7 @@ from frappe import _
 from frappe.utils import flt
 
 from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.error_handler import safe_error_message
 
 
 def _requested_quantities(items) -> dict[str, float]:
@@ -140,7 +141,7 @@ def reject_return_items(purchase_receipt, items, reason=None):
 	# Handle known errors
 	except (frappe.ValidationError, frappe.DoesNotExistError, frappe.PermissionError) as e:
 		frappe.db.rollback()
-		response.update({"message": str(e), "errors": [str(e)]})
+		response.update({"message": safe_error_message(e), "errors": [safe_error_message(e)]})
 
 	# Handle unexpected errors
 	except Exception as e:

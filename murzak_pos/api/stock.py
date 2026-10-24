@@ -17,6 +17,7 @@ from murzak_pos.api.error_handler import handle_pos_exception
 from murzak_pos.api.constants import POSErrorCode
 from murzak_pos.api.access_control import ensure_record_access, require_stock_count_role, require_stock_role, require_transfer_role
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.error_handler import safe_error_message
 
 # logger = logging.getLogger("stock_entry_error_log")
 
@@ -158,7 +159,7 @@ def create_stock_transfer():
     except frappe.ValidationError as e:
         return {
             "status": "error",
-            "message": str(e)
+            "message": safe_error_message(e)
         }
 
     # Unexpected Errors
@@ -428,7 +429,7 @@ def create_stock_receipt():
     except frappe.ValidationError as e:
         return {
             "status": "error",
-            "message": str(e)
+            "message": safe_error_message(e)
         }
 
     # Unexpected Errors
@@ -780,7 +781,7 @@ def create_pr_from_po(purchase_order, items=None, submit=1, external_ref=None):
     ) as e:
         frappe.db.rollback()
         response.update({
-            "message": str(e),
+            "message": safe_error_message(e),
             "errors": [str(e)]
         })
 
@@ -883,7 +884,7 @@ def cancel_purchase_order(purchase_order, force=0, reason=None):
     ) as e:
         frappe.db.rollback()
         response.update({
-            "message": str(e),
+            "message": safe_error_message(e),
             "errors": [str(e)]
         })
 
@@ -1007,13 +1008,13 @@ def approve_stock_transfer():
 
     except PermissionError as e:
         return error_response(
-            message=str(e),
+            message=safe_error_message(e),
             http_status=403
         )
 
     except ValidationError as e:
         return error_response(
-            message=str(e),
+            message=safe_error_message(e),
             http_status=422
         )
 
@@ -1729,7 +1730,7 @@ def list_stock_transfer_requests():
         frappe.log_error("List Stock Transfer Requests Failed", frappe.get_traceback())
         return {
             "success": False,
-            "message": f"Failed to list stock transfer requests: {str(e)}"
+            "message": f"Failed to list stock transfer requests: {safe_error_message(e)}"
         }
 
 
@@ -2103,11 +2104,11 @@ def create_stock_entry_old(
 
     except frappe.ValidationError as e:
         frappe.log_error("Create Stock Entry Validation Error", f"Validation error creating stock entry: {str(e)}")
-        return {"success": False, "message": f"Validation error: {str(e)}", "error_type": "validation_error"}
+        return {"success": False, "message": f"Validation error: {safe_error_message(e)}", "error_type": "validation_error"}
 
     except Exception as e:
         frappe.log_error("Create Stock Entry Error", f"Error creating stock entry: {str(e)}")
-        return {"success": False, "message": f"Error creating stock entry: {str(e)}"}
+        return {"success": False, "message": f"Error creating stock entry: {safe_error_message(e)}"}
 
 
 
@@ -2344,11 +2345,11 @@ def create_stock_entry(
 
     except frappe.ValidationError as e:
         frappe.log_error("Create Stock Entry Validation Error", f"Validation error creating stock entry: {str(e)}")
-        return {"success": False, "message": f"Validation error: {str(e)}", "error_type": "validation_error"}
+        return {"success": False, "message": f"Validation error: {safe_error_message(e)}", "error_type": "validation_error"}
 
     except Exception as e:
         frappe.log_error("Create Stock Entry Error", f"Error creating stock entry: {str(e)}")
-        return {"success": False, "message": f"Error creating stock entry: {str(e)}"}
+        return {"success": False, "message": f"Error creating stock entry: {safe_error_message(e)}"}
 
 
 def validate_and_add_items(items, stock_entry, from_warehouse, to_warehouse):
@@ -2499,7 +2500,7 @@ def confirm_receive_transfer(stock_entry_name):
         # Generic validation error handling
         return {
             "status": "error",
-            "message": str(e),
+            "message": safe_error_message(e),
             "data": {
                 "stock_entry_name": stock_entry_name
             }
@@ -2509,7 +2510,7 @@ def confirm_receive_transfer(stock_entry_name):
         # General exception handling (logging and responding)
         return {
             "status": "error",
-            "message": f"An error occurred: {str(e)}",
+            "message": f"An error occurred: {safe_error_message(e)}",
             "data": {
                 "stock_entry_name": stock_entry_name
             }
@@ -2588,13 +2589,13 @@ def process_stock_transfer(stock_entry_name):
             }
         return {
             "status": "fail",
-            "message": str(e)
+            "message": safe_error_message(e)
         }
 
     except Exception as e:
         return {
             "status": "error",
-            "message": f"An error occurred: {str(e)}"
+            "message": f"An error occurred: {safe_error_message(e)}"
         }
 
 def log_stock_movement(item, stock_entry):

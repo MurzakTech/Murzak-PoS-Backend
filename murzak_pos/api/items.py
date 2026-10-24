@@ -10,6 +10,7 @@ from frappe.query_builder import DocType, functions as fn
 from frappe.utils import flt, nowdate
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.error_handler import safe_error_message
 
 ITEM_RESULT_FIELDS = [
 	"name as item_code",
@@ -356,7 +357,7 @@ def search_by_barcode(barcode, pos_profile):
 		return item_details
 	except Exception as e:
 		frappe.log_error("Search by Barcode Error", frappe.get_traceback())
-		frappe.throw(_("Error searching by barcode: {0}").format(str(e)))
+		frappe.throw(_("Error searching by barcode: {0}").format(safe_error_message(e)))
 
 
 @frappe.whitelist()
@@ -387,7 +388,7 @@ def get_item_stock(item_code, warehouse):
 		}
 	except Exception as e:
 		frappe.log_error("Get Item Stock Error", frappe.get_traceback())
-		frappe.throw(_("Error fetching item stock: {0}").format(str(e)))
+		frappe.throw(_("Error fetching item stock: {0}").format(safe_error_message(e)))
 
 
 @frappe.whitelist()
@@ -440,7 +441,7 @@ def get_batch_serial_details(item_code, warehouse):
 		return result
 	except Exception as e:
 		frappe.log_error("Get Batch/Serial Details Error", frappe.get_traceback())
-		frappe.throw(_("Error fetching batch/serial details: {0}").format(str(e)))
+		frappe.throw(_("Error fetching batch/serial details: {0}").format(safe_error_message(e)))
 
 
 @frappe.whitelist()
@@ -577,7 +578,7 @@ def get_item_variants(template_item, pos_profile):
 		return variants
 	except Exception as e:
 		frappe.log_error("Get Item Variants Error", frappe.get_traceback())
-		frappe.throw(_("Error fetching item variants: {0}").format(str(e)))
+		frappe.throw(_("Error fetching item variants: {0}").format(safe_error_message(e)))
 
 
 def _build_item_base_conditions(pos_profile_doc, item_group=None):
@@ -1228,7 +1229,7 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 		return items
 	except Exception as e:
 		frappe.log_error("Get Items Error", frappe.get_traceback())
-		frappe.throw(_("Error fetching items: {0}").format(str(e)))
+		frappe.throw(_("Error fetching items: {0}").format(safe_error_message(e)))
 
 
 @frappe.whitelist()
@@ -1280,7 +1281,7 @@ def get_item_details(item_code, pos_profile, customer=None, qty=1, uom=None):
 		)
 	except Exception as e:
 		frappe.log_error("Get Item Details Error", frappe.get_traceback())
-		frappe.throw(_("Error fetching item details: {0}").format(str(e)))
+		frappe.throw(_("Error fetching item details: {0}").format(safe_error_message(e)))
 
 
 @frappe.whitelist()
@@ -1312,7 +1313,7 @@ def get_item_groups(pos_profile):
 		return item_groups
 	except Exception as e:
 		frappe.log_error("Get Item Groups Error", frappe.get_traceback())
-		frappe.throw(_("Error fetching item groups: {0}").format(str(e)))
+		frappe.throw(_("Error fetching item groups: {0}").format(safe_error_message(e)))
 
 
 @frappe.whitelist()
@@ -1420,7 +1421,7 @@ def get_stock_quantities(item_codes, warehouse):
 
 	except Exception as e:
 		frappe.log_error("Get Stock Quantities Error", frappe.get_traceback())
-		frappe.throw(_("Error fetching stock quantities: {0}").format(str(e)))
+		frappe.throw(_("Error fetching stock quantities: {0}").format(safe_error_message(e)))
 
 
 # =============================================================================
@@ -1602,7 +1603,7 @@ def get_item_warehouse_availability(item_code=None, item_codes=None, company=Non
 
 	except Exception as e:
 		frappe.log_error("Get Warehouse Availability Error", frappe.get_traceback())
-		frappe.throw(_("Error fetching warehouse availability: {0}").format(str(e)))
+		frappe.throw(_("Error fetching warehouse availability: {0}").format(safe_error_message(e)))
 
 
 @frappe.whitelist()
@@ -1694,7 +1695,7 @@ def get_product_bundle_availability(item_code, warehouse):
 			"Bundle Availability Error",
 			f"{item_code} in {warehouse}\n{frappe.get_traceback()}"
 		)
-		frappe.throw(_("Error fetching bundle availability for {0}: {1}").format(item_code, str(e)))
+		frappe.throw(_("Error fetching bundle availability for {0}: {1}").format(item_code, safe_error_message(e)))
 
 
 
@@ -1804,5 +1805,5 @@ def return_items():
         frappe.log_error("Return Items Failed", frappe.get_traceback())
         return {
             "success": False,
-            "message": f"Failed to return items: {str(e)}"
+            "message": f"Failed to return items: {safe_error_message(e)}"
         }

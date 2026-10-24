@@ -3,6 +3,7 @@ from frappe import _
 from frappe.utils import now_datetime, nowdate, cint, getdate, flt
 from murzak_pos.api.access_control import require_loyalty_role
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.error_handler import safe_error_message
 
 
 @frappe.whitelist(allow_guest=False)
@@ -195,7 +196,7 @@ def create_loyalty_program(
         return {
             "status": "failure",
             "message": _("An error occurred while creating the Loyalty Program."),
-            "error": str(e)
+            "error": safe_error_message(e)
         }
 
 
@@ -315,7 +316,7 @@ def get_loyalty_program_rules(loyalty_program_name=None, loyalty_program_id=None
         return {
             "status": "failure",
             "message": "An error occurred while fetching loyalty program rules.",
-            "error": str(e),
+            "error": safe_error_message(e),
             "debug": debug
         }
 
@@ -392,7 +393,7 @@ def list_loyalty_programs(company=None):
         return {
             "status": "failure",
             "message": "An error occurred while fetching loyalty programs.",
-            "error": str(e),
+            "error": safe_error_message(e),
             "debug": debug
         }
 
@@ -483,7 +484,7 @@ def assign_loyalty_program(customer_id, loyalty_program_name, company=None):
         return {
             "status": "failure",
             "message": _("An error occurred while assigning the Loyalty Program to the customer."),
-            "error": str(e)
+            "error": safe_error_message(e)
         }
 
      
@@ -660,7 +661,7 @@ def earn_loyalty_points(customer_id, purchase_amount, company=None):
         return {
             "status": "failure",
             "message": "Failed to earn points.",
-            "error": str(e),
+            "error": safe_error_message(e),
             "debug": debug_messages
         }
 
@@ -785,7 +786,7 @@ def get_loyalty_balance(customer_id, company=None, limit=5):
         return {
             "status": "failure",
             "message": "Failed to fetch loyalty balance",
-            "error": str(e),
+            "error": safe_error_message(e),
             "debug": debug
         }
 
@@ -926,7 +927,7 @@ def redeem_points(customer_id, points_to_redeem, company=None, reference_documen
         return {
             "status": "failure",
             "message": "Failed to redeem points",
-            "error": str(e),
+            "error": safe_error_message(e),
             "debug": debug
         }
 
@@ -1062,7 +1063,7 @@ def get_customer_loyalty_details(customer_id, company=None, invoice_amount=None)
         frappe.log_error("Get Customer Loyalty Details API Error", frappe.get_traceback())
         return {
             "status": "error",
-            "message": f"Error fetching loyalty details: {str(e)}"
+            "message": f"Error fetching loyalty details: {safe_error_message(e)}"
         }
 
 
@@ -1168,7 +1169,7 @@ def calculate_loyalty_redemption(customer_id, points_to_redeem, invoice_amount=N
         frappe.log_error("Calculate Loyalty Redemption API Error", frappe.get_traceback())
         return {
             "status": "error",
-            "message": f"Error calculating redemption: {str(e)}"
+            "message": f"Error calculating redemption: {safe_error_message(e)}"
         }
 
 
@@ -1313,6 +1314,6 @@ def get_points_history(
         return {
             "status": "failure",
             "message": "Failed to fetch points history",
-            "error": str(e),
+            "error": safe_error_message(e),
             "debug": debug
         }

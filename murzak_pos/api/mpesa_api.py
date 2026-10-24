@@ -13,6 +13,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_to_date, cint, flt, get_datetime, now, now_datetime
 
+from murzak_pos.api.error_handler import safe_error_message
 from murzak_pos.api.mpesa_client import (
 	MpesaAPIError,
 	MpesaAuthenticationError,
@@ -67,7 +68,7 @@ def _error_response(e: Exception) -> dict:
 		code, kind = "MPESA_CLIENT_ERROR", "ClientError"
 	else:
 		code, kind = "UNEXPECTED_ERROR", "Exception"
-	return {"success": False, "error_code": code, "error_type": kind, "message": str(e)}
+	return {"success": False, "error_code": code, "error_type": kind, "message": safe_error_message(e)}
 
 
 def _get_settings_doc(company: str):
@@ -290,7 +291,7 @@ def check_payment_status(transaction_id: str | None = None, checkout_request_id:
 				result = query_stk_status(company=log.company, checkout_request_id=log.checkout_request_id)
 			except MpesaClientError as e:
 				# A failed status check is not a failed payment; keep waiting for the callback.
-				result = {"still_processing": True, "error": str(e)}
+				result = {"still_processing": True, "error": safe_error_message(e)}
 			log.reload()
 
 			if log.status == STATUS_SUCCESS:

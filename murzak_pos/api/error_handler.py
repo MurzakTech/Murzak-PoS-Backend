@@ -129,3 +129,18 @@ def handle_pos_exception(e, *, lpo_no=None, grn_no=None, data=None, **kwargs):
         grn_no=grn_no,
         data=data
     )
+
+
+def safe_error_message(e) -> str:
+	"""
+	What a person may be told about an error. Messages written for people (a validation, permission or not-found
+	message from this app or ERPNext, such as "Item X has no stock") are shown as they are. Anything unexpected (a
+	database fault, a bug) can carry table names, queries or file paths, so the person gets a plain sentence and
+	the details go to the error log.
+	"""
+	if isinstance(e, frappe.DuplicateEntryError):
+		return frappe._("That record already exists.")
+	if isinstance(e, frappe.ValidationError | frappe.PermissionError | frappe.AuthenticationError):
+		return str(e)
+	frappe.log_error("Unexpected error", frappe.get_traceback())
+	return frappe._("Something went wrong. Please try again, and contact Murzak support if it keeps happening.")

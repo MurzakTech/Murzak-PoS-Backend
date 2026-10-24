@@ -18,6 +18,7 @@ from pypika.terms import Case
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.profit_calc import summarize_profit
+from murzak_pos.api.error_handler import safe_error_message
 
 
 def _get_default_company() -> Optional[str]:
@@ -160,7 +161,7 @@ def get_dashboard_metrics(
         frappe.log_error("Dashboard Metrics Error", f"Error getting dashboard metrics: {str(e)}")
         return {
             "success": False,
-            "message": f"Error getting dashboard metrics: {str(e)}",
+            "message": f"Error getting dashboard metrics: {safe_error_message(e)}",
         }
 
 
