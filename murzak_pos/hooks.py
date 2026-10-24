@@ -161,10 +161,13 @@ override_doctype_class = {
 
 doc_events = {
 	"POS Invoice": {
+		# A cashier's limits on dates and discounts (api/cashier_limits.py)
+		"validate": "murzak_pos.api.cashier_limits.enforce_on_sale",
 		"before_submit": "murzak_pos.overrides.pos_invoice.before_submit",
 		"on_update_after_submit": "murzak_pos.overrides.mpesa_integration.on_pos_invoice_update",
 	},
 	"Sales Invoice": {
+		"validate": "murzak_pos.api.cashier_limits.enforce_on_sale",
 		"before_submit": [
 			"murzak_pos.overrides.sales_invoice.before_submit",
 			# A refund above the business's limit needs a manager's approval (api/approvals_api.py)

@@ -1273,3 +1273,8 @@
 "That store address cannot be used. Enter the shop's public web address, like https://myshop.com.","Anwani hiyo ya duka haiwezi kutumika. Weka anwani ya wazi ya tovuti ya duka, kama https://myshop.com."
 "Abbreviation '{0}' is already taken. Please choose another.","Kifupisho '{0}' tayari kimechukuliwa. Tafadhali chagua kingine."
 "The new password needs {0}.","Nenosiri jipya linahitaji {0}."
+"A sale cannot be dated in the future.","Mauzo hayawezi kuwekwa tarehe ya baadaye."
+"A sale dated more than {0} days ago needs a manager. Ask a manager to sign in and send it.","Mauzo yenye tarehe ya zaidi ya siku {0} zilizopita yanahitaji meneja. Mwombe meneja aingie na kuyatuma."
+"The discount on {0} is more than the {1}% a cashier may give. A manager must ring up this sale.","Punguzo kwa {0} ni zaidi ya {1}% ambayo keshia anaweza kutoa. Meneja lazima arekodi mauzo haya."
+"the whole sale","mauzo yote"
+"The limit must be between 0 and 100 percent.","Kikomo lazima kiwe kati ya asilimia 0 na 100."
