@@ -954,11 +954,18 @@ def create_pos_profile(
     
     # Get or create default warehouse
     if not warehouse:
-        warehouse = frappe.db.get_value("Warehouse", {
-            "company": company,
-            "is_group": 0
-        }, "name")
-        
+        # The store sales are taken from: the one called Stores, else the oldest. Never a transit warehouse
+        # ("Goods In Transit" is made first on a new company but can never hold stock, so every sale failed).
+        from murzak_pos.api import products_list_calc
+
+        names = frappe.get_all(
+            "Warehouse",
+            filters={"company": company, "is_group": 0, "warehouse_type": ["!=", "Transit"]},
+            pluck="name",
+            order_by="creation asc",
+        )
+        warehouse = products_list_calc.pick_warehouse(None, names)
+
         if not warehouse:
             # Create default warehouse
             warehouse = create_default_warehouse(company)
