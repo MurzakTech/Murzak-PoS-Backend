@@ -281,7 +281,7 @@ class TestSignUpGivesNoRoles(unittest.TestCase):
 
 
 class TestCleanUpPatch(unittest.TestCase):
-	def run_patch(self, users, defaults, roles, companies, operators=()):
+	def run_patch(self, users, defaults, roles, companies, operators=(), site_companies=("Alpha", "Beta")):
 		from murzak_pos.patches import unbind_users_from_other_businesses as patch_module
 
 		def get_all(doctype, filters=None, **kwargs):
@@ -289,6 +289,8 @@ class TestCleanUpPatch(unittest.TestCase):
 				return list(users)
 			if doctype == "DefaultValue":
 				return [frappe._dict(parent=u, defkey=k, defvalue=v) for u, k, v in defaults]
+			if doctype == "Company":
+				return list(site_companies)
 			return []
 
 		docs = {}
@@ -314,6 +316,7 @@ class TestCleanUpPatch(unittest.TestCase):
 				side_effect=lambda user: set(companies.get(user, ())),
 			),
 			patch("builtins.print"),
+			patch("murzak_pos.api.staff_api.set_company_permission") as self.bound,
 		):
 			patch_module.execute()
 		return defaults_api, docs
@@ -353,6 +356,27 @@ class TestCleanUpPatch(unittest.TestCase):
 		)
 		self.assertEqual(sorted(docs), ["stranger@x.test"])
 		docs["stranger@x.test"].remove_roles.assert_called_once_with(*sorted(every))
+
+	def test_on_a_shops_own_site_people_with_roles_are_bound_to_its_only_business(self):
+		from murzak_pos.api.auth_api import STANDARD_BUSINESS_ROLES
+
+		_defaults, docs = self.run_patch(
+			users=["owner@shop.test", "cashier@shop.test", "nobody@shop.test", "bound@shop.test"],
+			defaults=[],
+			roles={
+				"owner@shop.test": list(STANDARD_BUSINESS_ROLES),
+				"cashier@shop.test": ["Sales User", "All"],
+				"nobody@shop.test": ["All", "Guest"],
+				"bound@shop.test": ["Sales User"],
+			},
+			companies={"bound@shop.test": ["Shop"]},
+			site_companies=("Shop",),
+		)
+		self.assertEqual(
+			sorted(c.args for c in self.bound.call_args_list),
+			[("cashier@shop.test", "Shop", "Administrator"), ("owner@shop.test", "Shop", "Administrator")],
+		)
+		self.assertEqual(docs, {}, "no roles are taken away on a shop's own site")
 
 
 if __name__ == "__main__":
