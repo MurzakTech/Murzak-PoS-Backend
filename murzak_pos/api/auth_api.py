@@ -1087,6 +1087,7 @@ def get_current_user() -> Dict:
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=30, seconds=10 * 60)
 def refresh_token(refresh_token: Optional[str] = None) -> Dict:
     """Refresh OAuth Bearer Token for current user or via refresh_token string
     
