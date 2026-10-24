@@ -23,6 +23,8 @@ from murzak_pos.api.access_control import require_manager
 
 # OAuth Configuration
 OAUTH_TOKEN_EXPIRATION_HOURS = 24 * 7  # 7 days
+# A refresh token gives a new sign-in for this many days after it was issued; then the person signs in again
+REFRESH_TOKEN_DAYS = 30
 OAUTH_CLIENT_NAME = "SavvyPOS API Client"
 OAUTH_SCOPES = "all"
 
@@ -668,6 +670,13 @@ def refresh_token(refresh_token: Optional[str] = None) -> Dict:
         
         # Revoke the old token
         frappe.db.set_value("OAuth Bearer Token", token_doc_name, "status", "Revoked")
+
+        # Each refresh issues a new one, so this only refuses a token unused for REFRESH_TOKEN_DAYS
+        from frappe.utils import add_days, get_datetime, now_datetime
+
+        if token_doc.creation and get_datetime(token_doc.creation) < add_days(now_datetime(), -REFRESH_TOKEN_DAYS):
+            frappe.db.commit()  # keep it revoked
+            frappe.throw(_("Invalid or expired refresh token"), frappe.AuthenticationError)
     
     # A disabled account (a member of staff who has left, say) gets no new sign-in from an old token
     if not frappe.db.get_value("User", user, "enabled"):

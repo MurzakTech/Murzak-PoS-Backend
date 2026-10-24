@@ -56,3 +56,71 @@ class TestTheOlderSignInAddress(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestRefreshTokens(unittest.TestCase):
+	def given_a_token(self, age_days, enabled=1):
+		from datetime import datetime, timedelta
+
+		now = datetime(2026, 10, 24, 12, 0)
+		db = MagicMock()
+		db.get_value.side_effect = lambda doctype, *args, **kwargs: (
+			"TOKEN-1" if doctype == "OAuth Bearer Token" else enabled
+		)
+		token = frappe._dict(user="cashier@shop.test", creation=now - timedelta(days=age_days))
+		for p in (
+			patch("frappe.utils.now_datetime", return_value=now),
+			patch.object(frappe, "session", frappe._dict(user="Guest"), create=True),
+			patch.object(frappe, "db", db, create=True),
+			patch.object(frappe, "get_doc", return_value=token, create=True),
+			patch.object(frappe, "local", MagicMock(response={}), create=True),
+			patch("frappe.translate.get_all_translations", return_value={}),
+		):
+			p.start()
+			self.addCleanup(p.stop)
+		self.db = db
+
+	def refresh(self, module):
+		return module.refresh_token(refresh_token="r-1")
+
+	def test_a_token_unused_for_more_than_thirty_days_is_refused_and_stays_revoked(self):
+		from murzak_pos.api import auth_api
+
+		for module in (auth_api, auth):
+			with self.subTest(module=module.__name__):
+				self.given_a_token(age_days=31)
+				with patch.object(module, "generate_oauth_bearer_token") as new_token:
+					with self.assertRaises(frappe.AuthenticationError):
+						self.refresh(module)
+				new_token.assert_not_called()
+				self.db.set_value.assert_called_once_with(
+					"OAuth Bearer Token", "TOKEN-1", "status", "Revoked"
+				)
+
+	def test_a_disabled_account_gets_no_new_sign_in(self):
+		from murzak_pos.api import auth_api
+
+		for module in (auth_api, auth):
+			with self.subTest(module=module.__name__):
+				self.given_a_token(age_days=1, enabled=0)
+				with patch.object(module, "generate_oauth_bearer_token") as new_token:
+					with self.assertRaises(frappe.AuthenticationError):
+						self.refresh(module)
+				new_token.assert_not_called()
+
+	def test_a_recent_token_gives_a_new_sign_in(self):
+		from murzak_pos.api import auth_api
+
+		fresh = {
+			"access_token": "a",
+			"token_type": "Bearer",
+			"expires_in": 1,
+			"expires_at": "x",
+			"refresh_token": "r-2",
+		}
+		for module in (auth_api, auth):
+			with self.subTest(module=module.__name__):
+				self.given_a_token(age_days=29)
+				with patch.object(module, "generate_oauth_bearer_token", return_value=fresh) as new_token:
+					self.assertEqual(self.refresh(module)["refresh_token"], "r-2")
+				new_token.assert_called_once_with("cashier@shop.test")
