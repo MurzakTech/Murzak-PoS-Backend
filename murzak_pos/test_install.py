@@ -17,11 +17,13 @@ class TestAfterInstall(unittest.TestCase):
 			patch.object(install, "ensure_owner_role") as owner_role,
 			patch.object(install, "install_print_formats") as formats,
 			patch.object(install, "enable_languages") as languages,
+			patch.object(install, "pick_earliest_expiry_first") as batch_order,
 		):
 			install.after_install()
 		owner_role.assert_called_once_with()
 		formats.assert_called_once_with()
 		languages.assert_called_once_with()
+		batch_order.assert_called_once_with()
 
 	def test_everything_a_migrate_sets_up_is_also_set_up_on_install(self):
 		"""If a step is added to after_migrate, a new shop must get it too."""
