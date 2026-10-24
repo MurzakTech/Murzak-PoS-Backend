@@ -23,7 +23,7 @@ from murzak_pos.api.pharmacy_rules import add_to_remarks
 from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
 )
-from murzak_pos.api import sales_person_api
+from murzak_pos.api import return_rules, sales_person_api
 from murzak_pos.api.access_control import ensure_record_access, require_any_role
 from murzak_pos.api.business_lists import (
     caller_company,
@@ -2627,6 +2627,10 @@ def create_sales_return(
                     frappe.ValidationError,
                 )
 
+        # A sale cannot be returned for more than it had, in one return or over several
+        if original_invoice:
+            _refuse_over_return(return_doctype, original_invoice, parsed_items)
+
         # Create Credit Note
         cn = frappe.new_doc(return_doctype)
         cn.is_return = 1
@@ -2720,6 +2724,48 @@ def create_sales_return(
             "success": False,
             "message": f"Error creating Sales Return: {safe_error_message(e)}",
         }
+
+
+def _returnable_totals(doctype: str, original, parsed_items: list[dict]):
+    """(asked, sold, already returned) quantities by item code, all in the item's stock unit."""
+    from erpnext.stock.get_item_details import get_conversion_factor
+
+    sold: dict[str, float] = {}
+    for row in original.items:
+        sold[row.item_code] = sold.get(row.item_code, 0) + flt(row.get("stock_qty") or row.qty)
+
+    # Returns still waiting for approval count too, or the same goods could be returned twice meanwhile
+    child = "POS Invoice Item" if doctype == "POS Invoice" else "Sales Invoice Item"
+    rows = frappe.db.sql(
+        f"""select i.item_code, sum(abs(i.stock_qty)) from `tab{child}` i
+        join `tab{doctype}` p on p.name = i.parent
+        where p.return_against = %s and p.is_return = 1 and p.docstatus in (0, 1)
+        group by i.item_code""",
+        original.name,
+    )
+    returned = {item_code: flt(qty) for item_code, qty in rows}
+
+    asked: dict[str, float] = {}
+    for row in parsed_items:
+        item_code = row.get("item_code")
+        factor = 1.0
+        uom = row.get("uom")
+        if uom and uom != frappe.db.get_value("Item", item_code, "stock_uom"):
+            factor = flt(get_conversion_factor(item_code, uom).get("conversion_factor")) or 1.0
+        asked[item_code] = asked.get(item_code, 0) + flt(row.get("qty")) * factor
+    return asked, sold, returned
+
+
+def _refuse_over_return(doctype: str, original, parsed_items: list[dict]) -> None:
+    """Refuse a return of more than the sale still has, counting what was returned before."""
+    asked, sold, returned = _returnable_totals(doctype, original, parsed_items)
+    for over in return_rules.overages(asked, sold, returned):
+        frappe.throw(
+            _("{0}: {1} asked back, but only {2} can still be returned (sold {3}, already returned {4}).").format(
+                over["item_code"], over["asked"], over["left"], over["sold"], over["returned"]
+            ),
+            frappe.ValidationError,
+        )
 
 
 @frappe.whitelist()

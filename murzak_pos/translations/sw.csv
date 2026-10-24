@@ -1281,3 +1281,4 @@
 "That record already exists.","Rekodi hiyo tayari ipo."
 "Something went wrong. Please try again, and contact Murzak support if it keeps happening.","Kuna tatizo limetokea. Tafadhali jaribu tena, na uwasiliane na msaada wa Murzak likiendelea."
 "The list of business types could not be loaded. Please try again.","Orodha ya aina za biashara haikuweza kupakiwa. Tafadhali jaribu tena."
+"{0}: {1} asked back, but only {2} can still be returned (sold {3}, already returned {4}).","{0}: umeomba kurudisha {1}, lakini ni {2} tu zinazoweza kurudishwa bado (zilizouzwa {3}, zilizorudishwa tayari {4})."
