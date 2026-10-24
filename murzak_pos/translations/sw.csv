@@ -1356,3 +1356,4 @@
 "delivery or pickup","kuletewa au kuchukua mwenyewe"
 "see online orders","kuona oda za mtandaoni"
 "{0} products updated.","Bidhaa {0} zimesasishwa."
+"{0}: {1} asked back, but only {2} can still be returned (sold {3}, already returned {4}).","{0}: umeomba kurudisha {1}, lakini ni {2} tu zinazoweza kurudishwa bado (zilizouzwa {3}, zilizorudishwa tayari {4})."

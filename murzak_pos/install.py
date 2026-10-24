@@ -8,13 +8,15 @@ Swahili until the next time the server is updated. These are the same two steps 
 
 from __future__ import annotations
 
+from murzak_pos.api.batch_order import pick_earliest_expiry_first
 from murzak_pos.api.language_api import enable_languages
 from murzak_pos.api.print_api import install_print_formats
 from murzak_pos.api.role_tiers import ensure_owner_role
 
 
 def after_install() -> None:
-	"""Set up the owner role, the print formats and the languages on a freshly installed shop. Safe to run again."""
+	"""Set up the owner role, the print formats, the languages and the batch order on a freshly installed shop. Safe to run again."""
 	ensure_owner_role()
 	install_print_formats()
 	enable_languages()
+	pick_earliest_expiry_first()

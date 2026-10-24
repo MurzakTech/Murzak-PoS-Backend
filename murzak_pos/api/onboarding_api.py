@@ -11,6 +11,7 @@ from erpnext.setup.setup_wizard import setup_wizard
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.error_handler import safe_error_message
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.warehouse_api import get_default_warehouse_for_company, set_default_warehouse_for_company
 
 
 def initialize_site(country="Kenya"):
@@ -550,7 +551,7 @@ def get_company(company_name: str = None) -> dict:
                 "default_expense_account": company.default_expense_account,
                 "default_income_account": company.default_income_account,
                 "cost_center": company.cost_center,
-                "default_warehouse": company.default_warehouse,
+                "default_warehouse": get_default_warehouse_for_company(company.name),
                 # Address and Contact
                 "company_address": company_address,
                 "company_contact": company_contact,
@@ -706,11 +707,13 @@ def update_company(
             company.default_income_account = default_income_account
         if cost_center is not None:
             company.cost_center = cost_center
-        if default_warehouse is not None:
-            company.default_warehouse = default_warehouse
-        
+
         # Save company
         company.save(ignore_permissions=True)
+
+        # ERPNext 15 has no default_warehouse field on Company; the helper uses the custom field
+        if default_warehouse is not None:
+            set_default_warehouse_for_company(company.name, default_warehouse)
         
         # Update company address if provided
         if company_address:
