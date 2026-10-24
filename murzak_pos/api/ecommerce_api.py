@@ -36,6 +36,21 @@ def _is_masked(value: str | None) -> bool:
 	return bool(value and "*" in str(value))
 
 
+
+def store_address_problem(url: str) -> str | None:
+	"""
+	Why the server must not call this store address, or None when it may. The address is fetched from the server,
+	so one inside the server's own network (127.0.0.1, 10.x, the cloud's metadata address...) is refused, with the
+	same check the product image import uses.
+	"""
+	from murzak_pos.api.product_import_images import ImageProblem, check_link
+
+	try:
+		check_link(url)
+	except ImageProblem:
+		return _("That store address cannot be used. Enter the shop's public web address, like https://myshop.com.")
+	return None
+
 @frappe.whitelist()
 def get_ecommerce_settings(company: str | None = None) -> dict[str, Any]:
 	"""
@@ -154,6 +169,9 @@ def save_ecommerce_settings(
 				"success": False,
 				"message": _("Please enter a valid website URL, e.g. https://example.com"),
 			}
+		problem = store_address_problem(store_url)
+		if problem:
+			return {"success": False, "message": problem}
 
 	incoming_key = cstr(settings.get("consumer_key", "")).strip()
 	incoming_secret = cstr(settings.get("consumer_secret", "")).strip()
@@ -248,6 +266,9 @@ def test_woocommerce_connection(
 	parsed = urlparse(url)
 	if not parsed.scheme or not parsed.netloc:
 		return {"success": False, "message": _("Invalid store URL format. Must include https:// or http://")}
+	problem = store_address_problem(url)
+	if problem:
+		return {"success": False, "message": problem}
 
 	import requests
 
@@ -267,6 +288,8 @@ def test_woocommerce_connection(
 				auth=(key, secret),
 				timeout=12,
 				headers={"User-Agent": "MurzakPOS-WooCommerce-Connector/1.0"},
+				# A redirect could point anywhere, past the address check
+				allow_redirects=False,
 			)
 			if resp.status_code == 200:
 				success = True
@@ -397,7 +420,8 @@ def sync_woocommerce_catalog(
 	secret = stored.get("consumer_secret")
 
 	wc_synced = 0
-	if url and key and secret:
+	# An address saved before addresses were checked is checked again before anything is sent to it
+	if url and key and secret and not store_address_problem(url):
 		import requests
 
 		batch_endpoint = f"{url.rstrip('/')}/wp-json/wc/v3/products/batch"
@@ -418,6 +442,7 @@ def sync_woocommerce_catalog(
 				json={"create": batch_create, "update": []},
 				timeout=20,
 				headers={"User-Agent": "MurzakPOS-WooCommerce-Connector/1.0"},
+				allow_redirects=False,
 			)
 			if resp.status_code in (200, 201):
 				wc_synced = len(batch_create)
