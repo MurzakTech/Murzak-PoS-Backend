@@ -20,7 +20,7 @@ from murzak_pos.api.access_control import require_any_role
 from murzak_pos.api.payment_gateway_common import resolve_company
 
 SETTINGS_DOCTYPE = "Navari KRA eTims Settings"
-ETIMS_ROLES = frozenset({"System Manager", "Accounts Manager"})
+ETIMS_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager"})
 
 # What the screen may read, and the part of it that may be changed. Anything else the screen sends is
 # reported back as ignored, so nobody is told a change was saved when it was not.

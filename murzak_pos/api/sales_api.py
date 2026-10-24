@@ -2540,7 +2540,7 @@ def _copy_tax_lines(source: str, doc) -> None:
 
 
 # Returns hand money back, so only managers and owners may record or cancel them.
-RETURN_ROLES = {"System Manager", "Sales Manager", "Accounts Manager"}
+RETURN_ROLES = {"Business Owner", "System Manager", "Sales Manager", "Accounts Manager"}
 
 
 def _check_return_access(company: Optional[str] = None, invoice: Optional[str] = None) -> str:
@@ -3369,7 +3369,7 @@ def close_pos_opening_entry(
 
 
 # Roles that may close or cancel any shift of their own business, not only their own
-SHIFT_MANAGER_ROLES = {"System Manager", "Accounts Manager", "Sales Manager"}
+SHIFT_MANAGER_ROLES = {"Business Owner", "System Manager", "Accounts Manager", "Sales Manager"}
 
 
 def _ensure_can_manage_shift(opening_entry) -> None:

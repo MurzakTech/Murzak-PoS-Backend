@@ -3790,7 +3790,9 @@ def seed_global_products(company: str = None, products_data: list = None) -> Dic
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)
     
     # Only System Managers can seed products
-    if "System Manager" not in frappe.get_roles():
+    from murzak_pos.api.role_tiers import OWNER_ROLES
+
+    if not OWNER_ROLES & set(frappe.get_roles()):
         frappe.throw(_("Only System Managers can seed products"), frappe.PermissionError)
     
     # Try to use global products seeding if available

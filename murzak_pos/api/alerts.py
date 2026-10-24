@@ -24,7 +24,7 @@ from murzak_pos.api.payment_gateway_common import resolve_company
 SETTINGS = "Business Alert Settings"
 LOG = "Business Alert Log"
 # Who may read or change a business's alert settings
-SETTINGS_ROLES = {"System Manager", "Accounts Manager", "Sales Manager"}
+SETTINGS_ROLES = {"Business Owner", "System Manager", "Accounts Manager", "Sales Manager"}
 
 
 # --- settings -------------------------------------------------------------------------------------

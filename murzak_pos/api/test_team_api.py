@@ -153,10 +153,10 @@ class TestOrderAndCounts(unittest.TestCase):
 class TestTierSetup(unittest.TestCase):
 	def test_it_gives_the_roles_of_each_kind_from_the_one_table(self):
 		setup = team_calc.tier_setup()
-		self.assertEqual(setup["grant"]["owner"], ["System Manager"])
+		self.assertEqual(setup["grant"]["owner"], ["Business Owner"])
 		self.assertEqual(setup["grant"]["cashier"], ["Sales User"])
 		self.assertEqual(set(setup["grant"]["manager"]), set(role_tiers.ROLES_TO_GRANT["manager"]))
-		self.assertEqual(setup["owner_roles"], ["System Manager"])
+		self.assertEqual(setup["owner_roles"], ["Business Owner", "System Manager"])
 		self.assertEqual(setup["manager_roles"], sorted(role_tiers.MANAGER_ROLES))
 
 

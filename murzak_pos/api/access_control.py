@@ -19,8 +19,7 @@ import frappe
 from frappe import _
 
 from murzak_pos.api.payment_gateway_common import get_user_companies
-
-MANAGER_ROLE = "System Manager"
+from murzak_pos.api.role_tiers import OWNER_ROLES
 
 # The field that says which company owns a record. Most records have `company`; customers, items, price lists and
 # suppliers carry their owner in `custom_company` (added by this app).
@@ -36,10 +35,11 @@ OWNER_FIELD = {
 # (src/config/roleAccessConfig.js in the Murzak-PoS-Frontend repository) so the server and the screens
 # agree. "All" is left out on purpose: Frappe gives that role to every user, including cashiers.
 CATALOGUE_ROLES = frozenset(
-	{"System Manager", "Sales Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
+	{"Business Owner", "System Manager", "Sales Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
 )
 STOCK_ROLES = frozenset(
 	{
+		"Business Owner",
 		"System Manager",
 		"Purchase Manager",
 		"Stock Manager",
@@ -49,10 +49,11 @@ STOCK_ROLES = frozenset(
 	}
 )
 STOCK_COUNT_ROLES = frozenset(
-	{"System Manager", "Purchase Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
+	{"Business Owner", "System Manager", "Purchase Manager", "Stock Manager", "Item Manager", "Agriculture Manager"}
 )
 CREDIT_ROLES = frozenset(
 	{
+		"Business Owner",
 		"System Manager",
 		"Sales Manager",
 		"Accounts Manager",
@@ -62,9 +63,9 @@ CREDIT_ROLES = frozenset(
 	}
 )
 # The frontend's full Suppliers screens (supplier groups among them); Purchase User only views suppliers
-SUPPLIER_ROLES = frozenset({"System Manager", "Purchase Manager"})
-LOYALTY_ROLES = frozenset({"System Manager", "Accounts Manager"})
-TRANSFER_ROLES = frozenset({"System Manager", "Stock Manager", "Stock User"})
+SUPPLIER_ROLES = frozenset({"Business Owner", "System Manager", "Purchase Manager"})
+LOYALTY_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager"})
+TRANSFER_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager", "Stock User"})
 
 
 def require_manager() -> None:
@@ -74,7 +75,7 @@ def require_manager() -> None:
 		frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
 	if user == "Administrator":
 		return
-	if MANAGER_ROLE not in frappe.get_roles(user):
+	if not OWNER_ROLES & set(frappe.get_roles(user)):
 		frappe.throw(
 			_("Only a business owner or System Manager can do this."),
 			frappe.PermissionError,

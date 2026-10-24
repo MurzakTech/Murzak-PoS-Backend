@@ -30,7 +30,7 @@ OAUTH_SCOPES = "all"
 
 # Standard roles to assign to registered business owners for full access
 STANDARD_BUSINESS_ROLES = [
-    "System Manager",  # Full system access
+    "Business Owner",  # Runs their own business. Never System Manager, which reaches every business on a site
     "Item Manager",    # For Warehouse, Item creation and management
     "Stock Manager",   # For stock/inventory management
     "Stock User",      # Basic stock operations

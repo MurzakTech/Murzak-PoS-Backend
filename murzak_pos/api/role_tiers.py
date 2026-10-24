@@ -35,7 +35,10 @@ OWNER = "owner"
 MANAGER = "manager"
 CASHIER = "cashier"
 
-OWNER_ROLES = frozenset({"System Manager"})
+# A business owner holds Business Owner. System Manager is for Murzak's own staff; it still counts as an owner here so
+# their accounts, and owners not yet moved to Business Owner, keep working.
+OWNER_ROLE = "Business Owner"
+OWNER_ROLES = frozenset({OWNER_ROLE, "System Manager"})
 # Copied from the roles the frontend's role table (src/config/roleAccessConfig.js) lets into Reports today,
 # minus "All", which Frappe gives to every user.
 MANAGER_ROLES = frozenset(
@@ -61,7 +64,7 @@ CAPABILITIES = {
 # What to give a person so they become each kind. Used by the Team page when it assigns a role; nothing here
 # changes anyone's roles by itself.
 ROLES_TO_GRANT = {
-	OWNER: ("System Manager",),
+	OWNER: ("Business Owner",),
 	MANAGER: ("Sales Manager", "Purchase Manager", "Stock Manager", "Accounts Manager", "Item Manager"),
 	CASHIER: ("Sales User",),
 }
@@ -117,3 +120,13 @@ def get_my_access() -> dict:
 		"success": True,
 		"data": {"tier": tier, "can": {name: tier in who for name, who in CAPABILITIES.items()}},
 	}
+
+
+def ensure_owner_role() -> None:
+	"""Create the Business Owner role if the site does not have it. Safe to run again (after_install, after_migrate)."""
+	if frappe.db.exists("Role", OWNER_ROLE):
+		return
+	role = frappe.new_doc("Role")
+	role.role_name = OWNER_ROLE
+	role.desk_access = 1
+	role.insert(ignore_permissions=True)

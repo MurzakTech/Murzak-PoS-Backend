@@ -23,7 +23,7 @@ from murzak_pos.api.payment_gateway_common import resolve_company
 SETTINGS = "Approval Settings"
 REQUEST = "Approval Request"
 # Who may read or change a business's approval limits
-SETTINGS_ROLES = frozenset({"System Manager", "Accounts Manager"})
+SETTINGS_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager"})
 LIMIT_FIELD = {rules.REFUND: "refund_limit", rules.PURCHASE_ORDER: "purchase_order_limit"}
 KIND_OF = {"Sales Invoice": rules.REFUND, "Purchase Order": rules.PURCHASE_ORDER}
 

@@ -20,8 +20,8 @@ from murzak_pos.api.payment_gateway_common import resolve_company
 
 PERSON = "Sales Person"
 ROOT = "Sales Team"  # ERPNext's top node of the sales person tree
-MANAGE_ROLES = frozenset({"System Manager", "Sales Manager"})
-REPORT_ROLES = frozenset({"System Manager", "Sales Manager", "Accounts Manager"})
+MANAGE_ROLES = frozenset({"Business Owner", "System Manager", "Sales Manager"})
+REPORT_ROLES = frozenset({"Business Owner", "System Manager", "Sales Manager", "Accounts Manager"})
 MAX_RATE = 100.0
 
 

@@ -18,7 +18,7 @@ import frappe
 from frappe import _
 
 # Roles allowed to view or change gateway credentials. Business owners get both at registration.
-GATEWAY_ADMIN_ROLES = {"System Manager", "Accounts Manager"}
+GATEWAY_ADMIN_ROLES = {"Business Owner", "System Manager", "Accounts Manager"}
 
 # Daraja refuses callback URLs that contain these words (case-insensitive), so callbacks
 # live in payment_callbacks.py under neutral names.

@@ -13,12 +13,12 @@ PENDING = "Pending"
 APPROVED = "Approved"
 REJECTED = "Rejected"
 
-OWNER_ROLE = "System Manager"
+OWNER_ROLES = frozenset({"Business Owner", "System Manager"})
 
 # Who may approve what. A cashier or a sales manager who records a refund cannot approve it.
 APPROVER_ROLES = {
-	REFUND: frozenset({"System Manager", "Accounts Manager"}),
-	PURCHASE_ORDER: frozenset({"System Manager", "Accounts Manager", "Purchase Manager"}),
+	REFUND: frozenset({"Business Owner", "System Manager", "Accounts Manager"}),
+	PURCHASE_ORDER: frozenset({"Business Owner", "System Manager", "Accounts Manager", "Purchase Manager"}),
 }
 
 
@@ -29,7 +29,7 @@ def needs_approval(amount, limit) -> bool:
 
 
 def approver_roles(kind: str) -> frozenset:
-	return APPROVER_ROLES.get(kind, frozenset({OWNER_ROLE}))
+	return APPROVER_ROLES.get(kind, OWNER_ROLES)
 
 
 def decision_problem(kind: str, requested_by: str, decided_by: str, roles) -> str | None:
@@ -44,6 +44,6 @@ def decision_problem(kind: str, requested_by: str, decided_by: str, roles) -> st
 	roles = set(roles)
 	if not roles & approver_roles(kind):
 		return "Only a manager with approval rights can approve or reject this."
-	if decided_by == requested_by and OWNER_ROLE not in roles:
+	if decided_by == requested_by and not roles & OWNER_ROLES:
 		return "You cannot approve your own request. Ask another manager."
 	return None
