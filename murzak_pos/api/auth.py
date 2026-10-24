@@ -410,58 +410,18 @@ def register_user(
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=30, seconds=10 * 60)
-def login_user(email: str, password: str) -> Dict:
-    """Login user and generate OAuth Bearer Token
-    
-    Args:
-        email: User email
-        password: User password
-        
-    Returns:
-        User details and OAuth Bearer Token
+def login_user(email: str, password: str, otp: Optional[str] = None) -> Dict:
+    """Older address of auth_api.login_user, kept for callers that still use it.
+
+    It hands over to auth_api.login_user, so the lockout after repeated failures and the two-step code
+    apply here too; before, this address skipped both. The rate limit above already counted this call,
+    so the undecorated function is called rather than counting it twice.
     """
-    # Authenticate user
-    user = frappe.auth.LoginManager()
-    user.authenticate(user=email, pwd=password)
-    
-    if not user.user:
-        frappe.throw(_("Invalid email or password"), frappe.AuthenticationError)
-    
-    # Check if user is enabled
-    if not frappe.db.get_value("User", user.user, "enabled"):
-        frappe.throw(_("User account is disabled"), frappe.AuthenticationError)
-    
-    # Get or generate API keys
-    api_key = frappe.db.get_value("User", user.user, "api_key")
-    if not api_key:
-        api_keys = generate_keys(user.user)
-        api_key = api_keys.get("api_key")
-    
-    # Generate OAuth Bearer Token
-    oauth_token = generate_oauth_bearer_token(user.user)
-    
-    # Get user details
-    user_doc = frappe.get_doc("User", user.user)
-    
-    # Set HTTP status code for successful login
-    frappe.local.response["http_status_code"] = 200
-    
-    return {
-        "user": {
-            "name": user_doc.name,
-            "email": user_doc.email,
-            "first_name": user_doc.first_name,
-            "last_name": user_doc.last_name,
-            "full_name": user_doc.full_name,
-        },
-        "api_key": api_key,
-        "access_token": oauth_token["access_token"],
-        "token_type": oauth_token["token_type"],
-        "expires_in": oauth_token["expires_in"],
-        "expires_at": oauth_token["expires_at"],
-        "refresh_token": oauth_token["refresh_token"],
-        "message": _("Login successful")
-    }
+    import inspect
+
+    from murzak_pos.api import auth_api
+
+    return inspect.unwrap(auth_api.login_user)(email=email, password=password, otp=otp)
 
 
 @frappe.whitelist()
