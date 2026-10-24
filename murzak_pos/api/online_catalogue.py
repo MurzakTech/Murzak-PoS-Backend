@@ -35,9 +35,7 @@ def default_warehouse(company: str, preferred: str | None = None) -> str:
 	if preferred and frappe.db.exists("Warehouse", {"name": preferred, "company": company}):
 		return preferred
 	return (
-		frappe.db.get_value(
-			"Warehouse", {"company": company, "is_group": 0}, "name", order_by="creation asc"
-		)
+		frappe.db.get_value("Warehouse", {"company": company, "is_group": 0}, "name", order_by="creation asc")
 		or ""
 	)
 
@@ -146,9 +144,5 @@ def iter_all_items(company: str, warehouse: str, batch: int = 100):
 def categories(company: str) -> list[str]:
 	"""The product categories that have at least one online product."""
 	return sorted(
-		{
-			g
-			for g in frappe.get_all("Item", filters=online_filters(company), pluck="item_group")
-			if g
-		}
+		{g for g in frappe.get_all("Item", filters=online_filters(company), pluck="item_group") if g}
 	)

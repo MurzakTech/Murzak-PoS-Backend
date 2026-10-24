@@ -46,14 +46,18 @@ def _currency(company: str) -> str:
 
 
 def payment_options(settings: dict) -> list[str]:
-	return [code for code, on in (("cash", settings["accept_cash"]), ("mpesa", settings["accept_mpesa"])) if on]
+	return [
+		code for code, on in (("cash", settings["accept_cash"]), ("mpesa", settings["accept_mpesa"])) if on
+	]
 
 
 def public_store(company: str, settings: dict) -> dict:
 	"""What a customer is told about a store."""
 	return {
 		"slug": settings["slug"],
-		"store_name": settings["store_name"] or frappe.db.get_value("Company", company, "company_name") or company,
+		"store_name": settings["store_name"]
+		or frappe.db.get_value("Company", company, "company_name")
+		or company,
 		"tagline": settings["tagline"],
 		"whatsapp_number": settings["whatsapp_number"],
 		"delivery_enabled": settings["delivery_enabled"],
@@ -103,7 +107,12 @@ def list_products(
 	search = cstr(search).strip()[:80] or None
 	category = cstr(category).strip()[:140] or None
 	rows = online_catalogue.list_items(
-		company, warehouse, search=search, category=category, page=cint(page) or 1, page_size=cint(page_size) or 20
+		company,
+		warehouse,
+		search=search,
+		category=category,
+		page=cint(page) or 1,
+		page_size=cint(page_size) or 20,
 	)
 	return {
 		"success": True,
@@ -124,7 +133,16 @@ def get_product(slug: str, item_code: str) -> dict[str, Any]:
 	items = frappe.get_all(
 		"Item",
 		filters={**online_catalogue.online_filters(company), "name": cstr(item_code).strip()},
-		fields=["name", "item_name", "item_group", "stock_uom", "standard_rate", "description", "image", "is_stock_item"],
+		fields=[
+			"name",
+			"item_name",
+			"item_group",
+			"stock_uom",
+			"standard_rate",
+			"description",
+			"image",
+			"is_stock_item",
+		],
 		limit_page_length=1,
 	)
 	if not items:
@@ -150,7 +168,9 @@ def _within_limit(key: str, limit: int, seconds: int) -> bool:
 def _hold_prompt_lock(order: str) -> bool:
 	"""One M-Pesa prompt at a time per order, so a double tap never sends the customer two."""
 	cache = frappe.cache()
-	return bool(cache.set(cache.make_key(f"murzak_pos:store_prompt:{order}"), 1, nx=True, ex=PROMPT_LOCK_SECONDS))
+	return bool(
+		cache.set(cache.make_key(f"murzak_pos:store_prompt:{order}"), 1, nx=True, ex=PROMPT_LOCK_SECONDS)
+	)
 
 
 def send_mpesa_prompt(company: str, order: str, phone: str, amount: float) -> dict:
@@ -190,7 +210,9 @@ def whatsapp_order_link(settings: dict, order: str, token: str, lines: list[dict
 	if not number:
 		return ""
 	items = ", ".join(f"{flt(line['qty']):g} x {line['item_name']}" for line in lines)
-	text = _("Hello, I have placed order {0}: {1}. Total {2}. Tracking code {3}").format(order, items, flt(total), token)
+	text = _("Hello, I have placed order {0}: {1}. Total {2}. Tracking code {3}").format(
+		order, items, flt(total), token
+	)
 	return f"https://wa.me/{number}?text={quote(text)}"
 
 
@@ -217,7 +239,10 @@ def checkout(
 		frappe.throw(_("Please enter your name."), frappe.ValidationError)
 	phone = normalize_kenyan_phone(phone)
 
-	if delivery_method not in online_orders.DELIVERY_METHODS or not settings[f"{delivery_method.lower()}_enabled"]:
+	if (
+		delivery_method not in online_orders.DELIVERY_METHODS
+		or not settings[f"{delivery_method.lower()}_enabled"]
+	):
 		frappe.throw(_("Please choose how you want to receive your order."), frappe.ValidationError)
 	address = cstr(address).strip()
 	if delivery_method == "Delivery" and len(address) < 5:
@@ -226,7 +251,9 @@ def checkout(
 		frappe.throw(_("Please choose how you will pay."), frappe.ValidationError)
 
 	if not _within_limit(f"murzak_pos:store_orders:{company}:{phone}", ORDERS_PER_PHONE_PER_HOUR, 60 * 60):
-		frappe.throw(_("Too many orders from this phone number. Please try again later."), frappe.ValidationError)
+		frappe.throw(
+			_("Too many orders from this phone number. Please try again later."), frappe.ValidationError
+		)
 
 	placed = online_orders.place_order(
 		company,
@@ -274,7 +301,16 @@ def pay_for_order(token: str) -> dict[str, Any]:
 	order = frappe.db.get_value(
 		"Sales Order",
 		{"custom_online_token": token, "custom_online_channel": "Website"},
-		["name", "company", "docstatus", "grand_total", "custom_online_payment", "custom_online_paid", "custom_online_contact", "custom_online_fulfilment"],
+		[
+			"name",
+			"company",
+			"docstatus",
+			"grand_total",
+			"custom_online_payment",
+			"custom_online_paid",
+			"custom_online_contact",
+			"custom_online_fulfilment",
+		],
 		as_dict=True,
 	)
 	if not order:
@@ -287,4 +323,8 @@ def pay_for_order(token: str) -> dict[str, Any]:
 		frappe.throw(_("This order is paid on delivery or pickup."), frappe.ValidationError)
 
 	prompt = send_mpesa_prompt(order.company, order.name, order.custom_online_contact, order.grand_total)
-	return {"success": prompt["sent"], "message": prompt["message"], "data": {"paid": False, "payment_prompt": prompt}}
+	return {
+		"success": prompt["sent"],
+		"message": prompt["message"],
+		"data": {"paid": False, "payment_prompt": prompt},
+	}

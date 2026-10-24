@@ -32,7 +32,9 @@ class FakeOrder:
 		self.submitted = False
 
 	def append(self, _table, values):
-		self.items.append(frappe._dict(values, item_name=values["item_code"], amount=values["qty"] * values["rate"]))
+		self.items.append(
+			frappe._dict(values, item_name=values["item_code"], amount=values["qty"] * values["rate"])
+		)
 		self.grand_total = sum(i.amount for i in self.items)
 
 	def insert(self):
@@ -48,7 +50,11 @@ class FakeOrder:
 class TestCleanLines(unittest.TestCase):
 	def test_repeated_product_is_added_together(self):
 		lines = online_orders.clean_lines(
-			[{"item_code": "RICE", "qty": 1}, {"item_code": "RICE", "qty": "2"}, {"item_code": "TEA", "qty": 1}]
+			[
+				{"item_code": "RICE", "qty": 1},
+				{"item_code": "RICE", "qty": "2"},
+				{"item_code": "TEA", "qty": 1},
+			]
 		)
 		self.assertEqual({l["item_code"]: l["qty"] for l in lines}, {"RICE": 3.0, "TEA": 1.0})
 
@@ -87,7 +93,9 @@ class TestOnlineCatalogue(unittest.TestCase):
 			row(item_code="TEA", actual_qty=2, reserved_qty=5),
 		]
 		with patch.object(frappe, "get_all", return_value=bins):
-			self.assertEqual(online_catalogue.available_stock(["RICE", "TEA"], "Main - D"), {"RICE": 7.0, "TEA": 0.0})
+			self.assertEqual(
+				online_catalogue.available_stock(["RICE", "TEA"], "Main - D"), {"RICE": 7.0, "TEA": 0.0}
+			)
 
 	def test_no_warehouse_means_no_stock_lookup(self):
 		with patch.object(frappe, "get_all") as get_all:
@@ -96,8 +104,22 @@ class TestOnlineCatalogue(unittest.TestCase):
 
 	def test_rows_show_service_always_available_and_empty_shelf_not(self):
 		items = [
-			row(name="RICE", item_name="Rice", item_group="Food", stock_uom="Kg", standard_rate=150, is_stock_item=1),
-			row(name="DELIVERY", item_name="Delivery", item_group="Services", stock_uom="Nos", standard_rate=100, is_stock_item=0),
+			row(
+				name="RICE",
+				item_name="Rice",
+				item_group="Food",
+				stock_uom="Kg",
+				standard_rate=150,
+				is_stock_item=1,
+			),
+			row(
+				name="DELIVERY",
+				item_name="Delivery",
+				item_group="Services",
+				stock_uom="Nos",
+				standard_rate=100,
+				is_stock_item=0,
+			),
 		]
 		with patch.object(online_catalogue, "available_stock", return_value={}):
 			rows = online_catalogue.rows_for(items, "Main - D")
@@ -109,7 +131,9 @@ class TestOnlineCatalogue(unittest.TestCase):
 
 	def test_every_page_is_read_for_a_large_shop(self):
 		pages = {1: [1] * 100, 2: [1] * 100, 3: [1] * 5}
-		with patch.object(online_catalogue, "list_items", side_effect=lambda *a, page=1, **k: pages.get(page, [])):
+		with patch.object(
+			online_catalogue, "list_items", side_effect=lambda *a, page=1, **k: pages.get(page, [])
+		):
 			total = sum(len(batch) for batch in online_catalogue.iter_all_items("Duka Ltd", "Main - D"))
 		self.assertEqual(total, 205)
 
@@ -139,7 +163,9 @@ class TestPlaceOrder(unittest.TestCase):
 		frappe.db.get_value.return_value = None
 
 	def place(self, **kw):
-		args = dict(company="Duka Ltd", channel="Website", lines=[{"item_code": "RICE", "qty": 2}], phone="0712345678")
+		args = dict(
+			company="Duka Ltd", channel="Website", lines=[{"item_code": "RICE", "qty": 2}], phone="0712345678"
+		)
 		args.update(kw)
 		return online_orders.place_order(**args)
 
@@ -208,7 +234,11 @@ class TestStaffCalls(unittest.TestCase):
 
 	def order_row(self, status, docstatus=1, company="Duka Ltd", channel="Website"):
 		frappe.db.get_value.return_value = row(
-			name="SO-1", company=company, custom_online_channel=channel, custom_online_fulfilment=status, docstatus=docstatus
+			name="SO-1",
+			company=company,
+			custom_online_channel=channel,
+			custom_online_fulfilment=status,
+			docstatus=docstatus,
 		)
 
 	def test_a_finished_order_cannot_be_moved(self):

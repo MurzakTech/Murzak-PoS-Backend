@@ -71,9 +71,9 @@ def order_arguments(payload: dict) -> dict:
 		sku = cstr(li.get("sku")).strip()
 		if not sku:
 			frappe.throw(
-				_("Product '{0}' has no SKU on the website, so it cannot be matched to a POS product.").format(
-					cstr(li.get("name"))[:60]
-				),
+				_(
+					"Product '{0}' has no SKU on the website, so it cannot be matched to a POS product."
+				).format(cstr(li.get("name"))[:60]),
 				frappe.ValidationError,
 			)
 		# What the customer really paid per unit, after any discount
@@ -85,7 +85,9 @@ def order_arguments(payload: dict) -> dict:
 		note_parts.append(cstr(payload["customer_note"]))
 	note_parts.append(
 		_("Website total {0} {1}, of which shipping {2}.").format(
-			cstr(payload.get("currency")), cstr(payload.get("total")), cstr(payload.get("shipping_total") or "0")
+			cstr(payload.get("currency")),
+			cstr(payload.get("total")),
+			cstr(payload.get("shipping_total") or "0"),
 		)
 	)
 
@@ -120,14 +122,21 @@ def handle_order(company: str, stored: dict, payload: dict) -> dict:
 	if status in CANCEL_STATUSES:
 		existing = frappe.db.get_value(
 			"Sales Order",
-			{"company": company, "custom_online_channel": "WooCommerce", "custom_online_ref": reference, "docstatus": 1},
+			{
+				"company": company,
+				"custom_online_channel": "WooCommerce",
+				"custom_online_ref": reference,
+				"docstatus": 1,
+			},
 			["name", "custom_online_fulfilment"],
 			as_dict=True,
 		)
 		if existing and existing.custom_online_fulfilment not in ("Delivered", "Cancelled"):
 			online_orders.cancel_order_document(existing.name)
 			frappe.db.set_value("Sales Order", existing.name, "custom_online_fulfilment", "Cancelled")
-			_remember(company, stored, _("Order {0} was cancelled on the website and here.").format(reference))
+			_remember(
+				company, stored, _("Order {0} was cancelled on the website and here.").format(reference)
+			)
 			return {"recorded": False, "cancelled": existing.name}
 		return {"recorded": False, "ignored": status}
 
@@ -159,7 +168,9 @@ def woocommerce_order(t: str | None = None, **kwargs):
 	secret = stored.get("webhook_secret")
 
 	# One answer for an unknown address and a bad signature, so neither tells a stranger anything
-	if not (company and secret and signature_ok(secret, body, frappe.get_request_header("X-WC-Webhook-Signature"))):
+	if not (
+		company and secret and signature_ok(secret, body, frappe.get_request_header("X-WC-Webhook-Signature"))
+	):
 		frappe.throw(_("Not allowed."), frappe.AuthenticationError)
 
 	if not (stored.get("enabled") and stored.get("sync_orders", True)):

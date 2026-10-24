@@ -105,7 +105,9 @@ class TestPushProducts(unittest.TestCase):
 	def test_stock_only_touches_known_products_and_leaves_prices_alone(self):
 		shop = FakeShop(existing=["RICE"])
 		with patch.object(ecommerce_api, "woo_request", shop):
-			result = ecommerce_api.push_products(SETTINGS, [product("RICE", stock=0), product("TEA")], stock_only=True)
+			result = ecommerce_api.push_products(
+				SETTINGS, [product("RICE", stock=0), product("TEA")], stock_only=True
+			)
 		self.assertEqual((result["created"], result["updated"], result["skipped"]), (0, 1, 1))
 		change = shop.batches[0]["update"][0]
 		self.assertNotIn("regular_price", change)
@@ -126,7 +128,9 @@ class TestRunCatalogSync(unittest.TestCase):
 			patch.object(ecommerce_api, "write_settings"),
 			patch.object(ecommerce_api, "now_datetime", return_value="2026-10-24 10:00:00"),
 			patch.object(ecommerce_api.online_catalogue, "default_warehouse", return_value="Main - D"),
-			patch.object(ecommerce_api.online_catalogue, "iter_all_items", return_value=iter([[product("RICE")]])),
+			patch.object(
+				ecommerce_api.online_catalogue, "iter_all_items", return_value=iter([[product("RICE")]])
+			),
 		]
 		self.mocks = [p.start() for p in patches]
 		for p in patches:
@@ -144,7 +148,15 @@ class TestRunCatalogSync(unittest.TestCase):
 		self.assertEqual(ecommerce_api.write_settings.call_args.args[1]["last_sync_status"], "success")
 
 	def test_nothing_sent_is_a_failure_not_a_success(self):
-		out = self.sync({"created": 0, "updated": 0, "failed": 1, "skipped": 0, "errors": ["The online store refused the keys."]})
+		out = self.sync(
+			{
+				"created": 0,
+				"updated": 0,
+				"failed": 1,
+				"skipped": 0,
+				"errors": ["The online store refused the keys."],
+			}
+		)
 		self.assertFalse(out["success"])
 		self.assertEqual(out["data"]["status"], "failed")
 		self.assertIn("refused", out["message"])
@@ -176,7 +188,11 @@ class TestStockQueue(unittest.TestCase):
 		doc = MagicMock()
 		doc.get.side_effect = lambda k, d=None: {
 			"company": "Duka Ltd",
-			"items": [frappe._dict(item_code="RICE"), frappe._dict(item_code="TEA"), frappe._dict(item_code="RICE")],
+			"items": [
+				frappe._dict(item_code="RICE"),
+				frappe._dict(item_code="TEA"),
+				frappe._dict(item_code="RICE"),
+			],
 		}.get(k, d)
 		return doc
 
@@ -189,7 +205,11 @@ class TestStockQueue(unittest.TestCase):
 		self.assertTrue(kwargs["enqueue_after_commit"])
 
 	def test_a_business_without_an_online_shop_queues_nothing(self):
-		for stored in (None, json.dumps({"enabled": False, "store_url": "https://x.co"}), json.dumps({"enabled": True, "store_url": "https://x.co", "auto_sync_stock": False})):
+		for stored in (
+			None,
+			json.dumps({"enabled": False, "store_url": "https://x.co"}),
+			json.dumps({"enabled": True, "store_url": "https://x.co", "auto_sync_stock": False}),
+		):
 			frappe.db.get_default.return_value = stored
 			ecommerce_api.queue_stock_push(self.invoice())
 		frappe.enqueue.assert_not_called()
@@ -212,7 +232,12 @@ def woo_order(**over):
 		"payment_method_title": "M-Pesa",
 		"date_paid": "2026-10-24T09:00:00",
 		"customer_note": "Call at the gate",
-		"billing": {"first_name": "Amina", "last_name": "Wanjiru", "phone": "+254 712 345 678", "email": "a@x.co"},
+		"billing": {
+			"first_name": "Amina",
+			"last_name": "Wanjiru",
+			"phone": "+254 712 345 678",
+			"email": "a@x.co",
+		},
 		"shipping": {"address_1": "Moi Avenue 4", "city": "Nairobi"},
 		"shipping_lines": [{"method_id": "flat_rate"}],
 		"line_items": [
@@ -272,13 +297,17 @@ class TestHandleOrder(unittest.TestCase):
 			self.addCleanup(p.stop)
 
 	def test_a_paid_order_is_recorded(self):
-		with patch.object(online_webhooks.online_orders, "place_order", return_value={"created": True, "order": "SO-1"}) as place:
+		with patch.object(
+			online_webhooks.online_orders, "place_order", return_value={"created": True, "order": "SO-1"}
+		) as place:
 			out = online_webhooks.handle_order("Duka Ltd", dict(SETTINGS), woo_order())
 		self.assertEqual(out, {"recorded": True, "order": "SO-1"})
 		self.assertEqual(place.call_args.args[0], "Duka Ltd")
 
 	def test_a_repeated_delivery_is_not_a_second_order(self):
-		with patch.object(online_webhooks.online_orders, "place_order", return_value={"created": False, "order": "SO-1"}):
+		with patch.object(
+			online_webhooks.online_orders, "place_order", return_value={"created": False, "order": "SO-1"}
+		):
 			out = online_webhooks.handle_order("Duka Ltd", dict(SETTINGS), woo_order())
 		self.assertFalse(out["recorded"])
 
@@ -316,10 +345,15 @@ class TestWebhookEndpoint(unittest.TestCase):
 		stored = dict(SETTINGS, webhook_secret="s3cret") if stored is None else stored
 		request = MagicMock()
 		request.get_data.return_value = body
-		with patch.object(frappe, "request", request, create=True), patch.object(
-			frappe, "get_request_header", return_value=signature
-		), patch.object(online_webhooks.ecommerce_api, "company_for_webhook_token", return_value="Duka Ltd" if token else None), patch.object(
-			online_webhooks.ecommerce_api, "read_settings", return_value=stored
+		with (
+			patch.object(frappe, "request", request, create=True),
+			patch.object(frappe, "get_request_header", return_value=signature),
+			patch.object(
+				online_webhooks.ecommerce_api,
+				"company_for_webhook_token",
+				return_value="Duka Ltd" if token else None,
+			),
+			patch.object(online_webhooks.ecommerce_api, "read_settings", return_value=stored),
 		):
 			return self.unwrapped()(t=token)
 
@@ -360,7 +394,11 @@ class TestWebhookEndpoint(unittest.TestCase):
 
 	def test_order_sync_switched_off_ignores_orders(self):
 		body = json.dumps(woo_order()).encode()
-		out = self.call(body=body, signature=self.sign(body), stored=dict(SETTINGS, webhook_secret="s3cret", sync_orders=False))
+		out = self.call(
+			body=body,
+			signature=self.sign(body),
+			stored=dict(SETTINGS, webhook_secret="s3cret", sync_orders=False),
+		)
 		self.assertIn("ignored", out)
 
 

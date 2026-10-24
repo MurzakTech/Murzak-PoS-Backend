@@ -47,7 +47,19 @@ class TestSlugRules(unittest.TestCase):
 			self.assertIsNone(online_store_api.slug_problem(slug, "Duka Ltd"), slug)
 
 	def test_bad_and_reserved_names(self):
-		for slug in ("ab", "-abc", "abc-", "Has Space", "UPPER", "a" * 41, "with_underscore", "api", "admin", "login", ""):
+		for slug in (
+			"ab",
+			"-abc",
+			"abc-",
+			"Has Space",
+			"UPPER",
+			"a" * 41,
+			"with_underscore",
+			"api",
+			"admin",
+			"login",
+			"",
+		):
 			self.assertIsNotNone(online_store_api.slug_problem(slug, "Duka Ltd"), slug)
 
 	def test_a_name_taken_by_another_business_is_refused_but_your_own_is_fine(self):
@@ -90,14 +102,18 @@ class TestSaveStore(unittest.TestCase):
 		return online_store_api.save_online_store(json.dumps(fields))
 
 	def test_a_complete_store_can_open_and_its_name_is_reserved(self):
-		out = self.save(enabled=1, slug="duka-ya-amina", accept_cash=1, delivery_enabled=1, whatsapp_number="0712345678")
+		out = self.save(
+			enabled=1, slug="duka-ya-amina", accept_cash=1, delivery_enabled=1, whatsapp_number="0712345678"
+		)
 		self.assertTrue(out["success"], out)
 		self.assertEqual(out["data"]["whatsapp_number"], "254712345678")
 		frappe.db.set_default.assert_any_call("murzak_store_slug_duka-ya-amina", "Duka Ltd")
 
 	def test_cannot_open_without_a_name_a_way_to_receive_or_a_way_to_pay(self):
 		self.assertFalse(self.save(enabled=1, slug="", accept_cash=1)["success"])
-		self.assertFalse(self.save(enabled=1, slug="duka", delivery_enabled=0, pickup_enabled=0, accept_cash=1)["success"])
+		self.assertFalse(
+			self.save(enabled=1, slug="duka", delivery_enabled=0, pickup_enabled=0, accept_cash=1)["success"]
+		)
 		self.assertFalse(self.save(enabled=1, slug="duka", accept_cash=0, accept_mpesa=0)["success"])
 
 	def test_mpesa_needs_mpesa_set_up(self):
@@ -127,9 +143,10 @@ class TestSaveStore(unittest.TestCase):
 		self.assertFalse(self.save(warehouse="Nowhere - X")["success"])
 
 	def test_only_the_businesss_own_products_are_shown_or_hidden(self):
-		with patch.object(online_store_api, "require_catalogue_role"), patch.object(
-			frappe, "get_all", return_value=["RICE"]
-		) as get_all:
+		with (
+			patch.object(online_store_api, "require_catalogue_role"),
+			patch.object(frappe, "get_all", return_value=["RICE"]) as get_all,
+		):
 			out = online_store_api.set_items_online(["RICE", "OTHERS-ITEM"], show=0)
 		self.assertEqual(get_all.call_args.kwargs["filters"]["custom_company"], "Duka Ltd")
 		frappe.db.set_value.assert_called_once_with("Item", "RICE", "custom_show_online", 0)
@@ -138,7 +155,9 @@ class TestSaveStore(unittest.TestCase):
 	def test_bulk_hide_is_bounded(self):
 		with patch.object(online_store_api, "require_catalogue_role"):
 			with self.assertRaises(frappe.ValidationError):
-				online_store_api.set_items_online([f"I{n}" for n in range(online_store_api.MAX_BULK_ITEMS + 1)])
+				online_store_api.set_items_online(
+					[f"I{n}" for n in range(online_store_api.MAX_BULK_ITEMS + 1)]
+				)
 			with self.assertRaises(frappe.ValidationError):
 				online_store_api.set_items_online([])
 
@@ -156,15 +175,17 @@ class TestOpenStore(unittest.TestCase):
 			("Duka Ltd", {**OPEN_STORE, "slug": "someone-else"}),
 		]
 		for company, settings in cases:
-			with patch.object(online_store_api, "company_for_slug", return_value=company), patch.object(
-				online_store_api, "read_store", return_value=settings
+			with (
+				patch.object(online_store_api, "company_for_slug", return_value=company),
+				patch.object(online_store_api, "read_store", return_value=settings),
 			):
 				with self.assertRaises(frappe.DoesNotExistError):
 					storefront_api.open_store("duka-ya-amina")
 
 	def test_an_open_store_is_found(self):
-		with patch.object(online_store_api, "company_for_slug", return_value="Duka Ltd"), patch.object(
-			online_store_api, "read_store", return_value=OPEN_STORE
+		with (
+			patch.object(online_store_api, "company_for_slug", return_value="Duka Ltd"),
+			patch.object(online_store_api, "read_store", return_value=OPEN_STORE),
 		):
 			self.assertEqual(storefront_api.open_store("Duka-Ya-Amina")[0], "Duka Ltd")
 
@@ -176,7 +197,16 @@ class TestOpenStore(unittest.TestCase):
 		self.assertNotIn("enabled", shown)
 
 	def test_exact_stock_is_hidden_unless_low(self):
-		base = {"item_code": "A", "item_name": "A", "category": "", "unit": "", "price": 1, "description": "", "image": "", "in_stock": True}
+		base = {
+			"item_code": "A",
+			"item_name": "A",
+			"category": "",
+			"unit": "",
+			"price": 1,
+			"description": "",
+			"image": "",
+			"in_stock": True,
+		}
 		self.assertIsNone(storefront_api._public_product({**base, "stock": 400})["low_stock"])
 		self.assertEqual(storefront_api._public_product({**base, "stock": 3})["low_stock"], 3)
 		self.assertIsNone(storefront_api._public_product({**base, "stock": None})["low_stock"])
@@ -201,7 +231,11 @@ class TestCheckout(unittest.TestCase):
 					"lines": [{"item_code": "RICE", "item_name": "Rice", "qty": 2.0, "rate": 150.0}],
 				},
 			),
-			patch.object(storefront_api, "send_mpesa_prompt", return_value={"sent": True, "message": "Check your phone"}),
+			patch.object(
+				storefront_api,
+				"send_mpesa_prompt",
+				return_value={"sent": True, "message": "Check your phone"},
+			),
 		]
 		self.mocks = [p.start() for p in patches]
 		for p in patches:
@@ -290,7 +324,11 @@ class TestPayForOrder(unittest.TestCase):
 	def setUp(self):
 		patches = [
 			patch.object(frappe, "db", MagicMock(), create=True),
-			patch.object(storefront_api, "send_mpesa_prompt", return_value={"sent": True, "message": "Check your phone"}),
+			patch.object(
+				storefront_api,
+				"send_mpesa_prompt",
+				return_value={"sent": True, "message": "Check your phone"},
+			),
 		]
 		for p in patches:
 			p.start()

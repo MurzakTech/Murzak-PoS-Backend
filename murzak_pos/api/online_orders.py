@@ -59,7 +59,9 @@ def clean_lines(lines) -> list[dict]:
 	if not isinstance(lines, list) or not lines:
 		frappe.throw(_("Add at least one product to the order."), frappe.ValidationError)
 	if len(lines) > MAX_LINES:
-		frappe.throw(_("An order can have at most {0} different products.").format(MAX_LINES), frappe.ValidationError)
+		frappe.throw(
+			_("An order can have at most {0} different products.").format(MAX_LINES), frappe.ValidationError
+		)
 
 	merged: dict[str, dict] = {}
 	for line in lines:
@@ -179,31 +181,27 @@ def place_order(
 	for line in wanted:
 		item = _item_for_order(company, line["item_code"], shown_online_only=not trust_prices)
 		if not item:
-			frappe.throw(
-				_("Product {0} is not available.").format(line["item_code"]), frappe.ValidationError
-			)
+			frappe.throw(_("Product {0} is not available.").format(line["item_code"]), frappe.ValidationError)
 		found.append((line, item))
 
-	stock = online_catalogue.available_stock(
-		[i.name for _line, i in found if i.is_stock_item], warehouse
-	)
+	stock = online_catalogue.available_stock([i.name for _line, i in found if i.is_stock_item], warehouse)
 	short = []
 	for line, item in found:
 		if item.is_stock_item and stock.get(item.name, 0.0) < line["qty"]:
 			short.append(item.item_name)
 	if short and not trust_prices:
-		frappe.throw(
-			_("Sorry, not enough stock for: {0}.").format(", ".join(short)), frappe.ValidationError
-		)
+		frappe.throw(_("Sorry, not enough stock for: {0}.").format(", ".join(short)), frappe.ValidationError)
 
 	if minimum_total:
 		subtotal = sum(
-			(line["rate"] if (trust_prices and line["rate"] is not None) else flt(item.standard_rate)) * line["qty"]
+			(line["rate"] if (trust_prices and line["rate"] is not None) else flt(item.standard_rate))
+			* line["qty"]
 			for line, item in found
 		)
 		if subtotal < flt(minimum_total):
 			frappe.throw(
-				_("The smallest order this shop accepts is {0}.").format(flt(minimum_total)), frappe.ValidationError
+				_("The smallest order this shop accepts is {0}.").format(flt(minimum_total)),
+				frappe.ValidationError,
 			)
 
 	customer = customer_for(company, customer_name, phone, email)
@@ -289,7 +287,8 @@ def cancel_order_document(order: str) -> None:
 	doc = frappe.get_doc("Sales Order", order)
 	if flt(doc.per_billed) > 0 or flt(doc.per_delivered) > 0:
 		frappe.throw(
-			_("This order is already invoiced or delivered, so it cannot be cancelled."), frappe.ValidationError
+			_("This order is already invoiced or delivered, so it cannot be cancelled."),
+			frappe.ValidationError,
 		)
 	doc.flags.ignore_permissions = True
 	doc.cancel()
@@ -368,7 +367,13 @@ def get_online_order(order: str, company: str | None = None) -> dict:
 			"paid": bool(doc.get("custom_online_paid")),
 			"grand_total": flt(doc.grand_total),
 			"lines": [
-				{"item_code": i.item_code, "item_name": i.item_name, "qty": flt(i.qty), "rate": flt(i.rate), "amount": flt(i.amount)}
+				{
+					"item_code": i.item_code,
+					"item_name": i.item_name,
+					"qty": flt(i.qty),
+					"rate": flt(i.rate),
+					"amount": flt(i.amount),
+				}
 				for i in doc.items
 			],
 		},
@@ -386,14 +391,19 @@ def set_online_order_status(order: str, status: str, company: str | None = None)
 	current = row.custom_online_fulfilment or "New"
 	if status not in NEXT_STATUS.get(current, ()):
 		frappe.throw(
-			_("An order that is {0} cannot be changed to {1}.").format(current, status), frappe.ValidationError
+			_("An order that is {0} cannot be changed to {1}.").format(current, status),
+			frappe.ValidationError,
 		)
 
 	if status == "Cancelled" and row.docstatus == 1:
 		cancel_order_document(order)
 	frappe.db.set_value("Sales Order", order, "custom_online_fulfilment", status)
 	frappe.db.commit()
-	return {"success": True, "message": _("Order is now {0}.").format(status), "data": {"order": order, "status": status}}
+	return {
+		"success": True,
+		"message": _("Order is now {0}.").format(status),
+		"data": {"order": order, "status": status},
+	}
 
 
 @frappe.whitelist()
@@ -423,7 +433,9 @@ def create_invoice_for_online_order(order: str, company: str | None = None) -> d
 	invoice.insert()
 	return {
 		"success": True,
-		"message": _("Draft invoice {0} created. Review it and submit it to complete the sale.").format(invoice.name),
+		"message": _("Draft invoice {0} created. Review it and submit it to complete the sale.").format(
+			invoice.name
+		),
 		"data": {"invoice": invoice.name},
 	}
 
@@ -438,7 +450,15 @@ def track_online_order(token: str) -> dict:
 	row = frappe.db.get_value(
 		"Sales Order",
 		{"custom_online_token": token},
-		["name", "company", "custom_online_fulfilment", "custom_delivery_method", "custom_online_paid", "grand_total", "transaction_date"],
+		[
+			"name",
+			"company",
+			"custom_online_fulfilment",
+			"custom_delivery_method",
+			"custom_online_paid",
+			"grand_total",
+			"transaction_date",
+		],
 		as_dict=True,
 	)
 	if not row:
@@ -460,7 +480,11 @@ def track_online_order(token: str) -> dict:
 def on_payment_update(doc, method=None) -> None:
 	"""An M-Pesa payment for an online order succeeded: mark the order paid. (Hooked on the M-Pesa transaction log.)"""
 	try:
-		if doc.get("status") != "Success" or doc.get("invoice_type") != "Sales Order" or not doc.get("invoice"):
+		if (
+			doc.get("status") != "Success"
+			or doc.get("invoice_type") != "Sales Order"
+			or not doc.get("invoice")
+		):
 			return
 		if frappe.db.get_value("Sales Order", doc.invoice, "company") != doc.get("company"):
 			return

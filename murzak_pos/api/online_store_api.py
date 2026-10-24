@@ -35,8 +35,26 @@ SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$")
 # Names that would look like the system's own pages
 RESERVED_SLUGS = frozenset(
 	{
-		"admin", "api", "app", "assets", "help", "login", "logout", "murzak", "pos", "shop", "signup",
-		"static", "store", "support", "www", "checkout", "cart", "order", "orders", "track",
+		"admin",
+		"api",
+		"app",
+		"assets",
+		"help",
+		"login",
+		"logout",
+		"murzak",
+		"pos",
+		"shop",
+		"signup",
+		"static",
+		"store",
+		"support",
+		"www",
+		"checkout",
+		"cart",
+		"order",
+		"orders",
+		"track",
 	}
 )
 MAX_BULK_ITEMS = 500
@@ -98,7 +116,9 @@ def normalize_whatsapp(number: str | None) -> str:
 	if not digits:
 		return ""
 	if not re.match(r"^[1-9]\d{8,14}$", digits):
-		frappe.throw(_("Enter the WhatsApp number with its country code, like 254712345678."), frappe.ValidationError)
+		frappe.throw(
+			_("Enter the WhatsApp number with its country code, like 254712345678."), frappe.ValidationError
+		)
 	return digits
 
 
@@ -188,7 +208,9 @@ def save_online_store(settings: str | dict[str, Any], company: str | None = None
 		"slug": slug,
 		"store_name": cstr(settings.get("store_name", existing["store_name"])).strip()[:80],
 		"tagline": cstr(settings.get("tagline", existing["tagline"])).strip()[:160],
-		"whatsapp_number": normalize_whatsapp(cstr(settings.get("whatsapp_number", existing["whatsapp_number"]))),
+		"whatsapp_number": normalize_whatsapp(
+			cstr(settings.get("whatsapp_number", existing["whatsapp_number"]))
+		),
 		"delivery_enabled": flag("delivery_enabled"),
 		"pickup_enabled": flag("pickup_enabled"),
 		"pickup_address": cstr(settings.get("pickup_address", existing["pickup_address"])).strip()[:300],
@@ -211,10 +233,15 @@ def save_online_store(settings: str | dict[str, Any], company: str | None = None
 		if data["accept_mpesa"] and not _mpesa_ready(company):
 			return {
 				"success": False,
-				"message": _("Set up M-Pesa under Settings > Payment Gateways before accepting M-Pesa orders."),
+				"message": _(
+					"Set up M-Pesa under Settings > Payment Gateways before accepting M-Pesa orders."
+				),
 			}
 		if missing:
-			return {"success": False, "message": _("To open the store, choose {0}.").format(", ".join(missing))}
+			return {
+				"success": False,
+				"message": _("To open the store, choose {0}.").format(", ".join(missing)),
+			}
 
 	# The short name now points at this business, and the old one is released
 	if existing["slug"] and existing["slug"] != data["slug"]:
@@ -232,7 +259,9 @@ def save_online_store(settings: str | dict[str, Any], company: str | None = None
 
 
 @frappe.whitelist()
-def set_items_online(item_codes: str | list[str], show: int | bool = 1, company: str | None = None) -> dict[str, Any]:
+def set_items_online(
+	item_codes: str | list[str], show: int | bool = 1, company: str | None = None
+) -> dict[str, Any]:
 	"""Show products on the online store and website, or hide them. Only the business's own products change."""
 	require_catalogue_role()
 	company = resolve_company(company) if company else resolve_company()
@@ -244,10 +273,14 @@ def set_items_online(item_codes: str | list[str], show: int | bool = 1, company:
 	if not isinstance(item_codes, list) or not item_codes:
 		frappe.throw(_("Choose at least one product."), frappe.ValidationError)
 	if len(item_codes) > MAX_BULK_ITEMS:
-		frappe.throw(_("Choose at most {0} products at a time.").format(MAX_BULK_ITEMS), frappe.ValidationError)
+		frappe.throw(
+			_("Choose at most {0} products at a time.").format(MAX_BULK_ITEMS), frappe.ValidationError
+		)
 
 	owned = frappe.get_all(
-		"Item", filters={"name": ["in", [cstr(c) for c in item_codes]], "custom_company": company}, pluck="name"
+		"Item",
+		filters={"name": ["in", [cstr(c) for c in item_codes]], "custom_company": company},
+		pluck="name",
 	)
 	value = 1 if cint(show) else 0
 	for name in owned:
