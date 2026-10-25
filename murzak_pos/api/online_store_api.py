@@ -15,6 +15,7 @@ name to its business, so a customer's link can be opened without knowing who own
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 from typing import Any
@@ -24,7 +25,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, cstr, now_datetime
 
-from murzak_pos.api import online_catalogue
+from murzak_pos.api import delivery_fees, online_catalogue
 from murzak_pos.api.access_control import require_catalogue_role, require_manager
 from murzak_pos.api.payment_gateway_common import resolve_company
 
@@ -73,6 +74,18 @@ DEFAULTS = {
 	"accept_mpesa": False,
 	"warehouse": "",
 	"minimum_order": 0,
+	# What delivery costs (api/delivery_fees.py)
+	"delivery_mode": "free",
+	"delivery_flat_fee": 0,
+	"delivery_areas": [],
+	"free_delivery_above": 0,
+	"shop_latitude": None,
+	"shop_longitude": None,
+	"distance_base_km": 0,
+	"distance_base_fee": 0,
+	"distance_per_km": 0,
+	"distance_max_km": 0,
+	"road_factor": delivery_fees.DEFAULT_ROAD_FACTOR,
 }
 
 
@@ -82,7 +95,10 @@ def read_store(company: str) -> dict:
 		stored = (json.loads(raw) if isinstance(raw, str) else raw) or {}
 	except ValueError:
 		stored = {}
-	return {**DEFAULTS, **{k: v for k, v in stored.items() if k in DEFAULTS or k == "updated_at"}}
+	return {
+		**copy.deepcopy(DEFAULTS),
+		**{k: v for k, v in stored.items() if k in DEFAULTS or k == "updated_at"},
+	}
 
 
 def write_store(company: str, data: dict) -> None:
@@ -203,6 +219,11 @@ def save_online_store(settings: str | dict[str, Any], company: str | None = None
 	def flag(name):
 		return bool(cint(settings.get(name, existing[name])))
 
+	try:
+		rules = delivery_fees.validate_rules(settings, existing)
+	except delivery_fees.DeliveryRuleError as e:
+		return {"success": False, "message": str(e)}
+
 	data = {
 		"enabled": flag("enabled"),
 		"slug": slug,
@@ -219,6 +240,7 @@ def save_online_store(settings: str | dict[str, Any], company: str | None = None
 		"accept_mpesa": flag("accept_mpesa"),
 		"warehouse": warehouse,
 		"minimum_order": minimum,
+		**rules,
 		"updated_at": str(now_datetime()),
 	}
 
@@ -230,6 +252,8 @@ def save_online_store(settings: str | dict[str, Any], company: str | None = None
 			missing.append(_("delivery or pickup"))
 		if not (data["accept_cash"] or data["accept_mpesa"]):
 			missing.append(_("a way to pay"))
+		if data["delivery_enabled"]:
+			missing.extend(delivery_fees.problems_before_opening(rules))
 		if data["accept_mpesa"] and not _mpesa_ready(company):
 			return {
 				"success": False,

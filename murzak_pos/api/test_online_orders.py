@@ -221,6 +221,79 @@ class TestPlaceOrder(unittest.TestCase):
 			self.place()
 
 
+class TestDeliveryFeeOnTheOrder(unittest.TestCase):
+	def setUp(self):
+		self.order = FakeOrder()
+		self.rice = row(name="RICE", item_name="Rice", standard_rate=150.0, stock_uom="Kg", is_stock_item=1)
+		patches = [
+			patch.object(frappe, "db", MagicMock(), create=True),
+			patch.object(frappe, "new_doc", return_value=self.order),
+			patch.object(online_orders, "nowdate", return_value="2026-10-24"),
+			patch.object(online_orders, "customer_for", return_value="Amina"),
+			patch.object(online_orders, "_item_for_order", return_value=self.rice),
+			patch.object(online_orders, "delivery_item", return_value="DELIVERY-D"),
+			patch.object(online_catalogue, "default_warehouse", return_value="Main - D"),
+			patch.object(online_catalogue, "available_stock", return_value={"RICE": 5.0}),
+			patch("murzak_pos.api.realtime_events.notify_online_order"),
+		]
+		for p in patches:
+			p.start()
+			self.addCleanup(p.stop)
+		frappe.db.get_value.return_value = None
+
+	def place(self, **kw):
+		args = dict(company="Duka Ltd", channel="Website", lines=[{"item_code": "RICE", "qty": 2}])
+		args.update(kw)
+		return online_orders.place_order(**args)
+
+	def test_the_fee_is_a_delivery_line_after_the_goods(self):
+		result = self.place(delivery_fee=200)
+		codes = [i.item_code for i in self.order.items]
+		self.assertEqual(codes, ["RICE", "DELIVERY-D"])
+		self.assertEqual(self.order.items[1].rate, 200.0)
+		self.assertEqual(result["total"], 500.0)
+		self.assertEqual(result["delivery_fee"], 200.0)
+
+	def test_no_fee_means_no_delivery_line(self):
+		self.place()
+		self.assertEqual([i.item_code for i in self.order.items], ["RICE"])
+
+	def test_the_minimum_order_counts_goods_not_delivery(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.place(minimum_total=400, delivery_fee=500)
+
+	def test_the_basket_total_uses_the_shops_prices(self):
+		self.assertEqual(online_orders.subtotal_for("Duka Ltd", [{"item_code": "RICE", "qty": 3}]), 450.0)
+		online_orders._item_for_order.return_value = None
+		with self.assertRaises(frappe.ValidationError):
+			online_orders.subtotal_for("Duka Ltd", [{"item_code": "RICE", "qty": 3}])
+
+
+class TestDeliveryItem(unittest.TestCase):
+	def setUp(self):
+		patches = [patch.object(frappe, "db", MagicMock(), create=True), patch.object(frappe, "new_doc")]
+		for p in patches:
+			p.start()
+			self.addCleanup(p.stop)
+
+	def test_an_existing_delivery_item_is_reused(self):
+		frappe.db.get_value.return_value = "DELIVERY-D"
+		self.assertEqual(online_orders.delivery_item("Duka Ltd"), "DELIVERY-D")
+		frappe.new_doc.assert_not_called()
+
+	def test_it_is_made_once_as_a_service_kept_off_the_online_store(self):
+		frappe.db.get_value.side_effect = [None, "D", "Services"]
+		item = MagicMock()
+		item.name = "DELIVERY-D"
+		frappe.new_doc.return_value = item
+		self.assertEqual(online_orders.delivery_item("Duka Ltd"), "DELIVERY-D")
+		self.assertEqual(item.is_stock_item, 0)
+		self.assertEqual(item.custom_show_online, 0)
+		self.assertEqual(item.custom_company, "Duka Ltd")
+		self.assertEqual(item.item_code, "DELIVERY-D")
+		item.insert.assert_called_once_with(ignore_permissions=True)
+
+
 class TestStaffCalls(unittest.TestCase):
 	def setUp(self):
 		patches = [
