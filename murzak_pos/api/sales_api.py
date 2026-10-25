@@ -730,7 +730,7 @@ def _recorded_sale_response(doctype: str, name: str) -> Dict:
     }
 
 
-def _check_online_order(online_order: Optional[str], company: Optional[str], do_not_submit: bool) -> None:
+def _check_online_order(online_order: str | None, company: str | None, do_not_submit: bool) -> None:
     """Before a sale for an online order is built: the order must be one this sale may settle."""
     if not online_order:
         return
@@ -739,7 +739,7 @@ def _check_online_order(online_order: Optional[str], company: Optional[str], do_
     online_orders.check_order_for_till_sale(str(online_order), company)
 
 
-def _settle_online_order(online_order: Optional[str], sale) -> None:
+def _settle_online_order(online_order: str | None, sale) -> None:
     """After the sale for an online order is saved: link it, mark the order paid and release the order's stock."""
     if not online_order:
         return
