@@ -206,7 +206,7 @@ def _parse_opening_balances(balance_details) -> List[Dict]:
     return rows
 
 
-def _profile_to_open_on(pos_profile: Optional[str], company: str) -> str:
+def _profile_to_open_on(pos_profile: str | None, company: str) -> str:
     """
     The POS Profile a till is opened on. A brand-new shop has none yet, and the till screen sends the name
     the shop will get ("<company> POS Profile"), so asking for that exact name fails with "not found". When the
