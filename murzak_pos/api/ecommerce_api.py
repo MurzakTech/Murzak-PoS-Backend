@@ -85,7 +85,6 @@ def _is_masked(value: str | None) -> bool:
 	return bool(value and "*" in str(value))
 
 
-
 def store_address_problem(url: str) -> str | None:
 	"""
 	Why the server must not call this store address, or None when it may. The address is fetched from the server,
@@ -97,8 +96,11 @@ def store_address_problem(url: str) -> str | None:
 	try:
 		check_link(url)
 	except ImageProblem:
-		return _("That store address cannot be used. Enter the shop's public web address, like https://myshop.com.")
+		return _(
+			"That store address cannot be used. Enter the shop's public web address, like https://myshop.com."
+		)
 	return None
+
 
 @frappe.whitelist()
 def get_ecommerce_settings(company: str | None = None) -> dict[str, Any]:
@@ -430,12 +432,18 @@ def woo_request(settings: dict, method: str, path: str, params: dict | None = No
 		raise WooError(_("Could not reach the online store. Check its web address."))
 	if resp.status_code in (401, 403):
 		raise WooError(
-			_("The online store refused the keys. Check WooCommerce > Settings > Advanced > REST API (needs Read/Write).")
+			_(
+				"The online store refused the keys. Check WooCommerce > Settings > Advanced > REST API (needs Read/Write)."
+			)
 		)
 	if resp.status_code == 404:
-		raise WooError(_("The store's WooCommerce API was not found. Turn on pretty permalinks in WordPress."))
+		raise WooError(
+			_("The store's WooCommerce API was not found. Turn on pretty permalinks in WordPress.")
+		)
 	if resp.status_code >= 400:
-		raise WooError(_("The online store answered with an error ({0}): {1}").format(resp.status_code, resp.text[:150]))
+		raise WooError(
+			_("The online store answered with an error ({0}): {1}").format(resp.status_code, resp.text[:150])
+		)
 	try:
 		return resp.json()
 	except ValueError:
@@ -465,7 +473,11 @@ def _stock_payload(row: dict) -> dict:
 		# A service or other product with no stock count
 		return {"manage_stock": False, "stock_status": "instock"}
 	qty = _whole_stock(row["stock"])
-	return {"manage_stock": True, "stock_quantity": qty, "stock_status": "instock" if qty > 0 else "outofstock"}
+	return {
+		"manage_stock": True,
+		"stock_quantity": qty,
+		"stock_status": "instock" if qty > 0 else "outofstock",
+	}
 
 
 def push_products(settings: dict, rows: list[dict], stock_only: bool = False) -> dict:
@@ -492,7 +504,10 @@ def push_products(settings: dict, rows: list[dict], stock_only: bool = False) ->
 			create, create_rows, update, update_rows = [], [], [], []
 			for r in chunk:
 				if r["item_code"] in ids:
-					change = {"id": ids[r["item_code"]], "regular_price": str(r["price"]) if r["price"] > 0 else "0"}
+					change = {
+						"id": ids[r["item_code"]],
+						"regular_price": str(r["price"]) if r["price"] > 0 else "0",
+					}
 					if stock_only:
 						change.pop("regular_price")
 					change.update(_stock_payload(r))
@@ -506,7 +521,9 @@ def push_products(settings: dict, rows: list[dict], stock_only: bool = False) ->
 			if not create and not update:
 				continue
 
-			answer = woo_request(settings, "POST", "products/batch", body={"create": create, "update": update})
+			answer = woo_request(
+				settings, "POST", "products/batch", body={"create": create, "update": update}
+			)
 			for key, sent in (("create", create_rows), ("update", update_rows)):
 				for entry, r in zip((answer or {}).get(key, []), sent, strict=False):
 					error = entry.get("error") if isinstance(entry, dict) else None
@@ -638,14 +655,28 @@ def push_stock_job(company: str, item_codes: list[str]) -> None:
 		items = frappe.get_all(
 			"Item",
 			filters={**online_catalogue.online_filters(company), "name": ["in", item_codes]},
-			fields=["name", "item_name", "item_group", "stock_uom", "standard_rate", "description", "image", "is_stock_item"],
+			fields=[
+				"name",
+				"item_name",
+				"item_group",
+				"stock_uom",
+				"standard_rate",
+				"description",
+				"image",
+				"is_stock_item",
+			],
 		)
 		if not items:
 			return
 		rows = online_catalogue.rows_for(items, wh)
 		result = push_products(stored, rows, stock_only=True)
 		if result["failed"]:
-			_record_sync(company, stored, "partial", _("Stock update: {0}").format(result["errors"][0] if result["errors"] else ""))
+			_record_sync(
+				company,
+				stored,
+				"partial",
+				_("Stock update: {0}").format(result["errors"][0] if result["errors"] else ""),
+			)
 			frappe.db.commit()
 	except Exception:
 		frappe.log_error("WooCommerce stock push", frappe.get_traceback())
@@ -683,7 +714,9 @@ def run_hourly_stock_sync() -> None:
 			wh = online_catalogue.default_warehouse(company, stored.get("warehouse"))
 			if not wh:
 				continue
-			changed = frappe.get_all("Bin", filters={"warehouse": wh, "modified": [">=", since]}, pluck="item_code")
+			changed = frappe.get_all(
+				"Bin", filters={"warehouse": wh, "modified": [">=", since]}, pluck="item_code"
+			)
 			for start in range(0, len(changed), 200):
 				push_stock_job(company, changed[start : start + 200])
 		except Exception:
@@ -767,17 +800,22 @@ def get_ecommerce_products(
 	search: str | None = None,
 	page: int = 1,
 	page_size: int = 20,
+	visibility: str = "shown",
 ) -> dict[str, Any]:
 	"""
 	List this business's online products with their live stock for the e-commerce dashboard.
+	`visibility` is "shown" (the default), "hidden" or "all"; each row says whether it is shown online (`show_online`),
+	so the owner can switch a hidden product back on.
 	"""
 	require_catalogue_role()
 	company = resolve_company(company) if company else resolve_company()
 	page = max(1, int(page or 1))
 	page_size = min(100, max(1, int(page_size or 20)))
+	if visibility not in online_catalogue.VISIBILITY:
+		visibility = "shown"
 
 	wh = online_catalogue.default_warehouse(company, warehouse)
-	total = online_catalogue.count_items(company, search=search)
+	total = online_catalogue.count_items(company, search=search, visibility=visibility)
 	rows = [
 		{
 			"item_code": r["item_code"],
@@ -787,9 +825,12 @@ def get_ecommerce_products(
 			"price": r["price"],
 			"stock": r["stock"] or 0,
 			"in_stock": r["in_stock"],
+			"show_online": r["show_online"],
 			"sync_status": "ready" if r["price"] > 0 else "needs_price",
 		}
-		for r in online_catalogue.list_items(company, wh, search=search, page=page, page_size=page_size)
+		for r in online_catalogue.list_items(
+			company, wh, search=search, page=page, page_size=page_size, visibility=visibility
+		)
 	]
 	return {
 		"success": True,

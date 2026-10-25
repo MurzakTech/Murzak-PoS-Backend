@@ -32,8 +32,9 @@ class TestEcommerceApi(unittest.TestCase):
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
 	def test_get_settings_defaults(self, mock_co, mock_role):
 		with patch.object(frappe.db, "get_default", return_value=None):
-			with patch.object(frappe.db, "count", return_value=3), patch.object(
-				ecommerce_api.online_catalogue, "count_items", return_value=12
+			with (
+				patch.object(frappe.db, "count", return_value=3),
+				patch.object(ecommerce_api.online_catalogue, "count_items", return_value=12),
 			):
 				with patch.object(frappe.db, "get_value", return_value="Main - TC"):
 					res = ecommerce_api.get_ecommerce_settings(company="Test Company")
@@ -150,3 +151,45 @@ class TestKeysAreKeptSealed(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestEcommerceProductList(unittest.TestCase):
+	"""The owner's product list can include products that are switched off online."""
+
+	def setUp(self):
+		for p in (
+			patch.object(frappe, "session", frappe._dict(user="manager@duka.test"), create=True),
+			patch.object(frappe, "db", MagicMock(), create=True),
+			patch("murzak_pos.api.ecommerce_api.require_catalogue_role"),
+			patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company"),
+			patch.object(ecommerce_api.online_catalogue, "default_warehouse", return_value="Main - TC"),
+			patch.object(ecommerce_api.online_catalogue, "count_items", return_value=1),
+			patch.object(
+				ecommerce_api.online_catalogue,
+				"list_items",
+				return_value=[
+					{
+						"item_code": "A",
+						"item_name": "A",
+						"category": "Food",
+						"unit": "Nos",
+						"price": 10,
+						"stock": None,
+						"in_stock": True,
+						"show_online": False,
+					}
+				],
+			),
+		):
+			p.start()
+			self.addCleanup(p.stop)
+
+	def test_hidden_products_come_back_with_their_flag(self):
+		res = ecommerce_api.get_ecommerce_products(visibility="all")
+		self.assertFalse(res["data"]["rows"][0]["show_online"])
+		self.assertEqual(ecommerce_api.online_catalogue.list_items.call_args.kwargs["visibility"], "all")
+		self.assertEqual(ecommerce_api.online_catalogue.count_items.call_args.kwargs["visibility"], "all")
+
+	def test_an_unknown_visibility_falls_back_to_shown(self):
+		ecommerce_api.get_ecommerce_products(visibility="everything")
+		self.assertEqual(ecommerce_api.online_catalogue.list_items.call_args.kwargs["visibility"], "shown")

@@ -87,6 +87,34 @@ class TestOnlineCatalogue(unittest.TestCase):
 		self.assertEqual(filters["disabled"], 0)
 		self.assertEqual(filters["is_sales_item"], 1)
 
+	def test_the_owner_can_list_hidden_and_all_products_but_customers_only_see_shown(self):
+		self.assertEqual(online_catalogue.online_filters("Duka Ltd")["custom_show_online"], 1)
+		self.assertEqual(online_catalogue.online_filters("Duka Ltd", "shown")["custom_show_online"], 1)
+		self.assertEqual(online_catalogue.online_filters("Duka Ltd", "hidden")["custom_show_online"], 0)
+		self.assertNotIn("custom_show_online", online_catalogue.online_filters("Duka Ltd", "all"))
+		# Whatever is asked, a business only ever sees its own products
+		for visibility in online_catalogue.VISIBILITY:
+			self.assertEqual(
+				online_catalogue.online_filters("Duka Ltd", visibility)["custom_company"], "Duka Ltd"
+			)
+
+	def test_a_row_says_whether_it_is_shown_and_an_old_product_counts_as_shown(self):
+		items = [
+			row(
+				name="A",
+				item_name="A",
+				item_group="",
+				stock_uom="",
+				standard_rate=1,
+				is_stock_item=0,
+				custom_show_online=0,
+			),
+			row(name="B", item_name="B", item_group="", stock_uom="", standard_rate=1, is_stock_item=0),
+		]
+		with patch.object(online_catalogue, "available_stock", return_value={}):
+			rows = online_catalogue.rows_for(items, "Main - D")
+		self.assertEqual([r["show_online"] for r in rows], [False, True])
+
 	def test_stock_is_what_is_left_after_reservations(self):
 		bins = [
 			row(item_code="RICE", actual_qty=10, reserved_qty=3),
