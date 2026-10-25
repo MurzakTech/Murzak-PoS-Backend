@@ -26,7 +26,7 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import add_days, cint, cstr, flt, nowdate
 
 from murzak_pos.api import online_catalogue
-from murzak_pos.api.access_control import require_any_role
+from murzak_pos.api.access_control import require_online_orders
 from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import resolve_company
 
@@ -35,9 +35,6 @@ FULFILMENT = ("New", "Confirmed", "Ready", "Delivered", "Cancelled")
 DELIVERY_METHODS = ("Delivery", "Pickup")
 MAX_LINES = 50
 MAX_QTY = 10000
-
-# Who may see and move a shop's online orders
-ORDER_ROLES = frozenset({"Business Owner", "System Manager", "Sales Manager", "Stock Manager", "Sales User"})
 
 # Each status may move to these
 NEXT_STATUS = {
@@ -317,19 +314,117 @@ def place_order(
 
 
 # ---------------------------------------------------------------------------
-# For the shop's staff
+# Settling an online order at the till
 # ---------------------------------------------------------------------------
 
+# On POS Invoice and Sales Invoice: the order a sale settled, and the channel for reports
+SALE_ORDER_FIELD = "custom_online_order"
+SALE_CHANNEL_FIELD = "custom_sales_channel"
+# On the Sales Order: the sale that settled it
+ORDER_SALE_TYPE_FIELD = "custom_till_sale_type"
+ORDER_SALE_FIELD = "custom_till_sale"
 
-def _require_order_role() -> None:
-	require_any_role(ORDER_ROLES, _("see online orders"))
+
+def check_order_for_till_sale(order: str, company: str) -> None:
+	"""
+	Refuse a till sale that names an online order it may not settle: one that is missing, belongs to another
+	business, is cancelled, or was already settled by another sale. The order row is locked until the sale is saved, so
+	two tills selling the same order at once cannot both pass.
+	"""
+	require_online_orders()
+	row = frappe.db.get_value(
+		"Sales Order",
+		order,
+		[
+			"company",
+			"docstatus",
+			"status",
+			"custom_online_channel",
+			"custom_online_fulfilment",
+			ORDER_SALE_FIELD,
+		],
+		as_dict=True,
+		for_update=True,
+	)
+	if not row or row.company != company or not row.custom_online_channel:
+		frappe.throw(_("Online order {0} was not found.").format(order), frappe.DoesNotExistError)
+	if row.docstatus != 1 or row.custom_online_fulfilment == "Cancelled" or row.status == "Closed":
+		frappe.throw(
+			_("Online order {0} is cancelled or closed, so it cannot be sold.").format(order),
+			frappe.ValidationError,
+		)
+	if row.get(ORDER_SALE_FIELD):
+		frappe.throw(
+			_("Online order {0} was already sold in {1}.").format(order, row.get(ORDER_SALE_FIELD)),
+			frappe.ValidationError,
+		)
+
+
+def mark_sale_as_online(doc, order: str | None) -> None:
+	"""Put the order and the Online channel on a sale document that is about to be saved."""
+	if not order:
+		return
+	if doc.meta.has_field(SALE_ORDER_FIELD):
+		doc.set(SALE_ORDER_FIELD, order)
+	if doc.meta.has_field(SALE_CHANNEL_FIELD):
+		doc.set(SALE_CHANNEL_FIELD, "Online")
+
+
+def settle_order_with_sale(order: str, sale) -> None:
+	"""
+	The till sale for an online order went through: link the two, mark the order paid unless the sale left money
+	owing, and close the order. Closing it frees the stock the order was holding, and the sale has already taken the
+	stock out, so it is counted once.
+	"""
+	paid = flt(sale.get("outstanding_amount")) <= 0
+	values = {ORDER_SALE_TYPE_FIELD: sale.doctype, ORDER_SALE_FIELD: sale.name}
+	if paid:
+		values["custom_online_paid"] = 1
+	frappe.db.set_value("Sales Order", order, values)
+
+	doc = frappe.get_doc("Sales Order", order)
+	if doc.status != "Closed":
+		doc.flags.ignore_permissions = True
+		doc.update_status("Closed")
+
+
+def settle_recorded_sale(order: str | None, company: str, doctype: str, name: str) -> None:
+	"""
+	A till retried a sale that was already recorded. If the first try was cut off before the order was settled, finish
+	the job now, so the order never keeps holding stock the sale already took. Does nothing for a settled order.
+	"""
+	if not order:
+		return
+	require_online_orders()
+	row = frappe.db.get_value(
+		"Sales Order",
+		order,
+		["company", "custom_online_channel", ORDER_SALE_FIELD],
+		as_dict=True,
+		for_update=True,
+	)
+	if not row or row.company != company or not row.custom_online_channel or row.get(ORDER_SALE_FIELD):
+		return
+	settle_order_with_sale(order, frappe.get_doc(doctype, name))
+
+
+# ---------------------------------------------------------------------------
+# For the shop's staff
+# ---------------------------------------------------------------------------
 
 
 def _owned_order(order: str, company: str):
 	row = frappe.db.get_value(
 		"Sales Order",
 		order,
-		["name", "company", "custom_online_channel", "custom_online_fulfilment", "docstatus"],
+		[
+			"name",
+			"company",
+			"custom_online_channel",
+			"custom_online_fulfilment",
+			"docstatus",
+			ORDER_SALE_FIELD,
+		],
 		as_dict=True,
 	)
 	if not row or row.company != company or not row.custom_online_channel:
@@ -358,7 +453,7 @@ def list_online_orders(
 	page_size: int = 20,
 ) -> dict:
 	"""The shop's online orders, newest first. `status` and `channel` narrow the list."""
-	_require_order_role()
+	require_online_orders()
 	company = resolve_company(company)
 	page = max(1, cint(page) or 1)
 	page_size = min(100, max(1, cint(page_size) or 20))
@@ -402,7 +497,7 @@ def list_online_orders(
 @frappe.whitelist()
 def get_online_order(order: str, company: str | None = None) -> dict:
 	"""One online order with its lines."""
-	_require_order_role()
+	require_online_orders()
 	company = resolve_company(company)
 	_owned_order(order, company)
 	doc = frappe.get_doc("Sales Order", order)
@@ -420,6 +515,7 @@ def get_online_order(order: str, company: str | None = None) -> dict:
 			"address": doc.get("custom_delivery_address"),
 			"payment": doc.get("custom_online_payment"),
 			"paid": bool(doc.get("custom_online_paid")),
+			"sold_in": doc.get(ORDER_SALE_FIELD) or None,
 			"grand_total": flt(doc.grand_total),
 			"lines": [
 				{
@@ -438,7 +534,7 @@ def get_online_order(order: str, company: str | None = None) -> dict:
 @frappe.whitelist()
 def set_online_order_status(order: str, status: str, company: str | None = None) -> dict:
 	"""Move an online order along: New, Confirmed, Ready, Delivered or Cancelled. Cancelling frees its stock."""
-	_require_order_role()
+	require_online_orders()
 	company = resolve_company(company)
 	row = _owned_order(order, company)
 	if status not in FULFILMENT:
@@ -450,6 +546,13 @@ def set_online_order_status(order: str, status: str, company: str | None = None)
 			frappe.ValidationError,
 		)
 
+	if status == "Cancelled" and row.get(ORDER_SALE_FIELD):
+		frappe.throw(
+			_("This order was already sold in {0}, so it cannot be cancelled. Return the sale instead.").format(
+				row.get(ORDER_SALE_FIELD)
+			),
+			frappe.ValidationError,
+		)
 	if status == "Cancelled" and row.docstatus == 1:
 		cancel_order_document(order)
 	frappe.db.set_value("Sales Order", order, "custom_online_fulfilment", status)
@@ -464,20 +567,29 @@ def set_online_order_status(order: str, status: str, company: str | None = None)
 @frappe.whitelist()
 def mark_online_order_paid(order: str, company: str | None = None) -> dict:
 	"""Record that the customer has paid (cash on delivery received, or an M-Pesa payment checked by the owner)."""
-	_require_order_role()
+	require_online_orders()
 	company = resolve_company(company)
 	_owned_order(order, company)
-	frappe.db.set_value("Sales Order", order, "custom_online_paid", 1)
-	frappe.db.commit()
+	# Marking an order that is already paid (the till does this after the sale has) changes nothing and does not fail
+	if not frappe.db.get_value("Sales Order", order, "custom_online_paid"):
+		frappe.db.set_value("Sales Order", order, "custom_online_paid", 1)
+		frappe.db.commit()
 	return {"success": True, "message": _("Order marked as paid."), "data": {"order": order}}
 
 
 @frappe.whitelist()
 def create_invoice_for_online_order(order: str, company: str | None = None) -> dict:
 	"""Make a draft Sales Invoice from an online order, taking the stock out. The owner reviews and submits it."""
-	_require_order_role()
+	require_online_orders()
 	company = resolve_company(company)
 	row = _owned_order(order, company)
+	if row.get(ORDER_SALE_FIELD):
+		frappe.throw(
+			_("This order was already sold in {0}, so it needs no second invoice.").format(
+				row.get(ORDER_SALE_FIELD)
+			),
+			frappe.ValidationError,
+		)
 	if row.docstatus != 1:
 		frappe.throw(_("Only an open order can be invoiced."), frappe.ValidationError)
 

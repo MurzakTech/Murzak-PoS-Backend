@@ -86,7 +86,7 @@ class TestSaveStore(unittest.TestCase):
 	def setUp(self):
 		patches = [
 			patch.object(frappe, "db", MagicMock(), create=True),
-			patch.object(online_store_api, "require_manager"),
+			patch.object(online_store_api, "require_online_settings"),
 			patch.object(online_store_api, "resolve_company", return_value="Duka Ltd"),
 			patch.object(online_store_api, "read_store", return_value=dict(online_store_api.DEFAULTS)),
 			patch.object(online_store_api, "company_for_slug", return_value=None),
@@ -177,7 +177,7 @@ class TestSaveStore(unittest.TestCase):
 
 	def test_only_the_businesss_own_products_are_shown_or_hidden(self):
 		with (
-			patch.object(online_store_api, "require_catalogue_role"),
+			patch.object(online_store_api, "require_online_catalogue"),
 			patch.object(frappe, "get_all", return_value=["RICE"]) as get_all,
 		):
 			out = online_store_api.set_items_online(["RICE", "OTHERS-ITEM"], show=0)
@@ -186,7 +186,7 @@ class TestSaveStore(unittest.TestCase):
 		self.assertEqual(out["data"], {"updated": 1, "skipped": 1, "show": False})
 
 	def test_bulk_hide_is_bounded(self):
-		with patch.object(online_store_api, "require_catalogue_role"):
+		with patch.object(online_store_api, "require_online_catalogue"):
 			with self.assertRaises(frappe.ValidationError):
 				online_store_api.set_items_online(
 					[f"I{n}" for n in range(online_store_api.MAX_BULK_ITEMS + 1)]

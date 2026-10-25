@@ -28,7 +28,7 @@ class TestEcommerceApi(unittest.TestCase):
 			p.start()
 			self.addCleanup(p.stop)
 
-	@patch("murzak_pos.api.ecommerce_api.require_catalogue_role")
+	@patch("murzak_pos.api.ecommerce_api.require_online_integrations")
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
 	def test_get_settings_defaults(self, mock_co, mock_role):
 		with patch.object(frappe.db, "get_default", return_value=None):
@@ -44,7 +44,7 @@ class TestEcommerceApi(unittest.TestCase):
 					self.assertEqual(res["data"]["catalog_count"], 12)
 					self.assertEqual(res["data"]["status"], "not_configured")
 
-	@patch("murzak_pos.api.ecommerce_api.require_manager")
+	@patch("murzak_pos.api.ecommerce_api.require_online_integrations")
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
 	def test_save_settings_validation(self, mock_co, mock_role):
 		res = ecommerce_api.save_ecommerce_settings(
@@ -56,7 +56,7 @@ class TestEcommerceApi(unittest.TestCase):
 
 	@patch("murzak_pos.api.product_import_images._resolve", return_value=["93.184.216.34"])
 	@patch("murzak_pos.api.ecommerce_api.now_datetime", return_value="2026-10-24 10:00:00")
-	@patch("murzak_pos.api.ecommerce_api.require_manager")
+	@patch("murzak_pos.api.ecommerce_api.require_online_integrations")
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
 	def test_save_settings_success(self, mock_co, mock_role, mock_now, mock_resolve):
 		with patch.object(frappe.db, "exists", return_value=True):
@@ -76,7 +76,7 @@ class TestEcommerceApi(unittest.TestCase):
 						self.assertTrue(res["success"])
 						self.assertTrue(mock_set.called)
 
-	@patch("murzak_pos.api.ecommerce_api.require_manager")
+	@patch("murzak_pos.api.ecommerce_api.require_online_integrations")
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
 	def test_test_connection_requires_credentials(self, mock_co, mock_role):
 		with patch.object(frappe.db, "get_default", return_value=None):
@@ -87,7 +87,7 @@ class TestEcommerceApi(unittest.TestCase):
 			self.assertFalse(res["success"])
 			self.assertIn("required", res["message"])
 
-	@patch("murzak_pos.api.ecommerce_api.require_manager")
+	@patch("murzak_pos.api.ecommerce_api.require_online_integrations")
 	@patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company")
 	def test_an_address_inside_the_servers_network_is_refused(self, mock_co, mock_role):
 		for address, url in (
@@ -160,7 +160,7 @@ class TestEcommerceProductList(unittest.TestCase):
 		for p in (
 			patch.object(frappe, "session", frappe._dict(user="manager@duka.test"), create=True),
 			patch.object(frappe, "db", MagicMock(), create=True),
-			patch("murzak_pos.api.ecommerce_api.require_catalogue_role"),
+			patch("murzak_pos.api.ecommerce_api.require_online_catalogue"),
 			patch("murzak_pos.api.ecommerce_api.resolve_company", return_value="Test Company"),
 			patch.object(ecommerce_api.online_catalogue, "default_warehouse", return_value="Main - TC"),
 			patch.object(ecommerce_api.online_catalogue, "count_items", return_value=1),

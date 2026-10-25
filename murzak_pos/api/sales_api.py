@@ -23,7 +23,7 @@ from murzak_pos.api.pharmacy_rules import add_to_remarks
 from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
 )
-from murzak_pos.api import return_rules, sales_person_api
+from murzak_pos.api import online_orders, return_rules, sales_person_api
 from murzak_pos.api.access_control import ensure_record_access, require_any_role
 from murzak_pos.api.business_lists import (
     caller_company,
@@ -730,6 +730,27 @@ def _recorded_sale_response(doctype: str, name: str) -> Dict:
     }
 
 
+def _check_online_order(online_order: Optional[str], company: Optional[str], do_not_submit: bool) -> None:
+    """Before a sale for an online order is built: the order must be one this sale may settle."""
+    if not online_order:
+        return
+    if do_not_submit:
+        frappe.throw(_("A sale for an online order must be completed, not saved as a draft."), frappe.ValidationError)
+    online_orders.check_order_for_till_sale(str(online_order), company)
+
+
+def _settle_online_order(online_order: Optional[str], sale) -> None:
+    """After the sale for an online order is saved: link it, mark the order paid and release the order's stock."""
+    if not online_order:
+        return
+    try:
+        online_orders.settle_order_with_sale(str(online_order), sale)
+    except Exception:
+        # The sale exists and took the stock; a retry of it finishes the job (settle_recorded_sale)
+        frappe.log_error("Settle online order", frappe.get_traceback())
+        raise
+
+
 def _lock_gateway_payments_or_recorded(
     gateway_claims: List, company: Optional[str], client_reference: Optional[str]
 ) -> Optional[Dict]:
@@ -803,6 +824,7 @@ def _create_invoice_document(
     offline_sold_at: Optional[str] = None,
     extra_remark: str | None = None,
     sales_person: str | None = None,
+    online_order: str | None = None,
 ) -> "frappe.model.document.Document":
     if not company:
         company = _get_default_company()
@@ -881,6 +903,9 @@ def _create_invoice_document(
     if extra_remark:
         doc.remarks = add_to_remarks(doc.get("remarks"), extra_remark)
 
+    # The online order this sale settles, kept on the sale so reports can tell Online from Till
+    online_orders.mark_sale_as_online(doc, online_order)
+
     # Credit the sale to the named sales person, or to the cashier's own when their login is linked to one
     sales_person_api.attach(doc, sales_person)
 
@@ -944,6 +969,7 @@ def create_sales_invoice(
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
     sales_person: str | None = None,
+    online_order: str | None = None,
 ) -> Dict:
     """
     Create a Sales Invoice for standard or POS sales.
@@ -967,6 +993,10 @@ def create_sales_invoice(
             sale is recorded now, keeps this time on the invoice, and gets no automatic discount.
         client_reference: The till's id for this sale. Sending the same id again (a retry after a
             lost reply) returns the invoice already created instead of making a second one.
+        online_order: The Sales Order of an online order this sale settles at the till. The order must belong to
+            the business and not be cancelled or already sold, and the caller needs the online store's `orders`
+            permission. The sale takes the stock out once; the order's hold on that stock is released, the two are
+            linked, and the order is marked paid unless the sale left money owing.
 
     Returns:
         dict: Created Sales Invoice details
@@ -998,7 +1028,9 @@ def create_sales_invoice(
         company = company or _get_default_company()
         recorded = find_recorded_sale(company, client_reference)
         if recorded:
+            online_orders.settle_recorded_sale(online_order, company, *recorded)
             return _recorded_sale_response(*recorded)
+        _check_online_order(online_order, company, do_not_submit)
         gateway_claims = validate_gateway_payments(parsed_payments, company) if company else []
 
         si = _create_invoice_document(
@@ -1017,6 +1049,7 @@ def create_sales_invoice(
             client_reference=client_reference,
             offline_sold_at=offline_sold_at,
             sales_person=sales_person,
+            online_order=online_order,
         )
 
         # Set update_stock flag - CRITICAL for inventory reduction
@@ -1053,6 +1086,7 @@ def create_sales_invoice(
 
         mark_gateway_payments_used(gateway_claims, "Sales Invoice", si.name)
         remember_sale(company, client_reference, "Sales Invoice", si.name)
+        _settle_online_order(online_order, si)
 
         return {
             "success": True,
@@ -1113,6 +1147,7 @@ def create_pos_invoice(
     offline_sold_at: Optional[str] = None,
     dispensing: str | dict | None = None,
     sales_person: str | None = None,
+    online_order: str | None = None,
 ) -> Dict:
     """
     Create a POS Invoice (used for walk-in POS sales).
@@ -1140,6 +1175,10 @@ def create_pos_invoice(
         dispensing: For a sale that includes prescription-only medicines: {patient, prescriber,
             reference}. A sale of such medicines without a patient and a prescriber is refused (unless
             it was made offline); the record is written on the invoice's remarks.
+        online_order: The Sales Order of an online order this sale settles at the till. The order must belong to
+            the business and not be cancelled or already sold, and the caller needs the online store's `orders`
+            permission. The sale takes the stock out once; the order's hold on that stock is released, the two are
+            linked, and the order is marked paid unless the sale left money owing.
 
     Returns:
         dict: Created POS Invoice details
@@ -1181,7 +1220,9 @@ def create_pos_invoice(
 
         recorded = find_recorded_sale(company, client_reference)
         if recorded:
+            online_orders.settle_recorded_sale(online_order, company, *recorded)
             return _recorded_sale_response(*recorded)
+        _check_online_order(online_order, company, do_not_submit)
         # Prescription-only medicines need a patient and a prescriber on the sale (checked before any
         # payment is used up, so a refused sale costs the customer nothing)
         prescription_note = prescription_sale_remark(parsed_items, dispensing, parse_sold_at(offline_sold_at))
@@ -1248,6 +1289,7 @@ def create_pos_invoice(
                 offline_sold_at=offline_sold_at,
                 extra_remark=prescription_note,
                 sales_person=sales_person,
+                online_order=online_order,
             )
 
             if receivable_account and hasattr(si, "debit_to"):
@@ -1294,6 +1336,7 @@ def create_pos_invoice(
 
             mark_gateway_payments_used(gateway_claims, "Sales Invoice", si.name)
             remember_sale(company, client_reference, "Sales Invoice", si.name)
+            _settle_online_order(online_order, si)
 
             return {
                 "success": True,
@@ -1327,6 +1370,7 @@ def create_pos_invoice(
             offline_sold_at=offline_sold_at,
             extra_remark=prescription_note,
             sales_person=sales_person,
+            online_order=online_order,
         )
 
         if receivable_account and hasattr(pi, "debit_to"):
@@ -1374,6 +1418,7 @@ def create_pos_invoice(
 
         mark_gateway_payments_used(gateway_claims, "POS Invoice", pi.name)
         remember_sale(company, client_reference, "POS Invoice", pi.name)
+        _settle_online_order(online_order, pi)
 
         return {
             "success": True,

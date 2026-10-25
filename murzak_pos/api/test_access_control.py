@@ -369,11 +369,6 @@ SENSITIVE_CALLS = {
 			"delete_price_list",
 			"create_product_variant",
 		],
-		"ecommerce_api": [
-			"get_ecommerce_settings",
-			"sync_woocommerce_catalog",
-			"get_ecommerce_products",
-		],
 	},
 	"require_stock_role": {
 		"inventory_api": [
@@ -422,10 +417,33 @@ SENSITIVE_CALLS = {
 			"update_inventory_discount_rule",
 			"delete_inventory_discount_rule",
 		],
+	},
+	# The online store's four permissions
+	"require_online_orders": {
+		"online_orders": [
+			"list_online_orders",
+			"get_online_order",
+			"set_online_order_status",
+			"mark_online_order_paid",
+			"create_invoice_for_online_order",
+		],
+	},
+	"require_online_catalogue": {
+		"online_store_api": ["set_items_online"],
+		"ecommerce_api": ["get_ecommerce_products"],
+	},
+	"require_online_settings": {
+		"online_store_api": ["get_online_store", "check_store_slug", "save_online_store"],
+	},
+	"require_online_integrations": {
 		"ecommerce_api": [
+			"get_ecommerce_settings",
 			"save_ecommerce_settings",
 			"test_woocommerce_connection",
-		]
+			"sync_woocommerce_catalog",
+			"get_order_webhook",
+			"regenerate_order_webhook",
+		],
 	},
 }
 
@@ -494,6 +512,24 @@ class TestRoleSets(AccessCase):
 			self.assertTrue(self.allowed(credit, (role,)), role)
 		for role in ("Sales User", "Stock Manager", "Purchase Manager"):
 			self.assertFalse(self.allowed(credit, (role,)), role)
+
+	def test_online_store_permissions_follow_the_frontends_online_store_access(self):
+		orders = access_control.require_online_orders
+		catalogue = access_control.require_online_catalogue
+		settings = access_control.require_online_settings
+		integrations = access_control.require_online_integrations
+		expected = {
+			"Online Orders Clerk": (True, False, False, False),
+			"Sales Manager": (True, True, True, False),
+			"Item Manager": (False, True, False, False),
+			"Business Owner": (True, True, True, True),
+			"System Manager": (True, True, True, True),
+			"Stock Manager": (False, False, False, False),
+			"Sales User": (False, False, False, False),
+		}
+		for role, wanted in expected.items():
+			got = tuple(self.allowed(check, (role,)) for check in (orders, catalogue, settings, integrations))
+			self.assertEqual(got, wanted, role)
 
 	def test_loyalty_programs_are_for_owners_and_accountants(self):
 		loyalty_check = access_control.require_loyalty_role

@@ -110,9 +110,12 @@ def notify_held_sale(company, held_id, warehouse, action) -> None:
 
 
 def notify_online_order(company, order, channel) -> None:
-	"""A new online order came in: tell the business's tills so it is seen at once."""
+	"""A new online order came in: tell the business's staff who hold the online store's `orders` permission."""
 	try:
-		send(online_order_message(company, order, channel), users_of_company(company))
+		from murzak_pos.api.access_control import can_manage_online_orders
+
+		recipients = [u for u in users_of_company(company) if can_manage_online_orders(u)]
+		send(online_order_message(company, order, channel), recipients)
 	except Exception:
 		# A message that cannot be sent must never undo or block an order
 		frappe.log_error("Realtime online order message", frappe.get_traceback())
