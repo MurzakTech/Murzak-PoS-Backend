@@ -24,13 +24,14 @@ REASONS = (
 	"Petty cash",
 	"Supplier payment",
 	"Staff advance",
+	"Customer refund",
 	"Bank deposit",
 	"Other",
 )
 # What a person is likely to need for each kind, first is the default shown
 REASONS_BY_KIND = {
 	PAID_IN: ("Float top-up", "Change", "Other"),
-	PAID_OUT: ("Petty cash", "Supplier payment", "Staff advance", "Change", "Other"),
+	PAID_OUT: ("Petty cash", "Supplier payment", "Staff advance", "Customer refund", "Change", "Other"),
 	SAFE_DROP: ("Bank deposit", "Other"),
 }
 

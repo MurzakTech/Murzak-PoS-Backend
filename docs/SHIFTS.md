@@ -70,13 +70,21 @@ The same people may read it as may record cash in the shift (the cashier who ope
 
 Sales while open are the till's own sales since the shift opened. Once closed they are everything its cashier sold on its till between its start and its end (receipts merged at closing are still counted once). A return made through the sales return call has no till of its own; it is counted in the shift of the cashier who made it when it is against a sale of that till.
 
-### Known gap: cash handed back for a return is not recorded
+## Part 3: paying a refund back
 
-The sales return call makes a credit note; it does not record paying cash to the customer. A cash refund handed over the counter therefore does not lower the cash the shift expects, and the count then reads over by the refund. Recording the payout of a refund (a Payment Entry against the credit note, in the method used) is the next piece of work.
+A sales return (`sales_api.create_sales_return`) makes a credit note: the shop owes the customer that money. Paying it back is a separate act, and until now nothing recorded it, so cash handed over the counter did not lower the cash the shift expects and the count at the end read over by the refund.
+
+`refund_api.pay_refund(credit_note, mode_of_payment="Cash", amount=None, session=None)` pays a credit note back. The same payout can be done in the return itself: `create_sales_return(..., refund_mode="Cash")`.
+
+- **Who:** the people who may record a return (a Sales Manager, Accounts Manager or the owner).
+- **Cash:** needs an open shift (the caller's own, or the one named). The refund comes out of the drawer as a cash movement of kind Paid Out with the reason "Customer refund" and the credit note's number as the note, so the shift count and the Z report agree. It cannot be more than the drawer holds; if it is, nothing is paid.
+- **Another way of paying (M-Pesa, bank):** the credit note is settled with a Payment Entry in that method and the drawer is not touched.
+- **Always:** a Payment Entry settles the credit note in the books (its remarks start "Till refund", which tells the shift count not to count it a second time).
+- A credit note paid in full cannot be paid again. A part payment leaves the rest owed. A return waiting for a manager's approval (a draft) cannot be paid until it is approved.
+- If the payout fails in the same call as the return, the return stands and the answer says the refund still has to be paid.
 
 ## Planned next
 
-1. Record the payout of a refund so cash refunds lower the expected cash.
-2. Handover between cashiers: close one shift and open the next with the counted cash as the new float.
-3. Till screens for all of the above.
-4. Staff rota and clock-in.
+1. Handover between cashiers: close one shift and open the next with the counted cash as the new float.
+2. Till screens for all of the above.
+3. Staff rota and clock-in.

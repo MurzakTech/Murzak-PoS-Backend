@@ -2579,9 +2579,13 @@ def create_sales_return(
     discount_amount: Optional[float] = None,
     do_not_submit: bool = False,
     reason: Optional[str] = None,
+    refund_mode: str | None = None,
 ) -> Dict:
     """
     Create a Sales Return (Credit Note) against an existing Sales Invoice or as a standalone credit note.
+
+    With `refund_mode` (Cash, M-Pesa...) the money is also paid back (refund_api.pay_out); without it the
+    credit note stands as money the shop owes the customer, and `refund_api.pay_refund` pays it later.
 
     Args:
         customer: Customer name
@@ -2685,8 +2689,26 @@ def create_sales_return(
         if not do_not_submit:
             cn.submit()
 
+        refund = None
+        if refund_mode and cn.docstatus == 1:
+            from murzak_pos.api import refund_api
+
+            # The return stands whatever happens to the payout, so it is saved first
+            frappe.db.commit()
+            try:
+                refund = refund_api.pay_out(cn.name, refund_mode)
+            except Exception:
+                frappe.db.rollback()
+                frappe.log_error("Refund payout failed", frappe.get_traceback())
+                refund = {
+                    "success": False,
+                    "error_type": "refund_failed",
+                    "message": _("The return was recorded, but the refund could not be paid. Pay it from the return."),
+                }
+
         return {
             "success": True,
+            "refund": refund,
             "message": (
                 _("Sales Return saved and sent for approval")
                 if approval
