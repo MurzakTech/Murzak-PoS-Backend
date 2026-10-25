@@ -274,6 +274,7 @@ EXPECTED_GUARDS = {
 	"shift_api": {
 		"record_cash_movement": ("POS Opening Entry session",),
 		"list_cash_movements": ("POS Opening Entry session",),
+		"get_shift_report": ("POS Opening Entry session",),
 	},
 	"product_import_api": {
 		"preview_product_import": ("Warehouse warehouse",),
