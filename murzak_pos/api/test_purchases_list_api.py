@@ -973,6 +973,11 @@ class TestReceiveGoodsRollsBackEverything(ReceiveCase):
 		self.logged.assert_called()
 		self.db.commit.assert_not_called()
 
+	def test_an_unexpected_failure_says_what_kind_of_error_it_was(self):
+		self.invoice_call.side_effect = AttributeError("'NoneType' object has no attribute 'name'")
+		reply = self.receive()
+		self.assertEqual(reply["error_detail"], "AttributeError: 'NoneType' object has no attribute 'name'")
+
 	def test_if_the_receipt_step_fails_no_bill_is_attempted(self):
 		self.receipt_call.return_value = (None, "Quantity exceeds what is pending")
 		reply = self.receive()

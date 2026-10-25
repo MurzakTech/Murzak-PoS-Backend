@@ -878,9 +878,12 @@ def receive_goods(
 		# Anything not caught below: put everything back, so no receipt is left without its bill (or the other way round)
 		frappe.db.rollback()
 		frappe.log_error("Receive goods error", f"{order}\n{frappe.get_traceback()}")
-		return _refusal(
+		reply = _refusal(
 			"server_error", _failed(plain_text(error) if isinstance(error, frappe.ValidationError) else "")
 		)
+		# For whoever supports the shop: the kind of error and its first words. The trace itself stays in the Error Log.
+		reply["error_detail"] = f"{type(error).__name__}: {plain_text(error, 200)}"
+		return reply
 
 
 def _failed(reason: str = "") -> str:
