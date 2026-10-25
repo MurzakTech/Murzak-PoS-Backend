@@ -158,6 +158,48 @@ class TestExpectedCash(unittest.TestCase):
 		self.assertEqual(calc.cash_in_till(result), 85.0)
 
 
+class TestCashMovements(unittest.TestCase):
+	def test_money_paid_in_and_out_changes_the_cash_expected(self):
+		result = by_mode(
+			calc.build_expected(
+				cash_opening(5000),
+				[pay("Cash", 2000)],
+				[],
+				[],
+				0.0,
+				None,
+				[
+					{"payment_type": "Receive", "mode_of_payment": "Cash", "amount": 1000},
+					{"payment_type": "Pay", "mode_of_payment": "Cash", "amount": 300},
+					{"payment_type": "Pay", "mode_of_payment": "Cash", "amount": 4000},
+				],
+			)
+		)
+		self.assertEqual(result["Cash"]["paid_in"], 1000.0)
+		self.assertEqual(result["Cash"]["paid_out"], 4300.0)
+		self.assertEqual(result["Cash"]["expected"], 3700.0)
+
+	def test_no_movements_changes_nothing(self):
+		with_none = by_mode(
+			calc.build_expected(cash_opening(5000), [pay("Cash", 2000)], [], [], 0.0, None, None)
+		)
+		self.assertEqual(with_none["Cash"]["expected"], 7000.0)
+
+	def test_movements_add_to_payment_entries(self):
+		result = by_mode(
+			calc.build_expected(
+				cash_opening(0),
+				[],
+				[],
+				[{"payment_type": "Receive", "mode_of_payment": "Cash", "amount": 100}],
+				0.0,
+				None,
+				[{"payment_type": "Receive", "mode_of_payment": "Cash", "amount": 50}],
+			)
+		)
+		self.assertEqual(result["Cash"]["expected"], 150.0)
+
+
 class TestCredit(unittest.TestCase):
 	def test_a_credit_sale_is_not_cash(self):
 		result = by_mode(lines(cash_opening(1000), [pay("Cash", 200)], credit=700))

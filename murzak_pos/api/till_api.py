@@ -21,7 +21,7 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
-from murzak_pos.api import role_tiers, sales_api
+from murzak_pos.api import cash_movement_rules, refund_rules, role_tiers, sales_api
 from murzak_pos.api import till_calc as calc
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.payment_gateway_common import get_user_companies, resolve_company
@@ -167,8 +167,15 @@ def _session_figures(session) -> dict:
 	entries = frappe.db.sql(
 		"SELECT payment_type, mode_of_payment, SUM(base_paid_amount) AS amount FROM `tabPayment Entry` "
 		"WHERE docstatus = 1 AND owner = %(user)s AND creation >= %(start)s "
-		"AND payment_type IN ('Receive', 'Pay') GROUP BY payment_type, mode_of_payment",
-		values,
+		"AND payment_type IN ('Receive', 'Pay') AND IFNULL(remarks, '') NOT LIKE %(refund_mark)s "
+		"GROUP BY payment_type, mode_of_payment",
+		{**values, "refund_mark": f"{refund_rules.REMARK}%"},
+		as_dict=True,
+	)
+	movements = frappe.db.sql(
+		"SELECT kind, mode_of_payment, SUM(amount) AS amount FROM `tabTill Cash Movement` "
+		"WHERE pos_opening_entry = %(session)s GROUP BY kind, mode_of_payment",
+		{"session": session["name"]},
 		as_dict=True,
 	)
 	return {
@@ -177,6 +184,7 @@ def _session_figures(session) -> dict:
 		"change": [{"is_return": r.get("is_return"), "change": r.get("change")} for r in change],
 		"credit": credit,
 		"entries": entries,
+		"movements": cash_movement_rules.movement_rows(movements),
 	}
 
 
@@ -194,6 +202,7 @@ def _expected_lines(session) -> list[dict]:
 		figures["entries"],
 		figures["credit"],
 		_mode_types(),
+		figures["movements"],
 	)
 	for line in lines:
 		line["label"] = _label(line)
