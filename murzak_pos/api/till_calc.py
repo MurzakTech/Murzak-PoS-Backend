@@ -134,7 +134,7 @@ def line_order(line) -> tuple:
 
 
 def build_expected(
-	opening_rows, payment_rows, change_rows, entry_rows, credit_total=0.0, mode_types=None
+	opening_rows, payment_rows, change_rows, entry_rows, credit_total=0.0, mode_types=None, movement_rows=None
 ) -> list[dict]:
 	"""
 	The lines of one session, in display order.
@@ -146,6 +146,8 @@ def build_expected(
 	entry_rows    [{payment_type, mode_of_payment, amount}] Payment Entries the cashier made in the session:
 	              Receive is money in (a customer settling a debt), Pay is money out
 	credit_total  what was sold on credit (the unpaid part of the session's sales)
+	movement_rows [{payment_type, mode_of_payment, amount}] cash put in or taken out of the drawer during the
+	              shift (floats, petty cash, safe drops), read the same way as entry_rows
 
 	For each mode: expected = opening + sales + paid_in - refunds - paid_out. For cash, `sales` is the cash taken
 	minus the change given back. A credit sale is not money in the till, so On credit is listed last with
@@ -186,7 +188,7 @@ def build_expected(
 			line["refunds"] += -amount
 		else:
 			line["sales"] += amount
-	for row in entry_rows or []:
+	for row in [*(entry_rows or []), *(movement_rows or [])]:
 		name = row.get("mode_of_payment")
 		if not name:
 			continue
