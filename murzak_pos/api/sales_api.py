@@ -206,6 +206,18 @@ def _parse_opening_balances(balance_details) -> List[Dict]:
     return rows
 
 
+def _profile_to_open_on(pos_profile: str | None, company: str) -> str:
+    """
+    The POS Profile a till is opened on. A brand-new shop has none yet, and the till screen sends the name
+    the shop will get ("<company> POS Profile"), so asking for that exact name fails with "not found". When the
+    named profile is missing, use the company's own profile, creating it the way a sale does. A profile that
+    exists is always used as sent.
+    """
+    if pos_profile and frappe.db.exists("POS Profile", pos_profile):
+        return pos_profile
+    return _get_or_create_pos_profile(company)
+
+
 def _get_or_create_pos_opening_entry(
     pos_profile: str, company: str, user: str = None, balance_details: Optional[List[Dict]] = None
 ) -> str:
@@ -226,6 +238,8 @@ def _get_or_create_pos_opening_entry(
     """
     if not user:
         user = frappe.session.user
+
+    pos_profile = _profile_to_open_on(pos_profile, company)
     
     # Check if there's an open POS Opening Entry
     from frappe.utils import today, get_datetime, get_date_str
