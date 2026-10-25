@@ -11,6 +11,7 @@ from erpnext.setup.setup_wizard import setup_wizard
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.error_handler import safe_error_message
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.shop_timezone import use_kenya_time
 from murzak_pos.api.warehouse_api import get_default_warehouse_for_company, set_default_warehouse_for_company
 
 
@@ -363,6 +364,8 @@ def create_company(
 
     frappe.db.set_single_value("System Settings", "country", company.country)
     frappe.db.set_single_value("System Settings", "setup_complete", 1)
+    # The setup wizard can leave the time zone blank, which Frappe reads as India
+    use_kenya_time()
     frappe.db.commit()
     
     # Set HTTP status code for successful creation
