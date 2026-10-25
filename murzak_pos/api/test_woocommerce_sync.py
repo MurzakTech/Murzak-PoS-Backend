@@ -385,6 +385,47 @@ class TestWebhookEndpoint(unittest.TestCase):
 		body = b"webhook_id=7"
 		self.assertEqual(self.call(body=body, signature=self.sign(body)), {"ignored": "not an order"})
 
+	def test_woocommerces_own_unsigned_test_message_is_answered_so_saving_the_webhook_works(self):
+		# What WooCommerce really sends when a webhook is saved: no signature, and only the webhook's number
+		with patch.object(online_webhooks, "handle_order") as handle:
+			out = self.call(body=b"webhook_id=7", signature=None)
+		self.assertEqual(out, {"ignored": "test message"})
+		handle.assert_not_called()
+
+	def test_an_unsigned_test_message_to_a_wrong_address_is_still_refused(self):
+		with self.assertRaises(frappe.AuthenticationError):
+			self.call(token=None, body=b"webhook_id=7", signature=None)
+
+	def test_nothing_else_unsigned_is_let_in_by_the_test_message_rule(self):
+		order = json.dumps(woo_order()).encode()
+		for body in (
+			order,
+			b"",
+			b"webhook_id=",
+			b"webhook_id=abc",
+			b"webhook_id=7&extra=1",
+			b"webhook_id=7 ",
+			b"x=webhook_id=7",
+		):
+			with patch.object(online_webhooks, "handle_order") as handle:
+				if body.strip() == b"webhook_id=7":
+					# Only trailing whitespace is forgiven
+					self.assertEqual(self.call(body=body, signature=None), {"ignored": "test message"})
+					continue
+				with self.assertRaises(frappe.AuthenticationError, msg=repr(body)):
+					self.call(body=body, signature=None)
+			handle.assert_not_called()
+
+	def test_the_test_message_rule_does_not_weaken_the_signature_check_on_orders(self):
+		body = json.dumps(woo_order()).encode()
+		with self.assertRaises(frappe.AuthenticationError):
+			self.call(body=body, signature="forged")
+
+	def test_ping_shape(self):
+		self.assertTrue(online_webhooks.is_ping(b"webhook_id=123"))
+		self.assertFalse(online_webhooks.is_ping(b"webhook_id=1234567890123"))
+		self.assertFalse(online_webhooks.is_ping(None))
+
 	def test_a_signed_order_is_handled(self):
 		body = json.dumps(woo_order()).encode()
 		with patch.object(online_webhooks, "handle_order", return_value={"recorded": True}) as handle:

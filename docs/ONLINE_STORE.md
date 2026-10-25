@@ -45,7 +45,9 @@ The owner does this once, in Settings > E-Commerce:
    edited them on the website. New products are created.
 4. To receive orders, read the **webhook address and secret** (`get_order_webhook`). In WordPress open
    **WooCommerce > Settings > Advanced > Webhooks > Add webhook**, choose the topic **Order created**, status
-   **Active**, paste the address as **Delivery URL** and the secret as **Secret**. Add a second webhook with the topic
+   **Active**, paste the address as **Delivery URL** and the secret as **Secret**. When you save, WooCommerce sends one test
+   message to check the address; a right address answers it, and WooCommerce shows an error if the address is wrong (a 401 means the
+   address's code is wrong or incomplete). Add a second webhook with the topic
    **Order updated**, so an order cancelled on the website is cancelled in the POS too.
 
 After that it runs by itself:
