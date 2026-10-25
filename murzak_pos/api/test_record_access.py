@@ -297,7 +297,10 @@ EXPECTED_GUARDS = {
 		"create_direct_bill": ("Supplier supplier", "Warehouse warehouse"),
 		"add_purchase_note": ("Purchase Order id", "Purchase Invoice id"),
 	},
-	"expenses_api": {"get_receipt": ("Journal Entry expense",)},
+	"expenses_api": {
+		"create_expense": ("POS Opening Entry session",),
+		"get_receipt": ("Journal Entry expense",),
+	},
 	"reports_api": {
 		"run_report": ("Warehouse store",),
 	},

@@ -124,13 +124,14 @@ def pay_out(credit_note_name: str, mode_of_payment: str | None = None, amount=No
 	movement = None
 	if shift:
 		# The cash leaves the drawer: written down in the shift so its count agrees (refused if the drawer is short)
-		movement = shift_api.record_cash_movement(
+		movement = shift_api.record_movement(
 			shift,
 			movement_rules.PAID_OUT,
 			pay,
 			rules.REASON,
 			credit_note.name,
 			f"refund-{credit_note.name}-{entry.name}",
+			system=True,
 		)
 		if not movement.get("success"):
 			frappe.db.rollback()

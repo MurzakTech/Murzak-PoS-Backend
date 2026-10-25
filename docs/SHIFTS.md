@@ -11,10 +11,18 @@ Three kinds of cash movement can be written down during an open shift:
 | Kind | Meaning | Reasons offered |
 |---|---|---|
 | Paid In | Cash put into the drawer: a float top-up, or change brought from the safe | Float top-up, Change, Other |
-| Paid Out | Cash taken from the drawer: petty cash, a supplier paid, a staff advance | Petty cash, Supplier payment, Staff advance, Change, Other |
+| Paid Out | Cash taken from the drawer: a staff advance, or change fetched | Staff advance, Change, Other |
 | Safe Drop | Notes moved from the drawer to the safe or taken to the bank | Bank deposit, Other |
 
 "Other" needs a few words saying what the money was for.
+
+### What does not need recording by hand
+
+- **Change given to a customer.** A customer who pays 500 for a 450 sale puts 450 into the drawer, not 500: the shift count takes the change off the cash sales by itself.
+- **Money spent on the business** (petty cash, supplies, a supplier paid from the drawer). That is an expense: add it in Expenses, paid from Cash. If the person who adds it has an open shift, the expense also comes out of that shift's drawer as a cash movement with the reason "Expense" (the Expenses call takes `from_till=false` to keep it out of the drawer, for example when it was paid from the safe, and `session` to name another open shift). If the drawer holds less than the expense, nothing is saved. With no open shift the expense is saved and no drawer is touched.
+- **A cash refund to a customer.** See "Paying a refund back" below; it comes out of the drawer with the reason "Customer refund".
+
+The reasons "Expense" and "Customer refund" are written by the system only; a request cannot pick them. Older movements recorded as "Petty cash" or "Supplier payment" stay valid.
 
 ### What the system does with them
 
@@ -44,7 +52,7 @@ Both are reached as `/api/method/murzak_pos.api.shift_api.<name>` and answer `{ 
 
 ### What this does not do (yet)
 
-- It does not post to the accounts. Cash paid out for an expense should also be recorded in Expenses so the books show it; the shift record is for the drawer count and the shift report.
+- A manual cash movement does not post to the accounts. Expenses and refunds do, and they are the way to record money spent or paid back.
 - It has no approval step for large amounts.
 - Only the cash line of the till moves. M-Pesa and card are not drawer money.
 

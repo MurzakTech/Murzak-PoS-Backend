@@ -38,7 +38,7 @@ class PayOutCase(unittest.TestCase):
 			patch.object(refund_api.frappe, "get_doc", return_value=doc),
 			patch.object(refund_api, "_open_shift", return_value=shift),
 			patch.object(refund_api, "_payment_entry", return_value=entry) as pay_entry,
-			patch.object(refund_api.shift_api, "record_cash_movement", movement),
+			patch.object(refund_api.shift_api, "record_movement", movement),
 		):
 			result = refund_api.pay_out("ACC-SINV-1", **kwargs)
 		return result, db, pay_entry, movement
@@ -87,6 +87,7 @@ class PayOutCase(unittest.TestCase):
 		args = movement.call_args.args
 		self.assertEqual(args[:5], ("POS-OPE-1", "Paid Out", 500.0, "Customer refund", "ACC-SINV-1"))
 		self.assertEqual(args[5], "refund-ACC-SINV-1-ACC-PAY-1")
+		self.assertTrue(movement.call_args.kwargs["system"])
 		self.assertEqual(result["data"]["cash_movement"], {"id": "M1"})
 		self.assertEqual(result["data"]["shift"], "POS-OPE-1")
 		db.commit.assert_called()
@@ -112,7 +113,7 @@ class PayOutCase(unittest.TestCase):
 			patch.object(refund_api.frappe, "get_doc", return_value=doc),
 			patch.object(refund_api, "_open_shift", return_value="POS-OPE-1"),
 			patch.object(refund_api, "_payment_entry", return_value=MagicMock(name="PE")),
-			patch.object(refund_api.shift_api, "record_cash_movement", return_value=refused),
+			patch.object(refund_api.shift_api, "record_movement", return_value=refused),
 		):
 			result = refund_api.pay_out("ACC-SINV-1")
 		self.assertEqual(result["error_type"], "more_than_in_till")

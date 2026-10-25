@@ -3,8 +3,9 @@ Cash put into or taken out of the till during a shift (shift management, part 1)
 
 Two calls, in the contract docs/SHIFTS.md:
 
-- `record_cash_movement`: a float topped up (Paid In), money paid out of the drawer (Paid Out: petty cash, a supplier,
-  a staff advance) or notes moved to the safe (Safe Drop), each with a reason.
+- `record_cash_movement`: a float topped up (Paid In), money paid out of the drawer (Paid Out: a staff advance, change
+  fetched) or notes moved to the safe (Safe Drop), each with a reason. Money spent on the business is an expense
+  (expenses_api), and a refund is paid by refund_api; both take their cash out of the drawer by themselves.
 - `list_cash_movements`: what was recorded in a shift, newest first, with the totals.
 
 The shift-end count (till_api.close_till) adds these to the cash it expects, so a difference at the end is a real
@@ -122,13 +123,21 @@ def record_cash_movement(session, kind, amount, reason=None, note=None, client_i
 	nothing new. Money leaving the till cannot be more than the till is expected to hold.
 	"""
 	ensure_record_access("POS Opening Entry", session)
+	return record_movement(session, kind, amount, reason, note, client_id)
+
+
+def record_movement(session, kind, amount, reason=None, note=None, client_id=None, system=False):
+	"""
+	The work of `record_cash_movement`. With `system` set it also accepts the reasons the system writes itself (an
+	expense, a refund); only the calls that record those (expenses_api, refund_api) set it, never a request.
+	"""
 	entry, refusal = _session_for(session)
 	if refusal:
 		return refusal
 	if entry["status"] != "Open" or entry["docstatus"] != 1:
 		return _refusal("not_open")
 	try:
-		movement = rules.clean(kind, amount, reason, note, client_id)
+		movement = rules.clean(kind, amount, reason, note, client_id, allow_system=system)
 	except rules.MovementError as error:
 		return _refusal(error.code, error.detail)
 
@@ -211,7 +220,7 @@ def list_cash_movements(session):
 			"session": entry["name"],
 			"movements": [_movement_view(row) for row in rows],
 			"totals": _totals(rows),
-			"reasons": {kind: list(reasons) for kind, reasons in rules.REASONS_BY_KIND.items()},
+			"reasons": {kind: list(reasons) for kind, reasons in rules.OFFERED_BY_KIND.items()},
 		},
 	}
 

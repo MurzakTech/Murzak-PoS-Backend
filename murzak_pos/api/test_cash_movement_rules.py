@@ -23,7 +23,7 @@ class CleanCase(unittest.TestCase):
 
 	def test_a_missing_reason_takes_the_first_one_for_the_kind(self):
 		self.assertEqual(rules.clean("Paid In", 100, None)["reason"], "Float top-up")
-		self.assertEqual(rules.clean("Paid Out", 100, "")["reason"], "Petty cash")
+		self.assertEqual(rules.clean("Paid Out", 100, "")["reason"], "Staff advance")
 		self.assertEqual(rules.clean("Safe Drop", 100, None)["reason"], "Bank deposit")
 
 	def test_amounts_must_be_above_zero_and_a_number(self):
@@ -45,6 +45,23 @@ class CleanCase(unittest.TestCase):
 			rules.clean("Refund", 10, None)
 		self.assertEqual(caught.exception.code, "bad_kind")
 
+	def test_the_reasons_the_system_writes_itself_are_refused_to_a_request_and_accepted_from_the_system(self):
+		for reason in ("Expense", "Customer refund"):
+			with self.subTest(reason=reason):
+				with self.assertRaises(rules.MovementError) as caught:
+					rules.clean("Paid Out", 100, reason)
+				self.assertEqual(caught.exception.code, "bad_reason")
+				self.assertEqual(rules.clean("Paid Out", 100, reason, allow_system=True)["reason"], reason)
+
+	def test_petty_cash_and_suppliers_are_expenses_so_the_till_does_not_offer_them(self):
+		offered = rules.OFFERED_BY_KIND["Paid Out"]
+		self.assertNotIn("Petty cash", offered)
+		self.assertNotIn("Supplier payment", offered)
+		self.assertNotIn("Expense", offered)
+		self.assertNotIn("Customer refund", offered)
+		# Older recordings with those reasons stay valid
+		self.assertEqual(rules.clean("Paid Out", 100, "Petty cash")["reason"], "Petty cash")
+
 	def test_a_reason_that_does_not_fit_the_kind_is_refused(self):
 		with self.assertRaises(rules.MovementError) as caught:
 			rules.clean("Safe Drop", 10, "Petty cash")
@@ -65,6 +82,18 @@ class CleanCase(unittest.TestCase):
 			with self.subTest(bad=bad), self.assertRaises(rules.MovementError) as caught:
 				rules.clean("Paid In", 10, None, None, bad)
 			self.assertEqual(caught.exception.code, "bad_client_id")
+
+
+class WantsTillCase(unittest.TestCase):
+	def test_not_saying_means_yes(self):
+		for value in (None, "", True, 1, "1", "true", "yes"):
+			with self.subTest(value=value):
+				self.assertTrue(rules.wants_till(value))
+
+	def test_only_a_clear_no_keeps_an_expense_out_of_the_drawer(self):
+		for value in (False, 0, "0", "false", "False", "no", " off "):
+			with self.subTest(value=value):
+				self.assertFalse(rules.wants_till(value))
 
 
 class ExceedsTillCase(unittest.TestCase):

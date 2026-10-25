@@ -18,22 +18,26 @@ KINDS = (PAID_IN, PAID_OUT, SAFE_DROP)
 # Money that leaves the drawer, so it must not be more than the drawer holds
 LEAVES_THE_TILL = (PAID_OUT, SAFE_DROP)
 
-REASONS = (
-	"Float top-up",
-	"Change",
-	"Petty cash",
-	"Supplier payment",
-	"Staff advance",
-	"Customer refund",
-	"Bank deposit",
-	"Other",
-)
-# What a person is likely to need for each kind, first is the default shown
-REASONS_BY_KIND = {
+# What a person may pick at the till for each kind, first is the default shown. Money spent on the business (petty cash,
+# supplies, a supplier paid from the drawer) is an expense, not a cash movement: it is recorded in Expenses, which takes it
+# out of the drawer by itself.
+OFFERED_BY_KIND = {
 	PAID_IN: ("Float top-up", "Change", "Other"),
-	PAID_OUT: ("Petty cash", "Supplier payment", "Staff advance", "Customer refund", "Change", "Other"),
+	PAID_OUT: ("Staff advance", "Change", "Other"),
 	SAFE_DROP: ("Bank deposit", "Other"),
 }
+# Reasons the system writes itself when cash leaves the drawer for something recorded elsewhere. They are accepted but not
+# offered, and old recordings with the reasons that moved to Expenses stay valid.
+EXPENSE_REASON = "Expense"
+REFUND_REASON = "Customer refund"
+SYSTEM_REASONS = (EXPENSE_REASON, REFUND_REASON)
+LEGACY_REASONS = ("Petty cash", "Supplier payment")
+REASONS_BY_KIND = {
+	PAID_IN: OFFERED_BY_KIND[PAID_IN],
+	PAID_OUT: (*OFFERED_BY_KIND[PAID_OUT], *SYSTEM_REASONS, *LEGACY_REASONS),
+	SAFE_DROP: OFFERED_BY_KIND[SAFE_DROP],
+}
+REASONS = tuple(sorted({reason for reasons in REASONS_BY_KIND.values() for reason in reasons}))
 
 MAX_AMOUNT = 10_000_000
 MAX_NOTE = 140
@@ -62,16 +66,17 @@ def _amount(value) -> float:
 	return amount
 
 
-def clean(kind, amount, reason, note=None, client_id=None) -> dict:
+def clean(kind, amount, reason, note=None, client_id=None, allow_system=False) -> dict:
 	"""
 	A movement ready to save, or a MovementError: bad_kind, bad_amount, too_large, bad_reason, note_required,
-	bad_client_id. "Other" needs a few words saying what the money was for.
+	bad_client_id. "Other" needs a few words saying what the money was for. The reasons the system writes itself
+	(an expense, a refund) are refused unless `allow_system` is set, which only the calls that record those do.
 	"""
 	if kind not in KINDS:
 		raise MovementError("bad_kind")
 	amount = _amount(amount)
-	reason = (reason or "").strip() or REASONS_BY_KIND[kind][0]
-	if reason not in REASONS_BY_KIND[kind]:
+	reason = (reason or "").strip() or OFFERED_BY_KIND[kind][0]
+	if reason not in REASONS_BY_KIND[kind] or (reason in SYSTEM_REASONS and not allow_system):
 		raise MovementError("bad_reason", reason)
 	note = " ".join(str(note or "").split())[:MAX_NOTE]
 	if reason == "Other" and len(note) < 3:
@@ -104,3 +109,13 @@ def exceeds_till(kind, amount, cash_in_till) -> bool:
 	if kind not in LEAVES_THE_TILL or cash_in_till is None:
 		return False
 	return round(float(amount), 2) > round(float(cash_in_till), 2) + 0.005
+
+
+def wants_till(value) -> bool:
+	"""
+	Whether an expense paid in cash should come out of the till. Not saying (None) means yes: the cash is taken from the
+	drawer of the person's own open shift when there is one. Only a clear no (false, 0, "no") keeps it out of the drawer.
+	"""
+	if value is None or value == "":
+		return True
+	return str(value).strip().lower() not in ("0", "false", "no", "off")
