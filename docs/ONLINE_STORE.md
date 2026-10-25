@@ -196,3 +196,17 @@ These are deliberate gaps, listed so nobody assumes otherwise:
 * **No automated test touches a real WooCommerce site, Safaricom or a database.** The unit tests replace all three.
   Before customers rely on it, run one real test order through each path on the staging server
   (`docs/STAGING_SERVER.md`): a website order, a hosted-store order paid by M-Pesa, and a cancelled order.
+
+## The marketplace (buying add-ons from inside the POS)
+
+An owner can buy things for their shop from the POS (Settings, Business, Marketplace): an online storefront, a
+WooCommerce website, backups. The products and prices belong to the Murzak website, which also takes the payment and
+starts provisioning once an order is paid.
+
+- `murzak_pos.api.marketplace_api.get_marketplace` (owner only) asks the website for `GET /api/marketplace/catalog`,
+  keeps the answer for 5 minutes, and keeps only plain product ids, short names and whole-shilling prices from it. Each
+  product gets the website's own checkout address, `<website>/checkout/new?serviceId=<id>`, built here and never taken from
+  the reply.
+- Nothing in the POS takes money or creates an order. The owner signs in with their Murzak account on the website, pays by
+  M-Pesa or PayPal, and provisioning begins from the paid invoice.
+- The website address is `https://murzaktech.tech`. Set `murzak_website_url` in the site config (https only) to use another.
