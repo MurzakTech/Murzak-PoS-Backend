@@ -102,6 +102,8 @@ after_migrate = [
 	"murzak_pos.api.language_api.enable_languages",
 	# A sale that does not choose a batch takes the one expiring first (api/batch_order.py)
 	"murzak_pos.api.batch_order.pick_earliest_expiry_first",
+	# Dates and times in Kenya's time, not Frappe's India default (api/shop_timezone.py)
+	"murzak_pos.api.shop_timezone.use_kenya_time",
 ]
 
 # before_install = "murzak_pos.install.before_install"
