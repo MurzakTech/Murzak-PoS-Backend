@@ -315,6 +315,35 @@ def get_till_state(pos_profile=None, warehouse=None):
 		_fail("Till state failed", _("Could not load the till. Please try again."))
 
 
+def closable_entry(session, caller, tier):
+	"""
+	The open shift `caller` may close, as (entry, None); else (None, refusal). Raises for a shift of another business
+	or one the caller may not close.
+	"""
+	entry = frappe.db.get_value(
+		"POS Opening Entry",
+		session,
+		[*SESSION_FIELDS, "status", "docstatus", "pos_closing_entry"],
+		as_dict=True,
+	)
+	if not entry:
+		return None, _refusal("not_found", str(session))
+	if caller != "Administrator" and entry["company"] not in get_user_companies(caller):
+		frappe.throw(_("This shift belongs to another business."), frappe.PermissionError)
+	if caller != "Administrator" and not calc.may_close(entry["user"], caller, tier):
+		frappe.throw(
+			_("Only the cashier who opened this shift ({0}) or a manager can close it.").format(
+				entry["user"]
+			),
+			frappe.PermissionError,
+		)
+	if entry["status"] == "Closed":
+		return None, _refusal("already_closed", closing_entry=entry.get("pos_closing_entry"))
+	if entry["status"] != "Open" or entry["docstatus"] != 1:
+		return None, _refusal("not_open", str(entry["status"]))
+	return entry, None
+
+
 @frappe.whitelist()
 def close_till(session, counted=None, confirm=False):
 	"""
@@ -332,27 +361,9 @@ def close_till(session, counted=None, confirm=False):
 	except calc.TillError as error:
 		return _refusal(error.code, error.detail)
 
-	entry = frappe.db.get_value(
-		"POS Opening Entry",
-		session,
-		[*SESSION_FIELDS, "status", "docstatus", "pos_closing_entry"],
-		as_dict=True,
-	)
-	if not entry:
-		return _refusal("not_found", str(session))
-	if caller != "Administrator" and entry["company"] not in get_user_companies(caller):
-		frappe.throw(_("This shift belongs to another business."), frappe.PermissionError)
-	if caller != "Administrator" and not calc.may_close(entry["user"], caller, tier):
-		frappe.throw(
-			_("Only the cashier who opened this shift ({0}) or a manager can close it.").format(
-				entry["user"]
-			),
-			frappe.PermissionError,
-		)
-	if entry["status"] == "Closed":
-		return _refusal("already_closed", closing_entry=entry.get("pos_closing_entry"))
-	if entry["status"] != "Open" or entry["docstatus"] != 1:
-		return _refusal("not_open", str(entry["status"]))
+	entry, refusal = closable_entry(session, caller, tier)
+	if refusal:
+		return refusal
 
 	try:
 		lines = _expected_lines(entry)
