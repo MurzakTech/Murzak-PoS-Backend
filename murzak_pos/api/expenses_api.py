@@ -273,13 +273,21 @@ def create_expense(
 	receipt=None,
 	company=None,
 	request_id=None,
+	from_till=None,
+	session=None,
 ):
 	"""
 	Record an expense: ONE submitted Journal Entry, money out of the paid-from account, into the category. A repeat with
 	the same request_id returns the first result and changes nothing. If any step fails everything is rolled back and a
 	plain sentence comes back.
+
+	An expense paid in cash comes out of the drawer of the person's own open shift (or of the shift named by `session`),
+	so the shift's count agrees; `from_till` set to false keeps it out of the drawer (paid from the safe, say). The answer's
+	`till` says which shift it came out of and what the drawer should now hold, or is empty when it did not come out of one.
 	"""
 	_require_manager()
+	if session:
+		ensure_record_access("POS Opening Entry", session)
 	if isinstance(receipt, str) and receipt.lstrip().startswith("{"):
 		receipt = frappe.parse_json(receipt)
 
@@ -311,7 +319,7 @@ def create_expense(
 	company = resolve_company(company)
 
 	try:
-		return _create(company, value, category, key, day, text, photo, request)
+		return _create(company, value, category, key, day, text, photo, request, from_till, session)
 	except Exception as error:
 		# Anything not caught below: put everything back, so no half done expense is left
 		frappe.db.rollback()
@@ -321,7 +329,7 @@ def create_expense(
 		)
 
 
-def _create(company, value, category, key, day, text, photo, request):
+def _create(company, value, category, key, day, text, photo, request, from_till=None, session=None):
 	"""The work of create_expense, inside its try."""
 	if request:
 		# One request at a time per business, so a double tap cannot slip in between the check and the entry
@@ -355,8 +363,52 @@ def _create(company, value, category, key, day, text, photo, request):
 	doc.submit()
 	if photo:
 		_attach_receipt(doc.name, photo)
+	till, refused = _take_from_till(company, value, doc, category, text, key, from_till, session)
+	if refused:
+		# The drawer cannot cover it: nothing is kept, so the books and the drawer never disagree
+		frappe.db.rollback()
+		return _refusal(refused.get("error_type") or "more_than_in_till", refused.get("message") or _failed())
 	frappe.db.commit()
-	return _saved(doc, company, repeat=False, options=options, has_receipt=bool(photo), facts=facts)
+	saved = _saved(doc, company, repeat=False, options=options, has_receipt=bool(photo), facts=facts)
+	saved["data"]["till"] = till
+	return saved
+
+
+def _own_open_shift(company: str) -> str | None:
+	"""The open shift of the person making the expense, or None. Another person's shift is never taken by itself."""
+	from murzak_pos.api import till_api
+
+	caller = frappe.session.user
+	rows = till_api._open_sessions(company, caller, role_tiers.get_tier(), None, None)
+	mine = [row for row in rows if row["user"] == caller]
+	return mine[0]["name"] if mine else None
+
+
+def _take_from_till(company, value, doc, category, text, key, from_till, session):
+	"""
+	Take an expense paid in cash out of the drawer of an open shift, as a cash movement. Returns (what came out of which
+	shift or None, a refusal or None). Only cash comes out of a drawer, and only when the person did not say no.
+	"""
+	from murzak_pos.api import cash_movement_rules as movements
+	from murzak_pos.api import shift_api
+
+	if key != "cash" or not movements.wants_till(from_till):
+		return None, None
+	shift = session or _own_open_shift(company)
+	if not shift:
+		return None, None
+	result = shift_api.record_movement(
+		shift,
+		movements.PAID_OUT,
+		value,
+		movements.EXPENSE_REASON,
+		text or category,
+		f"expense-{doc.name}",
+		system=True,
+	)
+	if not result.get("success"):
+		return None, result
+	return {"shift": shift, "cash_in_till": (result.get("data") or {}).get("cash_in_till")}, None
 
 
 def _earlier(request, company):

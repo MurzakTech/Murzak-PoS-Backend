@@ -212,7 +212,8 @@ class ListCase(unittest.TestCase):
 		self.assertTrue(result["success"])
 		self.assertEqual([m["id"] for m in result["data"]["movements"]], ["A", "B"])
 		self.assertEqual(result["data"]["totals"], {"Paid In": 1000.0, "Paid Out": 250.0, "Safe Drop": 0.0})
-		self.assertIn("Petty cash", result["data"]["reasons"]["Paid Out"])
+		self.assertEqual(result["data"]["reasons"]["Paid Out"], ["Staff advance", "Change", "Other"])
+		self.assertNotIn("Expense", result["data"]["reasons"]["Paid Out"])
 
 	def test_another_business_cannot_list(self):
 		with world(companies=("Shop B",)) as (_db, _saved, _doc):
