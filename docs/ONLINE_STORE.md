@@ -71,8 +71,8 @@ The owner does this once, in Settings > Online Store:
    can check availability while typing (`check_store_slug`).
 2. Say how customers receive goods (**delivery**, **pickup**, or both) and how they pay (**pay on delivery or pickup**,
    **M-Pesa**, or both). M-Pesa needs M-Pesa to be set up already under Settings > Payment Gateways.
-3. Add the shop's **WhatsApp number**, an optional **minimum order**, a pickup address and a delivery note
-   (for example "Delivery within Nairobi, Ksh 200").
+3. Add the shop's **WhatsApp number**, an optional **minimum order**, a pickup address and a delivery note.
+   Then choose **what delivery costs** (see "Delivery fees" below).
 4. Tick which products appear (**Show Online** on the product, or `set_items_online` for many at once).
 5. Switch the store on. The screen then shows the **store link** and a **share on WhatsApp** link.
 
@@ -84,6 +84,31 @@ phone number and (for delivery) address, and chooses how to pay. They get an ord
 code**. With M-Pesa they receive a payment prompt on their phone; a successful payment marks the order paid. If they
 miss the prompt, they can ask for it again (`pay_for_order`). The reply also carries a **WhatsApp link** that opens a
 chat with the shop and the order already written, so the customer can confirm in one tap.
+
+## Delivery fees
+
+The owner picks one of four ways to charge for delivery. The fee is always worked out on the server from these rules;
+the customer sees it before ordering, but can never change it.
+
+| Way | How it works | What the owner enters |
+|---|---|---|
+| Free | Delivery costs nothing | Nothing |
+| Flat | One fee for every delivery | The fee |
+| By area | A fee for each named area. An area not on the list is not delivered to | The areas and a fee for each (for example Westlands 200, Kasarani 300) |
+| By distance | A starting fee that covers the first few kilometres, then a price for each extra kilometre, up to a longest distance | The shop's location, the included kilometres, the starting fee, the fee per extra kilometre, the longest distance |
+
+For flat, area and distance, the owner can also set **free delivery above** an amount. It looks at the value of the
+goods only, not the delivery.
+
+**How distance is measured.** It is the straight line between the shop and the customer, multiplied by a **road
+factor** (1.3 unless the owner changes it), because roads are longer than a straight line. This is an estimate that
+needs no paid map service. The owner should try a few addresses they know and adjust the road factor until the fees feel
+right. The customer gives their location with a map pin or their phone's location, which the store page sends as
+`latitude` and `longitude`. If the shop later wants true road distance, a routing service can replace this one function.
+
+Fees are rounded up to whole shillings. On the order the fee appears as a separate **Delivery** line, so it is in the
+total, in the M-Pesa prompt and on the invoice. The "Delivery" item is made automatically for each business the first
+time it is needed, and is kept off the online product list.
 
 ## Working the orders at the till
 
@@ -106,10 +131,11 @@ All calls are `/api/method/murzak_pos.api.<module>.<function>`. Replies are `{"s
 
 | Function | Purpose |
 |---|---|
-| `get_store(slug)` | Store name, tagline, WhatsApp number, delivery and pickup options, payment options, minimum order, currency, categories |
+| `get_store(slug)` | Store name, tagline, WhatsApp number, delivery and pickup options, payment options, minimum order, currency, categories, and `delivery`: the fee rules a customer needs (`mode`, `flat_fee`, `areas`, `needs_location`, `longest_distance_km`, `free_above`) |
 | `list_products(slug, search, category, page, page_size)` | One page of products: code, name, category, unit, price, description, image, `in_stock`, `low_stock` (a number only when 5 or fewer are left) |
 | `get_product(slug, item_code)` | One product |
-| `checkout(slug, customer_name, phone, lines, delivery_method, payment, address, notes)` | Place the order. `lines` is `[{"item_code": "RICE", "qty": 2}]`. `delivery_method` is `Delivery` or `Pickup`. `payment` is `cash` or `mpesa`. Returns `order`, `token`, `total`, `lines`, `payment_prompt` (`sent` and `message`, for M-Pesa) and `whatsapp_link` |
+| `quote_delivery(slug, lines, delivery_area, latitude, longitude)` | The delivery fee for this basket to this area or location. Returns `deliverable`, `fee`, `distance_km` and a `message` to show when the shop will not deliver there. Call it when the customer picks an area or shares their location |
+| `checkout(slug, customer_name, phone, lines, delivery_method, payment, address, notes, delivery_area, latitude, longitude)` | Place the order. `lines` is `[{"item_code": "RICE", "qty": 2}]`. `delivery_method` is `Delivery` or `Pickup`. `payment` is `cash` or `mpesa`. Returns `order`, `token`, `total`, `delivery_fee`, `lines`, `payment_prompt` (`sent` and `message`, for M-Pesa) and `whatsapp_link` |
 | `pay_for_order(token)` | Send the M-Pesa prompt again for an unpaid order |
 | `online_orders.track_online_order(token)` | Order status, delivery method, paid, total, date and shop name. Nothing personal |
 
@@ -155,8 +181,8 @@ Changes to existing replies (the Settings > E-Commerce screen should read them):
 
 These are deliberate gaps, listed so nobody assumes otherwise:
 
-* **Delivery fees are not added to the order total.** The delivery note is shown to the customer as text, and the owner
-  agrees the fee with them. Charging a fee needs a decision on the account it posts to.
+* **Delivery distance is an estimate, not road distance** (see "Delivery fees"). Delivery fees apply to the hosted store;
+  a WooCommerce shop sets its own shipping on the website.
 * **Product categories and photos are not mapped to WooCommerce categories.** Products are sent without categories;
   pictures are sent only when a product is first created.
 * **WhatsApp is a link, not a robot.** The customer is sent into a WhatsApp chat with the order written for them.

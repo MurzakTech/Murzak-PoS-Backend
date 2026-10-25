@@ -89,6 +89,49 @@ def _item_for_order(company: str, code: str, shown_online_only: bool):
 	)
 
 
+DELIVERY_ITEM_NAME = "Delivery"
+
+
+def delivery_item(company: str) -> str:
+	"""
+	The business's "Delivery" service item, which carries the delivery fee on an order. Made the first time it is needed.
+	It is not a stock item and is kept off the online store's product list.
+	"""
+	found = frappe.db.get_value(
+		"Item", {"custom_company": company, "item_name": DELIVERY_ITEM_NAME, "is_stock_item": 0}, "name"
+	)
+	if found:
+		return found
+	abbr = frappe.db.get_value("Company", company, "abbr") or company[:6]
+	group = (
+		frappe.db.get_value("Item Group", {"name": "Services"}, "name")
+		or frappe.db.get_value("Item Group", {"is_group": 0}, "name")
+		or "All Item Groups"
+	)
+	item = frappe.new_doc("Item")
+	item.item_code = f"DELIVERY-{abbr}"
+	item.item_name = DELIVERY_ITEM_NAME
+	item.item_group = group
+	item.stock_uom = "Nos"
+	item.is_stock_item = 0
+	item.is_sales_item = 1
+	item.custom_company = company
+	item.custom_show_online = 0
+	item.insert(ignore_permissions=True)
+	return item.name
+
+
+def subtotal_for(company: str, lines) -> float:
+	"""What these lines come to at the shop's prices (for "free delivery above..." and delivery quotes)."""
+	total = 0.0
+	for line in clean_lines(lines):
+		item = _item_for_order(company, line["item_code"], shown_online_only=True)
+		if not item:
+			frappe.throw(_("Product {0} is not available.").format(line["item_code"]), frappe.ValidationError)
+		total += flt(item.standard_rate) * line["qty"]
+	return total
+
+
 def customer_for(company: str, name: str | None, phone: str | None, email: str | None = None) -> str:
 	"""The business's customer with this phone number, made on the first order."""
 	phone = cstr(phone).strip()
@@ -142,6 +185,7 @@ def place_order(
 	trust_prices: bool = False,
 	warehouse: str | None = None,
 	minimum_total: float = 0,
+	delivery_fee: float = 0,
 ) -> dict:
 	"""
 	Record an online order as a Sales Order and return {"created", "order", "token", "total", "lines"}.
@@ -238,6 +282,16 @@ def place_order(
 				"delivery_date": order.delivery_date,
 			},
 		)
+	if flt(delivery_fee) > 0:
+		order.append(
+			"items",
+			{
+				"item_code": delivery_item(company),
+				"qty": 1,
+				"rate": flt(delivery_fee),
+				"delivery_date": order.delivery_date,
+			},
+		)
 	order.flags.ignore_permissions = True
 	order.insert()
 	order.submit()
@@ -254,6 +308,7 @@ def place_order(
 		"order": order.name,
 		"token": order.custom_online_token,
 		"total": flt(order.grand_total),
+		"delivery_fee": flt(delivery_fee),
 		"lines": [
 			{"item_code": i.item_code, "item_name": i.item_name, "qty": flt(i.qty), "rate": flt(i.rate)}
 			for i in order.items

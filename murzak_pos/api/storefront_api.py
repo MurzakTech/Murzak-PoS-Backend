@@ -24,7 +24,7 @@ from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils import cint, cstr, flt
 
-from murzak_pos.api import online_catalogue, online_orders, online_store_api
+from murzak_pos.api import delivery_fees, online_catalogue, online_orders, online_store_api
 from murzak_pos.api.payment_gateway_common import normalize_kenyan_phone
 
 PAYMENT_LABELS = {"cash": "Pay on delivery or pickup", "mpesa": "M-Pesa"}
@@ -67,6 +67,22 @@ def public_store(company: str, settings: dict) -> dict:
 		"payment_options": payment_options(settings),
 		"minimum_order": flt(settings["minimum_order"]),
 		"currency": _currency(company),
+		"delivery": public_delivery(settings),
+	}
+
+
+def public_delivery(settings: dict) -> dict:
+	"""What a customer is told about delivery fees: the rules they need, never the shop's exact location."""
+	mode = settings["delivery_mode"]
+	return {
+		"mode": mode,
+		"flat_fee": flt(settings["delivery_flat_fee"]) if mode == "flat" else None,
+		"areas": [{"name": a["name"], "fee": a["fee"]} for a in settings["delivery_areas"]]
+		if mode == "area"
+		else [],
+		"needs_location": mode == "distance",
+		"longest_distance_km": flt(settings["distance_max_km"]) if mode == "distance" else None,
+		"free_above": flt(settings["free_delivery_above"]) or None if mode != "free" else None,
 	}
 
 
@@ -150,6 +166,38 @@ def get_product(slug: str, item_code: str) -> dict[str, Any]:
 	return {"success": True, "data": _public_product(online_catalogue.rows_for(items, warehouse)[0])}
 
 
+def _goods_total(company: str, settings: dict, lines) -> float:
+	"""What the basket comes to, needed only when delivery is not free (for "free delivery above...")."""
+	if settings["delivery_mode"] == "free":
+		return 0.0
+	return online_orders.subtotal_for(company, lines)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+@rate_limit(limit=120, seconds=60)
+def quote_delivery(
+	slug: str,
+	lines: str | list,
+	delivery_area: str | None = None,
+	latitude: float | str | None = None,
+	longitude: float | str | None = None,
+) -> dict[str, Any]:
+	"""
+	What delivery would cost for this basket to this area or location, worked out from the shop's rules.
+	`deliverable` is false (with a message the customer can act on) when the shop will not deliver there.
+	"""
+	company, settings = open_store(slug)
+	if not settings["delivery_enabled"]:
+		frappe.throw(_("This shop does not deliver."), frappe.ValidationError)
+	try:
+		result = delivery_fees.quote(
+			settings, _goods_total(company, settings, lines), delivery_area, latitude, longitude
+		)
+	except delivery_fees.DeliveryRuleError as e:
+		frappe.throw(str(e), frappe.ValidationError)
+	return {"success": True, "data": {**result, "currency": _currency(company)}}
+
+
 # ---------------------------------------------------------------------------
 # Ordering
 # ---------------------------------------------------------------------------
@@ -227,9 +275,14 @@ def checkout(
 	payment: str,
 	address: str | None = None,
 	notes: str | None = None,
+	delivery_area: str | None = None,
+	latitude: float | str | None = None,
+	longitude: float | str | None = None,
 ) -> dict[str, Any]:
 	"""
 	Place an order on the store. `lines` is a list of {"item_code", "qty"}; `payment` is "cash" or "mpesa".
+	For delivery, send the area (area pricing) or latitude and longitude (distance pricing); the fee is added from the
+	shop's rules, whatever the browser thinks it is.
 	Returns the order number, the private tracking code, the total, and (for M-Pesa) whether a prompt was sent.
 	"""
 	company, settings = open_store(slug)
@@ -250,6 +303,20 @@ def checkout(
 	if payment not in payment_options(settings):
 		frappe.throw(_("Please choose how you will pay."), frappe.ValidationError)
 
+	fee = 0.0
+	if delivery_method == "Delivery":
+		try:
+			delivery = delivery_fees.quote(
+				settings, _goods_total(company, settings, lines), delivery_area, latitude, longitude
+			)
+		except delivery_fees.DeliveryRuleError as e:
+			frappe.throw(str(e), frappe.ValidationError)
+		if not delivery["deliverable"]:
+			frappe.throw(delivery["message"], frappe.ValidationError)
+		fee = delivery["fee"]
+		if settings["delivery_mode"] == "area":
+			address = f"{cstr(delivery_area).strip()[:60]}, {address}"
+
 	if not _within_limit(f"murzak_pos:store_orders:{company}:{phone}", ORDERS_PER_PHONE_PER_HOUR, 60 * 60):
 		frappe.throw(
 			_("Too many orders from this phone number. Please try again later."), frappe.ValidationError
@@ -267,6 +334,7 @@ def checkout(
 		notes=notes,
 		warehouse=settings["warehouse"] or None,
 		minimum_total=flt(settings["minimum_order"]),
+		delivery_fee=fee,
 	)
 
 	prompt = None
@@ -280,6 +348,7 @@ def checkout(
 			"order": placed["order"],
 			"token": placed["token"],
 			"total": placed["total"],
+			"delivery_fee": placed.get("delivery_fee", 0.0),
 			"currency": _currency(company),
 			"lines": placed["lines"],
 			"payment": payment,

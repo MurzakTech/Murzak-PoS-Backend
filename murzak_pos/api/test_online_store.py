@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import frappe
 
-from murzak_pos.api import online_orders, online_store_api, storefront_api
+from murzak_pos.api import delivery_fees, online_orders, online_store_api, storefront_api
 
 OPEN_STORE = {
 	**online_store_api.DEFAULTS,
@@ -132,6 +132,39 @@ class TestSaveStore(unittest.TestCase):
 		frappe.db.set_default.assert_any_call("murzak_store_slug_old-name", "")
 		frappe.db.set_default.assert_any_call("murzak_store_slug_new-name", "Duka Ltd")
 
+	def test_delivery_rules_are_saved_checked_and_needed_before_opening(self):
+		out = self.save(
+			enabled=1,
+			slug="duka",
+			accept_cash=1,
+			delivery_mode="area",
+			delivery_areas=[{"name": "Westlands", "fee": 200}],
+		)
+		self.assertTrue(out["success"], out)
+		self.assertEqual(out["data"]["delivery_areas"], [{"name": "Westlands", "fee": 200.0}])
+		# An area shop with no areas, or a distance shop with no location, cannot open
+		self.assertFalse(self.save(enabled=1, slug="duka", accept_cash=1, delivery_mode="area")["success"])
+		self.assertFalse(
+			self.save(enabled=1, slug="duka", accept_cash=1, delivery_mode="distance")["success"]
+		)
+		# ... unless it only offers pickup
+		self.assertTrue(
+			self.save(
+				enabled=1,
+				slug="duka",
+				accept_cash=1,
+				delivery_enabled=0,
+				pickup_enabled=1,
+				delivery_mode="area",
+			)["success"]
+		)
+
+	def test_bad_delivery_rules_are_refused_with_a_message(self):
+		out = self.save(delivery_flat_fee=-5)
+		self.assertFalse(out["success"])
+		self.assertTrue(out["message"])
+		self.assertFalse(self.save(delivery_mode="drone")["success"])
+
 	def test_a_closed_store_may_be_saved_unfinished(self):
 		self.assertTrue(self.save(enabled=0, store_name="Draft")["success"])
 
@@ -160,6 +193,25 @@ class TestSaveStore(unittest.TestCase):
 				)
 			with self.assertRaises(frappe.ValidationError):
 				online_store_api.set_items_online([])
+
+
+class TestReadStore(unittest.TestCase):
+	def test_one_shops_areas_are_never_shared_with_another(self):
+		with patch.object(frappe, "db", MagicMock(), create=True):
+			frappe.db.get_default.return_value = None
+			first = online_store_api.read_store("Duka Ltd")
+			first["delivery_areas"].append({"name": "Westlands", "fee": 200})
+			second = online_store_api.read_store("Other Ltd")
+		self.assertEqual(second["delivery_areas"], [])
+		self.assertEqual(online_store_api.DEFAULTS["delivery_areas"], [])
+
+	def test_a_store_saved_before_delivery_fees_still_delivers_free(self):
+		old = json.dumps({"enabled": True, "slug": "duka", "delivery_enabled": True})
+		with patch.object(frappe, "db", MagicMock(), create=True):
+			frappe.db.get_default.return_value = old
+			shop = online_store_api.read_store("Duka Ltd")
+		self.assertEqual(shop["delivery_mode"], "free")
+		self.assertTrue(shop["enabled"])
 
 
 class TestOpenStore(unittest.TestCase):
@@ -318,6 +370,102 @@ class TestCheckout(unittest.TestCase):
 		storefront_api.open_store.return_value = ("Duka Ltd", {**OPEN_STORE, "minimum_order": 500})
 		self.go()
 		self.assertEqual(online_orders.place_order.call_args.kwargs["minimum_total"], 500.0)
+
+
+class TestCheckoutDeliveryFees(TestCheckout):
+	"""Checkout with a shop that charges for delivery."""
+
+	def shop(self, **over):
+		storefront_api.open_store.return_value = ("Duka Ltd", {**OPEN_STORE, **over})
+
+	def setUp(self):
+		super().setUp()
+		patcher = patch.object(online_orders, "subtotal_for", return_value=800.0)
+		patcher.start()
+		self.addCleanup(patcher.stop)
+
+	def test_a_flat_fee_is_added_by_the_server(self):
+		self.shop(delivery_mode="flat", delivery_flat_fee=150)
+		self.go()
+		self.assertEqual(online_orders.place_order.call_args.kwargs["delivery_fee"], 150.0)
+
+	def test_an_area_fee_and_the_area_goes_on_the_address(self):
+		self.shop(delivery_mode="area", delivery_areas=[{"name": "Westlands", "fee": 200}])
+		self.go(delivery_area="westlands")
+		kwargs = online_orders.place_order.call_args.kwargs
+		self.assertEqual(kwargs["delivery_fee"], 200.0)
+		self.assertTrue(kwargs["address"].startswith("westlands, "))
+
+	def test_an_area_the_shop_does_not_serve_is_refused_before_anything_is_recorded(self):
+		self.shop(delivery_mode="area", delivery_areas=[{"name": "Westlands", "fee": 200}])
+		with self.assertRaises(frappe.ValidationError):
+			self.go(delivery_area="Mombasa")
+		online_orders.place_order.assert_not_called()
+
+	def test_distance_pricing_uses_the_customers_location(self):
+		self.shop(
+			delivery_mode="distance",
+			shop_latitude=0.0,
+			shop_longitude=36.0,
+			distance_per_km=10,
+			distance_max_km=100,
+			road_factor=1.0,
+		)
+		self.go(latitude="0.1", longitude="36.0")
+		fee = online_orders.place_order.call_args.kwargs["delivery_fee"]
+		self.assertAlmostEqual(fee, 112.0, delta=1)
+		with self.assertRaises(frappe.ValidationError):
+			self.go(latitude="2", longitude="36")
+
+	def test_pickup_never_pays_a_delivery_fee(self):
+		self.shop(delivery_mode="flat", delivery_flat_fee=150)
+		self.go(delivery_method="Pickup")
+		self.assertEqual(online_orders.place_order.call_args.kwargs["delivery_fee"], 0.0)
+
+	def test_free_above_applies_to_the_goods_total(self):
+		self.shop(delivery_mode="flat", delivery_flat_fee=150, free_delivery_above=500)
+		self.go()
+		self.assertEqual(online_orders.place_order.call_args.kwargs["delivery_fee"], 0.0)
+
+	def test_the_browser_cannot_set_the_fee(self):
+		self.shop(delivery_mode="flat", delivery_flat_fee=150)
+		with self.assertRaises(TypeError):
+			self.go(delivery_fee=0)
+
+	def test_quote_tells_the_customer_the_fee_or_why_not(self):
+		self.shop(delivery_mode="area", delivery_areas=[{"name": "Westlands", "fee": 200}])
+		quote = unwrapped(storefront_api.quote_delivery)
+		good = quote("duka-ya-amina", [{"item_code": "RICE", "qty": 1}], delivery_area="Westlands")
+		self.assertEqual(good["data"]["fee"], 200.0)
+		bad = quote("duka-ya-amina", [{"item_code": "RICE", "qty": 1}], delivery_area="Mombasa")
+		self.assertFalse(bad["data"]["deliverable"])
+		self.assertTrue(bad["data"]["message"])
+		self.shop(delivery_mode="distance", shop_latitude=0.0, shop_longitude=36.0, distance_max_km=50)
+		with self.assertRaises(frappe.ValidationError):
+			quote("duka-ya-amina", [{"item_code": "RICE", "qty": 1}], latitude="x", longitude="36")
+
+	def test_quote_refused_for_a_shop_that_does_not_deliver(self):
+		self.shop(delivery_enabled=False)
+		with self.assertRaises(frappe.ValidationError):
+			unwrapped(storefront_api.quote_delivery)("duka-ya-amina", [{"item_code": "RICE", "qty": 1}])
+
+	def test_customers_are_told_the_rules_but_not_where_the_shop_is(self):
+		shown = storefront_api.public_delivery(
+			{
+				**OPEN_STORE,
+				"delivery_mode": "distance",
+				"shop_latitude": -1.2,
+				"shop_longitude": 36.8,
+				"distance_max_km": 20,
+				"free_delivery_above": 3000,
+			}
+		)
+		self.assertTrue(shown["needs_location"])
+		self.assertEqual((shown["longest_distance_km"], shown["free_above"]), (20.0, 3000.0))
+		self.assertNotIn("shop_latitude", json.dumps(shown))
+		self.assertIsNone(
+			storefront_api.public_delivery({**OPEN_STORE, "delivery_mode": "free"})["free_above"]
+		)
 
 
 class TestPayForOrder(unittest.TestCase):
