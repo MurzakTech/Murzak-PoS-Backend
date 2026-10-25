@@ -279,6 +279,11 @@ EXPECTED_GUARDS = {
 		"list_cash_movements": ("POS Opening Entry session",),
 		"get_shift_report": ("POS Opening Entry session",),
 	},
+	"rota_api": {
+		"save_rota_shift": ("Rota Shift name",),
+		"delete_rota_shift": ("Rota Shift name",),
+		"close_clock_entry": ("Clock Entry name",),
+	},
 	"handover_api": {
 		"list_handover_people": ("POS Opening Entry session",),
 		"hand_over_till": ("POS Opening Entry session",),

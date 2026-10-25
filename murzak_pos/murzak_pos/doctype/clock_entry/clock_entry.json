@@ -1,0 +1,123 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-25 14:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "modified": "2026-10-25 14:00:00.000000",
+ "field_order": [
+  "company",
+  "user",
+  "rota_shift",
+  "column_break_1",
+  "clock_in",
+  "clock_out",
+  "late_minutes",
+  "section_break_2",
+  "closed_by",
+  "note",
+  "open_key"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "search_index": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "Person",
+   "options": "User",
+   "reqd": 1,
+   "search_index": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rota_shift",
+   "fieldtype": "Link",
+   "label": "Planned Shift",
+   "options": "Rota Shift",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "clock_in",
+   "fieldtype": "Datetime",
+   "label": "Clocked In",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "clock_out",
+   "fieldtype": "Datetime",
+   "label": "Clocked Out",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "late_minutes",
+   "fieldtype": "Int",
+   "label": "Late By (minutes)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "description": "Set when a manager closed the entry because the person forgot to clock out.",
+   "fieldname": "closed_by",
+   "fieldtype": "Link",
+   "label": "Closed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Data",
+   "label": "Note",
+   "read_only": 1
+  },
+  {
+   "description": "The person's name while the entry is open and empty once it is closed. Unique, so nobody can be clocked in twice.",
+   "fieldname": "open_key",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Open Key",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "module": "Murzak POS",
+ "name": "Clock Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
