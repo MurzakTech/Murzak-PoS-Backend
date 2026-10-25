@@ -1372,3 +1372,5 @@
 "This shift is not open, so cash cannot be recorded in it.","Zamu hii haijafunguliwa, kwa hivyo fedha haiwezi kurekodiwa ndani yake."
 "This till has no cash to move.","Rejista hii haina fedha taslimu ya kuhamisha."
 "{0} is not a reason that can be used here.","{0} si sababu inayoweza kutumika hapa."
+"This shift is closed but its closing record is not ready yet. Try again in a minute.","Zamu hii imefungwa lakini rekodi yake ya kufunga bado haijawa tayari. Jaribu tena baada ya dakika moja."
+"Could not load the shift report. Please try again.","Ripoti ya zamu haikuweza kupakiwa. Tafadhali jaribu tena."

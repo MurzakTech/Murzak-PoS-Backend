@@ -218,3 +218,124 @@ class ListCase(unittest.TestCase):
 		with world(companies=("Shop B",)) as (_db, _saved, _doc):
 			with self.assertRaises(frappe.PermissionError):
 				shift_api.list_cash_movements("POS-OPE-0001")
+
+
+class ReportCase(unittest.TestCase):
+	def open_world(self, **kwargs):
+		return world(**kwargs)
+
+	def sales(self):
+		return {
+			"count": 3,
+			"gross": 3000.0,
+			"returns_count": 1,
+			"returns_total": 200.0,
+			"net": 2413.8,
+			"tax": 386.2,
+			"discounts": 100.0,
+		}
+
+	def test_an_open_shift_gives_the_x_report(self):
+		lines = [
+			{
+				"mode": "Cash",
+				"key": "cash",
+				"label": "Cash",
+				"opening": 500.0,
+				"sales": 2000.0,
+				"paid_in": 1000.0,
+				"refunds": 200.0,
+				"paid_out": 800.0,
+				"expected": 2500.0,
+				"counts_cash": True,
+			}
+		]
+		moves = [
+			{
+				"name": "A",
+				"kind": "Paid Out",
+				"amount": 300.0,
+				"mode_of_payment": "Cash",
+				"reason": "Petty cash",
+				"note": "",
+				"recorded_by": "amina@shop-a.test",
+				"recorded_at": "2026-10-13 11:00:00",
+				"client_id": None,
+			}
+		]
+		with (
+			world(lines=lines) as (_db, _saved, _doc),
+			patch.object(shift_api, "_sales_figures", return_value=self.sales()),
+			patch.object(shift_api, "_movement_rows", return_value=moves),
+		):
+			result = shift_api.get_shift_report("POS-OPE-0001")
+		data = result["data"]
+		self.assertTrue(result["success"])
+		self.assertEqual(data["kind"], "X")
+		self.assertEqual(
+			(data["sales"]["count"], data["sales"]["gross"], data["sales"]["average"]), (3, 3000.0, 1000.0)
+		)
+		self.assertEqual(data["returns"], {"count": 1, "total": 200.0})
+		self.assertEqual(data["cash"]["expected"], 2500.0)
+		self.assertIsNone(data["cash"]["counted"])
+		self.assertEqual(data["movement_totals"]["Paid Out"], 300.0)
+		self.assertIsNone(data["closing_entry"])
+
+	def test_a_closed_shift_gives_the_z_report_with_the_count(self):
+		closing = MagicMock()
+		closing.name = "POS-CLO-1"
+		closing.docstatus = 1
+		closing.period_end_date = "2026-10-13 18:30:00"
+		lines = [
+			{
+				"mode": "Cash",
+				"key": "cash",
+				"label": "Cash",
+				"opening": 500.0,
+				"sales": 2000.0,
+				"paid_in": 1000.0,
+				"refunds": 0.0,
+				"paid_out": 800.0,
+				"expected": 2700.0,
+				"counts_cash": True,
+			}
+		]
+		with (
+			world(entry={**SESSION, "status": "Closed", "pos_closing_entry": "POS-CLO-1"}) as (
+				_db,
+				saved,
+				_doc,
+			),
+			patch.object(shift_api, "_closed_lines", return_value=(lines, {"Cash": 2650.0})),
+			patch.object(shift_api, "_sales_figures", return_value=self.sales()),
+			patch.object(shift_api, "_movement_rows", return_value=[]),
+		):
+			saved.get_doc.return_value = closing
+			result = shift_api.get_shift_report("POS-OPE-0001")
+		data = result["data"]
+		self.assertEqual(data["kind"], "Z")
+		self.assertEqual(data["closing_entry"], "POS-CLO-1")
+		self.assertEqual(data["closed_at"], "18:30")
+		self.assertEqual(
+			(data["cash"]["counted"], data["cash"]["difference"], data["cash"]["word"]),
+			(2650.0, -50.0, "short"),
+		)
+		self.assertEqual((data["totals"]["counted"], data["totals"]["difference"]), (2650.0, -50.0))
+
+	def test_a_closed_shift_with_no_closing_record_yet_says_so(self):
+		with (
+			world(entry={**SESSION, "status": "Closed", "pos_closing_entry": None}) as (_db, _saved, _doc),
+			patch.object(shift_api, "_movement_rows", return_value=[]),
+		):
+			result = shift_api.get_shift_report("POS-OPE-0001")
+		self.assertEqual(result["error_type"], "no_closing_entry")
+
+	def test_another_cashier_cannot_read_it(self):
+		with world(caller="joe@shop-a.test", tier="cashier") as (_db, _saved, _doc):
+			with self.assertRaises(frappe.PermissionError):
+				shift_api.get_shift_report("POS-OPE-0001")
+
+	def test_another_business_cannot_read_it(self):
+		with world(companies=("Shop B",)) as (_db, _saved, _doc):
+			with self.assertRaises(frappe.PermissionError):
+				shift_api.get_shift_report("POS-OPE-0001")

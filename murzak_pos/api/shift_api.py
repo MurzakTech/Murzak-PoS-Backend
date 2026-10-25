@@ -22,6 +22,7 @@ from frappe import _
 from frappe.utils import now_datetime
 
 from murzak_pos.api import cash_movement_rules as rules
+from murzak_pos.api import shift_report_calc as report
 from murzak_pos.api import till_api
 from murzak_pos.api import till_calc as calc
 from murzak_pos.api.access_control import ensure_record_access
@@ -45,6 +46,9 @@ def _refusal(code: str, detail: str = "", **data) -> dict:
 	messages = {
 		"not_found": _("Till session {0} was not found."),
 		"not_open": _("This shift is not open, so cash cannot be recorded in it."),
+		"no_closing_entry": _(
+			"This shift is closed but its closing record is not ready yet. Try again in a minute."
+		),
 		"bad_kind": _("Choose Paid In, Paid Out or Safe Drop."),
 		"bad_amount": _("Enter an amount above zero."),
 		"too_large": _("That amount is too large."),
@@ -83,7 +87,10 @@ def _session_for(session):
 	tier = till_api._tier()
 	caller = frappe.session.user
 	entry = frappe.db.get_value(
-		"POS Opening Entry", session, [*till_api.SESSION_FIELDS, "status", "docstatus"], as_dict=True
+		"POS Opening Entry",
+		session,
+		[*till_api.SESSION_FIELDS, "status", "docstatus", "pos_closing_entry"],
+		as_dict=True,
 	)
 	if not entry:
 		return None, _refusal("not_found", str(session))
@@ -205,5 +212,198 @@ def list_cash_movements(session):
 			"movements": [_movement_view(row) for row in rows],
 			"totals": _totals(rows),
 			"reasons": {kind: list(reasons) for kind, reasons in rules.REASONS_BY_KIND.items()},
+		},
+	}
+
+
+def _closed_scope(doctype: str) -> str:
+	"""The SQL conditions for the sales of a shift that has ended: its cashier and till between its start and end,
+	merged or not (alias d)."""
+	conditions = [
+		"d.docstatus = 1",
+		"d.owner = %(user)s",
+		"d.pos_profile = %(profile)s",
+		"TIMESTAMP(d.posting_date, d.posting_time) >= %(start)s",
+		"TIMESTAMP(d.posting_date, d.posting_time) <= %(end)s",
+	]
+	if doctype != "POS Invoice":
+		conditions.append("d.is_pos = 1")
+		# The invoice made when receipts are merged is not a sale of its own
+		if frappe.db.has_column("Sales Invoice", "is_consolidated"):
+			conditions.append("d.is_consolidated = 0")
+	return " AND ".join(conditions)
+
+
+def _sales_figures(entry, end=None) -> dict:
+	"""
+	The sales of a shift from its sale documents: while open (`end` None) the same ones the shift count reads; once
+	closed, everything its cashier sold on its till between its start and `end`.
+	"""
+	values = {**till_api._session_values(entry), "end": end}
+	found = {
+		"count": 0,
+		"gross": 0.0,
+		"returns_count": 0,
+		"returns_total": 0.0,
+		"net": 0.0,
+		"tax": 0.0,
+		"discounts": 0.0,
+	}
+	for doctype in till_api.SALE_DOCTYPES:
+		where = till_api._scope(doctype) if end is None else _closed_scope(doctype)
+		rows = frappe.db.sql(
+			f"SELECT SUM(d.is_return = 0) AS sales_count, "
+			f"SUM(CASE WHEN d.is_return = 0 THEN d.base_grand_total ELSE 0 END) AS gross, "
+			f"SUM(d.is_return = 1) AS returns_count, "
+			f"SUM(CASE WHEN d.is_return = 1 THEN -d.base_grand_total ELSE 0 END) AS returns_total, "
+			f"SUM(d.base_net_total) AS net, SUM(d.base_total_taxes_and_charges) AS tax, "
+			f"SUM(CASE WHEN d.is_return = 0 THEN d.base_discount_amount ELSE 0 END) AS discounts "
+			f"FROM `tab{doctype}` d WHERE {where}",
+			values,
+			as_dict=True,
+		)
+		row = rows[0] if rows else {}
+		found["count"] += calc.num(row.get("sales_count"))
+		found["gross"] += calc.num(row.get("gross"))
+		found["returns_count"] += calc.num(row.get("returns_count"))
+		found["returns_total"] += calc.num(row.get("returns_total"))
+		found["net"] += calc.num(row.get("net"))
+		found["tax"] += calc.num(row.get("tax"))
+		found["discounts"] += calc.num(row.get("discounts"))
+
+	# A return made through the sales return call is not itself a till sale (it has no till); it belongs to the shift
+	# of the cashier who made it, against a sale of that till
+	until = "AND TIMESTAMP(r.posting_date, r.posting_time) <= %(end)s " if end is not None else ""
+	rows = frappe.db.sql(
+		"SELECT COUNT(*) AS returns_count, SUM(-r.base_grand_total) AS returns_total, "
+		"SUM(r.base_net_total) AS net, SUM(r.base_total_taxes_and_charges) AS tax "
+		"FROM `tabSales Invoice` r JOIN `tabSales Invoice` o ON o.name = r.return_against "
+		"WHERE r.docstatus = 1 AND r.is_return = 1 AND r.is_pos = 0 AND r.owner = %(user)s "
+		f"AND o.pos_profile = %(profile)s AND TIMESTAMP(r.posting_date, r.posting_time) >= %(start)s {until}",
+		values,
+		as_dict=True,
+	)
+	row = rows[0] if rows else {}
+	found["returns_count"] += calc.num(row.get("returns_count"))
+	found["returns_total"] += calc.num(row.get("returns_total"))
+	found["net"] += calc.num(row.get("net"))
+	found["tax"] += calc.num(row.get("tax"))
+	return found
+
+
+def _closed_lines(closing, movement_totals) -> tuple[list[dict], dict]:
+	"""A closed shift's lines (as the shift count makes them) and what was counted, from its closing entry."""
+	modes = till_api._mode_types()
+	lines, counted = [], {}
+	cash_moved = False
+	for row in closing.get("payment_reconciliation") or []:
+		expected = calc.num(row.get("expected_amount"))
+		opening = calc.num(row.get("opening_amount"))
+		key = calc.classify_method(row.mode_of_payment, modes.get(row.mode_of_payment))
+		line = {
+			"mode": row.mode_of_payment,
+			"key": key,
+			"opening": opening,
+			"sales": expected - opening,
+			"paid_in": 0.0,
+			"refunds": 0.0,
+			"paid_out": 0.0,
+			"expected": expected,
+			"counts_cash": key != calc.CREDIT,
+		}
+		if key == calc.CASH and not cash_moved:
+			# Cash put in and taken out is not sales: move it out of the figure the closing entry calls sales
+			cash_moved = True
+			line["paid_in"] = calc.num(movement_totals.get(rules.PAID_IN))
+			line["paid_out"] = calc.num(movement_totals.get(rules.PAID_OUT)) + calc.num(
+				movement_totals.get(rules.SAFE_DROP)
+			)
+			line["sales"] = expected - opening - line["paid_in"] + line["paid_out"]
+		line["label"] = till_api._label(line)
+		lines.append(line)
+		# A till that does not record a count leaves both the count and the difference at zero
+		if calc.num(row.get("closing_amount")) or calc.num(row.get("difference")):
+			counted[row.mode_of_payment] = calc.num(row.get("closing_amount"))
+	return lines, counted
+
+
+def _movement_rows(entry) -> list[dict]:
+	return frappe.get_all(
+		"Till Cash Movement",
+		filters={"pos_opening_entry": entry["name"]},
+		fields=MOVEMENT_FIELDS,
+		order_by="recorded_at asc, creation asc",
+	)
+
+
+@frappe.whitelist()
+def get_shift_report(session):
+	"""
+	The report of a shift. While the shift is open it is the X report (the figures so far, nothing is changed or
+	closed); once it is closed it is the Z report (with what was counted and any difference). Anyone who may record
+	cash in the shift may read it.
+	"""
+	ensure_record_access("POS Opening Entry", session)
+	entry, refusal = _session_for(session)
+	if refusal:
+		return refusal
+	moves = _movement_rows(entry)
+	totals = _totals(moves)
+	closing = None
+	try:
+		if entry["status"] == "Open" and entry["docstatus"] == 1:
+			kind = report.X
+			lines = till_api._expected_lines(entry)
+			counted_by_mode = {}
+			sales = _sales_figures(entry)
+		else:
+			kind = report.Z
+			closing = (
+				frappe.get_doc("POS Closing Entry", entry["pos_closing_entry"])
+				if entry.get("pos_closing_entry")
+				else None
+			)
+			if closing is None or closing.docstatus != 1:
+				return _refusal("no_closing_entry")
+			lines, counted_by_mode = _closed_lines(closing, totals)
+			sales = _sales_figures(entry, closing.period_end_date)
+	except frappe.ValidationError:
+		raise
+	except Exception:
+		till_api._fail("Shift report failed", _("Could not load the shift report. Please try again."))
+
+	methods = report.method_rows(lines, counted_by_mode)
+	cash_counted = next(
+		(
+			counted_by_mode[line["mode"]]
+			for line in lines
+			if line["key"] == calc.CASH and line["mode"] in counted_by_mode
+		),
+		None,
+	)
+	return {
+		"success": True,
+		"data": {
+			"kind": kind,
+			"session": entry["name"],
+			"company": entry["company"],
+			"pos_profile": entry["pos_profile"],
+			"cashier": entry["user"],
+			"cashier_name": till_api._person(entry["user"]),
+			"opened_on": calc.day_of(entry["period_start_date"]),
+			"opened_at": calc.clock(entry["period_start_date"]),
+			"closed_on": calc.day_of(closing.period_end_date) if closing else None,
+			"closed_at": calc.clock(closing.period_end_date) if closing else None,
+			"closing_entry": closing.name if closing else None,
+			"sales": report.sales_block(
+				sales["count"], sales["gross"], sales["net"], sales["tax"], sales["discounts"]
+			),
+			"returns": report.returns_block(sales["returns_count"], sales["returns_total"]),
+			"credit_sales": report.credit_total(lines),
+			"by_method": methods,
+			"cash": report.cash_block(lines, totals, cash_counted),
+			"totals": report.totals(methods),
+			"movements": [_movement_view(row) for row in moves],
+			"movement_totals": totals,
 		},
 	}

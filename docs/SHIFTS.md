@@ -48,9 +48,35 @@ Both are reached as `/api/method/murzak_pos.api.shift_api.<name>` and answer `{ 
 - It has no approval step for large amounts.
 - Only the cash line of the till moves. M-Pesa and card are not drawer money.
 
+## Part 2: shift reports
+
+`get_shift_report(session)` gives the report of a shift:
+
+- **X report** while the shift is open: the figures so far. It changes and closes nothing, so it can be looked at as often as wanted.
+- **Z report** once the shift is closed: the same figures plus what was counted and the difference.
+
+The same people may read it as may record cash in the shift (the cashier who opened it, a manager or owner of the business).
+
+| Part of the answer | What it holds |
+|---|---|
+| `kind` | `X` or `Z` |
+| `sales` | how many sales, gross total, net and tax (both after returns), discounts given, average sale |
+| `returns` | how many returns and the amount handed back |
+| `credit_sales` | sold on credit (not money in the till) |
+| `by_method` | each way of being paid: sales, refunds, expected, counted, difference |
+| `cash` | the drawer line by line: opening float, cash sales, paid in, paid out, safe drops, refunds, expected, and when counted the count, the difference and the word (short, over, matches) |
+| `totals` | expected, counted and difference over every counted method |
+| `movements`, `movement_totals` | the cash movements of part 1 |
+
+Sales while open are the till's own sales since the shift opened. Once closed they are everything its cashier sold on its till between its start and its end (receipts merged at closing are still counted once). A return made through the sales return call has no till of its own; it is counted in the shift of the cashier who made it when it is against a sale of that till.
+
+### Known gap: cash handed back for a return is not recorded
+
+The sales return call makes a credit note; it does not record paying cash to the customer. A cash refund handed over the counter therefore does not lower the cash the shift expects, and the count then reads over by the refund. Recording the payout of a refund (a Payment Entry against the credit note, in the method used) is the next piece of work.
+
 ## Planned next
 
-1. X report (so far) and Z report (end of shift) printed and emailed.
+1. Record the payout of a refund so cash refunds lower the expected cash.
 2. Handover between cashiers: close one shift and open the next with the counted cash as the new float.
 3. Till screens for all of the above.
 4. Staff rota and clock-in.
