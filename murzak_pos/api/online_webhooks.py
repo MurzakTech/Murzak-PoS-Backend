@@ -19,6 +19,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 
 import frappe
 from frappe import _
@@ -31,6 +32,16 @@ from murzak_pos.api import ecommerce_api, online_orders
 RECORD_STATUSES = ("processing", "on-hold", "completed")
 # An order that reaches one of these should no longer be fulfilled
 CANCEL_STATUSES = ("cancelled", "refunded", "failed")
+
+
+# The one message WooCommerce sends when a webhook is saved, to check the address answers. It is not signed and carries only
+# the webhook's number; its own wording in WooCommerce is "webhook_id=" and digits.
+PING_BODY = re.compile(rb"^webhook_id=\d{1,12}$")
+
+
+def is_ping(body: bytes) -> bool:
+	"""Is this WooCommerce's test message (nothing but the webhook's number)?"""
+	return bool(PING_BODY.match((body or b"").strip()))
 
 
 def signature_ok(secret: str, body: bytes, signature: str | None) -> bool:
@@ -167,10 +178,14 @@ def woocommerce_order(t: str | None = None, **kwargs):
 	stored = ecommerce_api.read_settings(company) if company else {}
 	secret = stored.get("webhook_secret")
 
+	# WooCommerce's test message, sent once when the webhook is saved, is unsigned by design. A right address answers it, so the
+	# owner sees the connection works; it carries no order and changes nothing. A wrong address is still refused below.
+	signature = frappe.get_request_header("X-WC-Webhook-Signature")
+	if company and not signature and is_ping(body):
+		return {"ignored": "test message"}
+
 	# One answer for an unknown address and a bad signature, so neither tells a stranger anything
-	if not (
-		company and secret and signature_ok(secret, body, frappe.get_request_header("X-WC-Webhook-Signature"))
-	):
+	if not (company and secret and signature_ok(secret, body, signature)):
 		frappe.throw(_("Not allowed."), frappe.AuthenticationError)
 
 	if not (stored.get("enabled") and stored.get("sync_orders", True)):
