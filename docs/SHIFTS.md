@@ -91,8 +91,24 @@ A sales return (`sales_api.create_sales_return`) makes a credit note: the shop o
 - A credit note paid in full cannot be paid again. A part payment leaves the rest owed. A return waiting for a manager's approval (a draft) cannot be paid until it is approved.
 - If the payout fails in the same call as the return, the return stands and the answer says the refund still has to be paid.
 
+## Part 4: handing a till over to the next cashier
+
+When one cashier leaves and another takes the same till, the first shift is counted and closed and the second opens with what was counted. Nothing is guessed: the next shift starts from the cash in the drawer, not from a round number.
+
+`handover_api.hand_over_till(session, to_user, counted=None, confirm=False, note=None)`
+
+- **Who:** the cashier who opened the shift, or a manager or owner of the business (the same people who may close it).
+- **Who can take over:** another enabled person of the same business. Not the same cashier, not someone from another business, not a switched-off account. `list_handover_people(session)` gives the choices.
+- **Without confirm** nothing changes. The answer is the count against what should be there (as `close_till` shows it) and who would take over.
+- **With confirm** (needs the cash counted) the shift is closed through the existing closing path, exactly as `close_till` does it, and the next shift is opened for `to_user` on the same till with the **counted cash** as its float. M-Pesa, card and the other methods start at 0, because they are not drawer money.
+- **A difference stays with the cashier who counted out.** If the drawer was 50 short, that shows on their Z report; the next cashier starts from the 50-short amount, not from what the books expected.
+- **The record:** both shifts get a comment saying who handed to whom, how much cash was counted, whether the count was short or over, and the optional note (up to 140 characters).
+- **If the old shift is still closing in the background**, the next shift is not opened yet; the answer says so (`next_shift` is empty) and the new cashier opens theirs when it has closed.
+- **If the old shift closes but the next cannot open**, the close stands (it is never undone). The answer says so and gives the float (`data.float`) to open the next shift with.
+
+Answers use the same `{ success, message, data }` form as the other till calls. `data.next_shift` is `{ name, user, person, float }`. A refusal has `error_type`: `same_person`, `no_such_person`, `person_disabled`, `other_business`, `cash_count_required`, `already_closed`, `not_open`, `not_found`, `bad_counted`, `negative_count`, `unknown_mode`, `duplicate_mode`.
+
 ## Planned next
 
-1. Handover between cashiers: close one shift and open the next with the counted cash as the new float.
-2. Till screens for all of the above.
-3. Staff rota and clock-in.
+1. Till screens for the handover.
+2. Staff rota and clock-in.

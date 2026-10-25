@@ -279,6 +279,10 @@ EXPECTED_GUARDS = {
 		"list_cash_movements": ("POS Opening Entry session",),
 		"get_shift_report": ("POS Opening Entry session",),
 	},
+	"handover_api": {
+		"list_handover_people": ("POS Opening Entry session",),
+		"hand_over_till": ("POS Opening Entry session",),
+	},
 	"product_import_api": {
 		"preview_product_import": ("Warehouse warehouse",),
 		"import_products": ("Warehouse warehouse",),
