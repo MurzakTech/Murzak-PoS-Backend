@@ -19,15 +19,25 @@ from frappe.utils import flt
 MAX_PAGE_SIZE = 100
 
 
-def online_filters(company: str) -> dict:
-	"""The filters that pick a business's online products."""
-	return {
+VISIBILITY = ("shown", "hidden", "all")
+
+
+def online_filters(company: str, visibility: str = "shown") -> dict:
+	"""
+	The filters that pick a business's online products. `visibility` is "shown" (what customers can see, and the default
+	everywhere customers are involved), "hidden" (products the owner switched off) or "all" (for the owner's own list).
+	"""
+	filters = {
 		"custom_company": company,
 		"disabled": 0,
 		"is_sales_item": 1,
 		"has_variants": 0,
-		"custom_show_online": 1,
 	}
+	if visibility == "shown":
+		filters["custom_show_online"] = 1
+	elif visibility == "hidden":
+		filters["custom_show_online"] = 0
+	return filters
 
 
 def default_warehouse(company: str, preferred: str | None = None) -> str:
@@ -60,8 +70,10 @@ def _search_filters(search: str | None) -> list | None:
 	return [["Item", "item_name", "like", like], ["Item", "name", "like", like]]
 
 
-def count_items(company: str, search: str | None = None, category: str | None = None) -> int:
-	filters = online_filters(company)
+def count_items(
+	company: str, search: str | None = None, category: str | None = None, visibility: str = "shown"
+) -> int:
+	filters = online_filters(company, visibility)
 	if category:
 		filters["item_group"] = category
 	rows = frappe.get_all(
@@ -77,11 +89,12 @@ def list_items(
 	category: str | None = None,
 	page: int = 1,
 	page_size: int = 20,
+	visibility: str = "shown",
 ) -> list[dict]:
 	"""One page of the online catalogue, in name order, with price and stock."""
 	page = max(1, int(page or 1))
 	page_size = min(MAX_PAGE_SIZE, max(1, int(page_size or 20)))
-	filters = online_filters(company)
+	filters = online_filters(company, visibility)
 	if category:
 		filters["item_group"] = category
 	items = frappe.get_all(
@@ -97,6 +110,7 @@ def list_items(
 			"description",
 			"image",
 			"is_stock_item",
+			"custom_show_online",
 		],
 		order_by="item_name asc",
 		limit_start=(page - 1) * page_size,
@@ -120,6 +134,8 @@ def rows_for(items: list, warehouse: str) -> list[dict]:
 				"price": flt(it.standard_rate),
 				"description": it.get("description") or "",
 				"image": it.get("image") or "",
+				# Whether customers can see it; a product from before the field existed is shown
+				"show_online": bool(it.get("custom_show_online", 1)),
 				"stock": qty,
 				# A service or other untracked product is always available
 				"in_stock": True if qty is None else qty > 0,
