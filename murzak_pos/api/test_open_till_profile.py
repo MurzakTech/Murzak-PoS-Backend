@@ -10,7 +10,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import frappe
-from frappe.utils import today
 
 from murzak_pos.api import sales_api
 
@@ -43,12 +42,15 @@ class TestProfileToOpenOn(unittest.TestCase):
 
 class TestOpeningEntryOnANewShop(unittest.TestCase):
 	def test_the_open_entry_lookup_uses_the_resolved_profile(self):
-		# Today's entry is already open for the resolved profile, so nothing else is needed.
-		entry = frappe._dict(name="POS-OPE-0001", period_start_date=today(), user="owner@shop-a.test")
+		# Today's entry is already open for the resolved profile, so nothing else is needed. The date helpers
+		# are replaced: the real ones read the site's time zone, and this test has no site.
+		entry = frappe._dict(name="POS-OPE-0001", period_start_date="2026-10-25", user="owner@shop-a.test")
 		get_all = MagicMock(return_value=[entry])
 		with (
 			patch.object(frappe, "get_all", get_all),
 			patch.object(frappe, "session", frappe._dict(user="owner@shop-a.test")),
+			patch("frappe.utils.today", return_value="2026-10-25"),
+			patch("frappe.utils.get_date_str", side_effect=str),
 			patch.object(sales_api, "_profile_to_open_on", return_value="Shop A POS Profile") as resolve,
 		):
 			name = sales_api._get_or_create_pos_opening_entry("Missing profile", "Shop A")
