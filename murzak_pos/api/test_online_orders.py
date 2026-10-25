@@ -326,7 +326,7 @@ class TestStaffCalls(unittest.TestCase):
 	def setUp(self):
 		patches = [
 			patch.object(frappe, "db", MagicMock(), create=True),
-			patch.object(online_orders, "_require_order_role"),
+			patch.object(online_orders, "require_online_orders"),
 			patch.object(online_orders, "resolve_company", return_value="Duka Ltd"),
 		]
 		for p in patches:
@@ -406,6 +406,181 @@ class TestStaffCalls(unittest.TestCase):
 		self.assertNotIn("phone", data)
 		self.assertNotIn("customer", data)
 		self.assertNotIn("address", data)
+
+
+class TestSettlingAnOrderAtTheTill(unittest.TestCase):
+	"""A till sale that names an online order: checked first, then linked, paid and the order's stock released."""
+
+	def setUp(self):
+		patches = [
+			patch.object(frappe, "db", MagicMock(), create=True),
+			patch.object(online_orders, "require_online_orders"),
+		]
+		for p in patches:
+			p.start()
+			self.addCleanup(p.stop)
+
+	def order(self, **changes):
+		fields = dict(
+			company="Duka Ltd",
+			docstatus=1,
+			status="To Deliver and Bill",
+			custom_online_channel="Website",
+			custom_online_fulfilment="Confirmed",
+			custom_till_sale=None,
+		)
+		fields.update(changes)
+		frappe.db.get_value.return_value = row(**fields)
+
+	def test_the_order_is_locked_while_the_sale_is_checked(self):
+		self.order()
+		online_orders.check_order_for_till_sale("SO-1", "Duka Ltd")
+		self.assertTrue(frappe.db.get_value.call_args.kwargs["for_update"])
+
+	def test_the_caller_needs_the_orders_permission(self):
+		self.order()
+		online_orders.require_online_orders.side_effect = frappe.PermissionError
+		with self.assertRaises(frappe.PermissionError):
+			online_orders.check_order_for_till_sale("SO-1", "Duka Ltd")
+		frappe.db.get_value.assert_not_called()
+
+	def test_a_missing_foreign_or_till_order_is_not_found(self):
+		for changes in ({"company": "Other Ltd"}, {"custom_online_channel": None}):
+			self.order(**changes)
+			with self.assertRaises(frappe.DoesNotExistError):
+				online_orders.check_order_for_till_sale("SO-1", "Duka Ltd")
+		frappe.db.get_value.return_value = None
+		with self.assertRaises(frappe.DoesNotExistError):
+			online_orders.check_order_for_till_sale("SO-1", "Duka Ltd")
+
+	def test_a_cancelled_or_closed_order_cannot_be_sold(self):
+		for changes in ({"custom_online_fulfilment": "Cancelled"}, {"status": "Closed"}, {"docstatus": 2}):
+			self.order(**changes)
+			with self.assertRaises(frappe.ValidationError):
+				online_orders.check_order_for_till_sale("SO-1", "Duka Ltd")
+
+	def test_an_order_cannot_be_sold_twice(self):
+		self.order(custom_till_sale="POS-INV-9")
+		with self.assertRaises(frappe.ValidationError) as refused:
+			online_orders.check_order_for_till_sale("SO-1", "Duka Ltd")
+		self.assertIn("POS-INV-9", str(refused.exception))
+
+	def test_a_good_order_passes(self):
+		self.order()
+		online_orders.check_order_for_till_sale("SO-1", "Duka Ltd")
+
+	def test_the_sale_carries_the_order_and_the_online_channel(self):
+		sale = MagicMock()
+		sale.meta.has_field.return_value = True
+		online_orders.mark_sale_as_online(sale, "SO-1")
+		sale.set.assert_any_call("custom_online_order", "SO-1")
+		sale.set.assert_any_call("custom_sales_channel", "Online")
+
+	def test_an_ordinary_sale_is_left_alone(self):
+		sale = MagicMock()
+		online_orders.mark_sale_as_online(sale, None)
+		sale.set.assert_not_called()
+
+	def test_settling_links_both_ways_marks_paid_and_releases_the_hold(self):
+		sale = frappe._dict(doctype="POS Invoice", name="POS-INV-9", outstanding_amount=0)
+		order = MagicMock(status="To Deliver and Bill")
+		order.flags = frappe._dict()
+		with patch.object(frappe, "get_doc", return_value=order):
+			online_orders.settle_order_with_sale("SO-1", sale)
+		frappe.db.set_value.assert_called_once_with(
+			"Sales Order",
+			"SO-1",
+			{"custom_till_sale_type": "POS Invoice", "custom_till_sale": "POS-INV-9", "custom_online_paid": 1},
+		)
+		order.update_status.assert_called_once_with("Closed")
+
+	def test_a_sale_on_credit_does_not_mark_the_order_paid(self):
+		sale = frappe._dict(doctype="Sales Invoice", name="SINV-9", outstanding_amount=500)
+		order = MagicMock(status="To Deliver and Bill")
+		order.flags = frappe._dict()
+		with patch.object(frappe, "get_doc", return_value=order):
+			online_orders.settle_order_with_sale("SO-1", sale)
+		values = frappe.db.set_value.call_args.args[2]
+		self.assertNotIn("custom_online_paid", values)
+		self.assertEqual(values["custom_till_sale"], "SINV-9")
+		order.update_status.assert_called_once_with("Closed")
+
+	def test_an_order_already_closed_is_not_closed_again(self):
+		sale = frappe._dict(doctype="POS Invoice", name="POS-INV-9", outstanding_amount=0)
+		order = MagicMock(status="Closed")
+		with patch.object(frappe, "get_doc", return_value=order):
+			online_orders.settle_order_with_sale("SO-1", sale)
+		order.update_status.assert_not_called()
+
+	def test_a_retried_sale_finishes_an_unsettled_order_once(self):
+		sale = frappe._dict(doctype="POS Invoice", name="POS-INV-9", outstanding_amount=0)
+		order = MagicMock(status="To Deliver and Bill")
+		order.flags = frappe._dict()
+		frappe.db.get_value.return_value = row(
+			company="Duka Ltd", custom_online_channel="Website", custom_till_sale=None
+		)
+		with patch.object(frappe, "get_doc", side_effect=[sale, order]):
+			online_orders.settle_recorded_sale("SO-1", "Duka Ltd", "POS Invoice", "POS-INV-9")
+		frappe.db.set_value.assert_called_once()
+
+	def test_a_retry_for_a_settled_order_changes_nothing(self):
+		frappe.db.get_value.return_value = row(
+			company="Duka Ltd", custom_online_channel="Website", custom_till_sale="POS-INV-9"
+		)
+		online_orders.settle_recorded_sale("SO-1", "Duka Ltd", "POS Invoice", "POS-INV-9")
+		online_orders.settle_recorded_sale(None, "Duka Ltd", "POS Invoice", "POS-INV-9")
+		frappe.db.set_value.assert_not_called()
+
+
+class TestStaffCallsOnASoldOrder(unittest.TestCase):
+	def setUp(self):
+		patches = [
+			patch.object(frappe, "db", MagicMock(), create=True),
+			patch.object(online_orders, "require_online_orders"),
+			patch.object(online_orders, "resolve_company", return_value="Duka Ltd"),
+		]
+		for p in patches:
+			p.start()
+			self.addCleanup(p.stop)
+
+	def order_row(self, sold_in=None, paid=0):
+		frappe.db.get_value.return_value = row(
+			name="SO-1",
+			company="Duka Ltd",
+			custom_online_channel="Website",
+			custom_online_fulfilment="Confirmed",
+			docstatus=1,
+			custom_till_sale=sold_in,
+			custom_online_paid=paid,
+		)
+
+	def test_a_sold_order_cannot_be_invoiced_again(self):
+		self.order_row(sold_in="POS-INV-9")
+		with self.assertRaises(frappe.ValidationError):
+			online_orders.create_invoice_for_online_order("SO-1")
+
+	def test_a_sold_order_cannot_be_cancelled(self):
+		self.order_row(sold_in="POS-INV-9")
+		with patch.object(frappe, "get_doc") as get_doc:
+			with self.assertRaises(frappe.ValidationError):
+				online_orders.set_online_order_status("SO-1", "Cancelled")
+		get_doc.assert_not_called()
+
+	def test_a_sold_order_can_still_be_marked_delivered(self):
+		self.order_row(sold_in="POS-INV-9")
+		self.assertTrue(online_orders.set_online_order_status("SO-1", "Delivered")["success"])
+
+	def test_marking_paid_twice_succeeds_and_changes_nothing(self):
+		self.order_row(paid=0)
+		frappe.db.get_value.side_effect = [
+			frappe.db.get_value.return_value,
+			0,
+			frappe.db.get_value.return_value,
+			1,
+		]
+		self.assertTrue(online_orders.mark_online_order_paid("SO-1")["success"])
+		self.assertTrue(online_orders.mark_online_order_paid("SO-1")["success"])
+		frappe.db.set_value.assert_called_once_with("Sales Order", "SO-1", "custom_online_paid", 1)
 
 
 if __name__ == "__main__":

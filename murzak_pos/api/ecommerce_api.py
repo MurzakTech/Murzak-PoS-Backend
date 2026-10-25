@@ -17,7 +17,7 @@ from frappe import _
 from frappe.utils import cstr, flt, now_datetime, nowdate
 
 from murzak_pos.api import online_catalogue
-from murzak_pos.api.access_control import require_catalogue_role, require_manager
+from murzak_pos.api.access_control import require_online_catalogue, require_online_integrations
 from murzak_pos.api.payment_gateway_common import resolve_company
 
 
@@ -107,7 +107,7 @@ def get_ecommerce_settings(company: str | None = None) -> dict[str, Any]:
 	"""
 	Get e-commerce and WooCommerce settings for a company.
 	"""
-	require_catalogue_role()
+	require_online_integrations()
 	if company:
 		company = resolve_company(company)
 	else:
@@ -184,7 +184,7 @@ def save_ecommerce_settings(
 	"""
 	Save e-commerce / WooCommerce configuration for a company.
 	"""
-	require_manager()
+	require_online_integrations()
 	if company:
 		company = resolve_company(company)
 	else:
@@ -284,7 +284,7 @@ def test_woocommerce_connection(
 	"""
 	Test API connection to a WooCommerce store.
 	"""
-	require_manager()
+	require_online_integrations()
 	if company:
 		company = resolve_company(company)
 	else:
@@ -616,7 +616,7 @@ def sync_woocommerce_catalog(
 	Send the online catalogue to the WooCommerce shop: new products are created, existing ones (same SKU) are updated.
 	`sync_type` "stock" sends only stock levels.
 	"""
-	require_catalogue_role()
+	require_online_integrations()
 	company = resolve_company(company) if company else resolve_company()
 	stored = read_settings(company)
 
@@ -742,7 +742,7 @@ def get_order_webhook(company: str | None = None) -> dict[str, Any]:
 	The web address and secret to paste into WooCommerce (Settings > Advanced > Webhooks), so the shop's orders reach the
 	POS. Made on first use. Only a manager may see the secret.
 	"""
-	require_manager()
+	require_online_integrations()
 	company = resolve_company(company) if company else resolve_company()
 	stored = read_settings(company)
 	changed = False
@@ -775,7 +775,7 @@ def get_order_webhook(company: str | None = None) -> dict[str, Any]:
 @frappe.whitelist()
 def regenerate_order_webhook(company: str | None = None) -> dict[str, Any]:
 	"""Make a new address and secret (the old ones stop working). Use if they may have leaked."""
-	require_manager()
+	require_online_integrations()
 	company = resolve_company(company) if company else resolve_company()
 	stored = read_settings(company)
 	old = stored.pop("webhook_token", None)
@@ -807,7 +807,7 @@ def get_ecommerce_products(
 	`visibility` is "shown" (the default), "hidden" or "all"; each row says whether it is shown online (`show_online`),
 	so the owner can switch a hidden product back on.
 	"""
-	require_catalogue_role()
+	require_online_catalogue()
 	company = resolve_company(company) if company else resolve_company()
 	page = max(1, int(page or 1))
 	page_size = min(100, max(1, int(page_size or 20)))

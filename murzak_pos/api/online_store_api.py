@@ -26,7 +26,7 @@ from frappe import _
 from frappe.utils import cint, cstr, now_datetime
 
 from murzak_pos.api import delivery_fees, online_catalogue
-from murzak_pos.api.access_control import require_catalogue_role, require_manager
+from murzak_pos.api.access_control import require_online_catalogue, require_online_settings
 from murzak_pos.api.payment_gateway_common import resolve_company
 
 STORE_KEY = "murzak_store_"
@@ -159,7 +159,7 @@ def _mpesa_ready(company: str) -> bool:
 @frappe.whitelist()
 def get_online_store(company: str | None = None) -> dict[str, Any]:
 	"""The business's online store settings, the links to share, and what is still missing before it can open."""
-	require_catalogue_role()
+	require_online_settings()
 	company = resolve_company(company) if company else resolve_company()
 	settings = read_store(company)
 	if not settings["store_name"]:
@@ -180,7 +180,7 @@ def get_online_store(company: str | None = None) -> dict[str, Any]:
 @frappe.whitelist()
 def check_store_slug(slug: str, company: str | None = None) -> dict[str, Any]:
 	"""Is this short name free for the business? Used as the owner types."""
-	require_catalogue_role()
+	require_online_settings()
 	company = resolve_company(company) if company else resolve_company()
 	slug = cstr(slug).strip().lower()
 	problem = slug_problem(slug, company)
@@ -190,7 +190,7 @@ def check_store_slug(slug: str, company: str | None = None) -> dict[str, Any]:
 @frappe.whitelist()
 def save_online_store(settings: str | dict[str, Any], company: str | None = None) -> dict[str, Any]:
 	"""Save the store settings. A store can be switched on only when a customer could really order from it."""
-	require_manager()
+	require_online_settings()
 	company = resolve_company(company) if company else resolve_company()
 	if isinstance(settings, str):
 		try:
@@ -287,7 +287,7 @@ def set_items_online(
 	item_codes: str | list[str], show: int | bool = 1, company: str | None = None
 ) -> dict[str, Any]:
 	"""Show products on the online store and website, or hide them. Only the business's own products change."""
-	require_catalogue_role()
+	require_online_catalogue()
 	company = resolve_company(company) if company else resolve_company()
 	if isinstance(item_codes, str):
 		try:

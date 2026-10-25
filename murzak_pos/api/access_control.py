@@ -67,6 +67,14 @@ SUPPLIER_ROLES = frozenset({"Business Owner", "System Manager", "Purchase Manage
 LOYALTY_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager"})
 TRANSFER_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager", "Stock User"})
 
+# The online store is one module with four permissions (src/config/roleAccessConfig.js, onlineStoreAccess, in the
+# frontend). The owner roles hold all four.
+ONLINE_CLERK_ROLE = "Online Orders Clerk"
+ONLINE_ORDERS_ROLES = OWNER_ROLES | {"Sales Manager", ONLINE_CLERK_ROLE}
+ONLINE_CATALOGUE_ROLES = OWNER_ROLES | {"Sales Manager", "Item Manager"}
+ONLINE_SETTINGS_ROLES = OWNER_ROLES | {"Sales Manager"}
+ONLINE_INTEGRATION_ROLES = frozenset(OWNER_ROLES)
+
 
 def require_manager() -> None:
 	"""Refuse anyone who is not signed in, or is not a business owner (System Manager) or the Administrator."""
@@ -149,6 +157,34 @@ def require_any_role(roles, action: str) -> None:
 def require_catalogue_role() -> None:
 	"""Changing prices, the product list, or importing products in bulk."""
 	require_any_role(CATALOGUE_ROLES, _("change prices or the product catalogue"))
+
+
+def can_manage_online_orders(user: str | None = None) -> bool:
+	"""Does the user hold the online store's `orders` permission? The Administrator does."""
+	user = user or frappe.session.user
+	if user == "Administrator":
+		return True
+	return bool(ONLINE_ORDERS_ROLES & set(frappe.get_roles(user)))
+
+
+def require_online_orders() -> None:
+	"""Online store `orders`: see and move online orders, mark them paid, invoice them, open them in the till."""
+	require_any_role(ONLINE_ORDERS_ROLES, _("work with online orders"))
+
+
+def require_online_catalogue() -> None:
+	"""Online store `catalogue`: show or hide products, edit a product's online description and photos."""
+	require_any_role(ONLINE_CATALOGUE_ROLES, _("change what is shown in the online store"))
+
+
+def require_online_settings() -> None:
+	"""Online store `settings`: the shop's address, delivery, payment, WhatsApp number, logo, open or close."""
+	require_any_role(ONLINE_SETTINGS_ROLES, _("change the online store settings"))
+
+
+def require_online_integrations() -> None:
+	"""Online store `integrations`: WooCommerce keys, the webhook secret and syncing. Owner roles only."""
+	require_any_role(ONLINE_INTEGRATION_ROLES, _("manage the website connection"))
 
 
 def require_supplier_role() -> None:

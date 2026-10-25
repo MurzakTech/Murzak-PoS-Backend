@@ -114,7 +114,8 @@ time it is needed, and is kept off the online product list.
 
 ## Working the orders at the till
 
-Staff with the Business Owner, System Manager, Sales Manager, Stock Manager or Sales User role can:
+Staff holding the online store's `orders` permission (Business Owner, System Manager, Sales Manager or Online Orders
+Clerk) can:
 
 * list online orders by status or channel (`list_online_orders`) and open one (`get_online_order`);
 * move an order along: **New > Confirmed > Ready > Delivered**, or **Cancelled** (`set_online_order_status`).
@@ -123,7 +124,28 @@ Staff with the Business Owner, System Manager, Sales Manager, Stock Manager or S
 * make a **draft Sales Invoice** from it, which takes the stock out when the owner submits it
   (`create_invoice_for_online_order`).
 
-The till is told the moment a new order arrives (a `murzak_pos_event` screen message of kind `online_order`).
+The till is told the moment a new order arrives (a `murzak_pos_event` screen message of kind `online_order`). Only users
+holding the `orders` permission receive it.
+
+### Selling an online order at the till
+
+`create_pos_invoice` and `create_sales_invoice` accept an extra `online_order` (the Sales Order name). The caller needs
+the `orders` permission as well as the right to sell. When it is given:
+
+1. The order must exist, belong to the same business, not be cancelled or closed, and not already be sold. The order is
+   locked while the sale is made, so two tills cannot sell it at once. A sale saved as a draft is refused.
+2. The sale takes the stock out once. After it is saved the order is **closed**, which releases the stock the order was
+   holding, so the stock is not counted twice.
+3. The two are linked both ways: the sale holds `custom_online_order` and `custom_sales_channel = Online` (reports can
+   tell Online from Till; empty means Till), and the order holds `custom_till_sale_type` and `custom_till_sale`.
+4. The order is marked paid unless the sale left money owing (a sale on credit). `mark_online_order_paid` can be called
+   again afterwards and does nothing.
+5. A sold order cannot get a second invoice (`create_invoice_for_online_order`) and cannot be cancelled; return the sale
+   instead. Staff still mark it Delivered.
+6. A retry with the same `client_reference` returns the first sale, and finishes settling the order if the first try
+   was cut off before it was settled.
+
+Run `bench --site <site> migrate` to add the link fields and create the **Online Orders Clerk** role.
 
 ## For the frontend developer
 
@@ -149,11 +171,14 @@ takes the tracking code.
 
 | Module | Function | Who |
 |---|---|---|
-| `online_store_api` | `get_online_store`, `check_store_slug`, `set_items_online` | Catalogue roles |
-| `online_store_api` | `save_online_store` | Business owner |
-| `ecommerce_api` | `get_ecommerce_settings`, `get_ecommerce_products`, `sync_woocommerce_catalog` (`sync_type="stock"` for stock only) | Catalogue roles |
-| `ecommerce_api` | `save_ecommerce_settings`, `test_woocommerce_connection`, `get_order_webhook`, `regenerate_order_webhook` | Business owner |
-| `online_orders` | `list_online_orders`, `get_online_order`, `set_online_order_status`, `mark_online_order_paid`, `create_invoice_for_online_order` | Order roles above |
+| `online_store_api` | `set_items_online` | `catalogue`: owners, Sales Manager, Item Manager |
+| `online_store_api` | `get_online_store`, `check_store_slug`, `save_online_store` | `settings`: owners, Sales Manager |
+| `ecommerce_api` | `get_ecommerce_products` | `catalogue` |
+| `ecommerce_api` | `get_ecommerce_settings`, `save_ecommerce_settings`, `test_woocommerce_connection`, `sync_woocommerce_catalog` (`sync_type="stock"` for stock only), `get_order_webhook`, `regenerate_order_webhook` | `integrations`: owners only |
+| `online_orders` | `list_online_orders`, `get_online_order`, `set_online_order_status`, `mark_online_order_paid`, `create_invoice_for_online_order` | `orders`: owners, Sales Manager, Online Orders Clerk |
+
+The owners are Business Owner and System Manager. The four permissions are defined in `api/access_control.py` and match the
+frontend's `onlineStoreAccess`.
 
 Changes to existing replies (the Settings > E-Commerce screen should read them):
 

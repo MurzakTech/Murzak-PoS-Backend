@@ -15,6 +15,7 @@ class TestAfterInstall(unittest.TestCase):
 	def test_a_new_shop_gets_the_same_steps_as_a_migrate(self):
 		with (
 			patch.object(install, "ensure_owner_role") as owner_role,
+			patch.object(install, "ensure_online_orders_clerk_role") as clerk_role,
 			patch.object(install, "install_print_formats") as formats,
 			patch.object(install, "enable_languages") as languages,
 			patch.object(install, "pick_earliest_expiry_first") as batch_order,
@@ -22,6 +23,7 @@ class TestAfterInstall(unittest.TestCase):
 		):
 			install.after_install()
 		owner_role.assert_called_once_with()
+		clerk_role.assert_called_once_with()
 		formats.assert_called_once_with()
 		languages.assert_called_once_with()
 		batch_order.assert_called_once_with()

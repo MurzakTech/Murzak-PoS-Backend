@@ -130,3 +130,15 @@ def ensure_owner_role() -> None:
 	role.role_name = OWNER_ROLE
 	role.desk_access = 1
 	role.insert(ignore_permissions=True)
+
+
+def ensure_online_orders_clerk_role() -> None:
+	"""Create the Online Orders Clerk role if the site does not have it. Safe to run again (after_install, after_migrate)."""
+	from murzak_pos.api.access_control import ONLINE_CLERK_ROLE
+
+	if frappe.db.exists("Role", ONLINE_CLERK_ROLE):
+		return
+	role = frappe.new_doc("Role")
+	role.role_name = ONLINE_CLERK_ROLE
+	role.desk_access = 1
+	role.insert(ignore_permissions=True)
