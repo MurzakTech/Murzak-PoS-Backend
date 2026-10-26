@@ -42,6 +42,24 @@ class TestDiscountRules(unittest.TestCase):
 		self.assertEqual(cashier_rules.discount_problems([line(rate=150)], 0, 10), [])
 
 
+class TestFullPriceCeiling(unittest.TestCase):
+	def line(self, **over):
+		return {"item_code": "SOAP", "qty": 1, "rate": 100, "discount_percentage": 0, **over}
+
+	def test_up_to_and_including_the_whole_price_is_allowed(self):
+		self.assertEqual(cashier_rules.full_price_problems([self.line()], 0), [])
+		self.assertEqual(cashier_rules.full_price_problems([self.line(rate=0, discount_percentage=100)], 0), [])
+		self.assertEqual(cashier_rules.full_price_problems([self.line()], 100, 100), [])
+
+	def test_a_line_discounted_past_100_percent_or_priced_below_zero_is_refused(self):
+		self.assertEqual(cashier_rules.full_price_problems([self.line(discount_percentage=150)], 0), ["SOAP"])
+		self.assertEqual(cashier_rules.full_price_problems([self.line(rate=-795)], 0), ["SOAP"])
+
+	def test_a_sale_discount_past_the_lines_or_past_100_percent_is_refused(self):
+		self.assertEqual(cashier_rules.full_price_problems([self.line()], 101), ["sale"])
+		self.assertEqual(cashier_rules.full_price_problems([self.line()], 0, 150), ["sale"])
+
+
 class TestDateRules(unittest.TestCase):
 	TODAY = date(2026, 10, 24)
 
@@ -115,6 +133,28 @@ class TestTheCheckOnSave(unittest.TestCase):
 		self.given()
 		frappe.db.get_default.return_value = "25"
 		cashier_limits.enforce_on_sale(sale(rate=80))
+
+	def test_nobody_may_take_more_than_the_whole_price_off(self):
+		for tier in (role_tiers.CASHIER, role_tiers.MANAGER, role_tiers.OWNER):
+			with self.subTest(tier=tier):
+				self.given(tier)
+				too_much = sale(rate=0)
+				too_much["items"][0].discount_percentage = 150
+				with self.assertRaises(frappe.ValidationError) as refused:
+					cashier_limits.enforce_on_sale(too_much)
+				self.assertIn("100%", str(refused.exception))
+				with self.assertRaises(frappe.ValidationError):
+					cashier_limits.enforce_on_sale(sale(discount_amount=150, additional_discount_percentage=150))
+
+	def test_an_owner_may_still_give_an_item_away(self):
+		self.given(role_tiers.OWNER)
+		free = sale(rate=0)
+		free["items"][0].discount_percentage = 100
+		cashier_limits.enforce_on_sale(free)
+
+	def test_the_ceiling_leaves_returns_alone(self):
+		self.given(role_tiers.OWNER)
+		cashier_limits.enforce_on_sale(sale(rate=-50, is_return=1))
 
 	def test_the_hooks_are_registered(self):
 		from murzak_pos import hooks

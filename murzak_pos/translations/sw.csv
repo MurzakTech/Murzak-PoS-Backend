@@ -1276,6 +1276,8 @@
 "A sale cannot be dated in the future.","Mauzo hayawezi kuwekwa tarehe ya baadaye."
 "A sale dated more than {0} days ago needs a manager. Ask a manager to sign in and send it.","Mauzo yenye tarehe ya zaidi ya siku {0} zilizopita yanahitaji meneja. Mwombe meneja aingie na kuyatuma."
 "The discount on {0} is more than the {1}% a cashier may give. A manager must ring up this sale.","Punguzo kwa {0} ni zaidi ya {1}% ambayo keshia anaweza kutoa. Meneja lazima arekodi mauzo haya."
+"A discount cannot be more than 100% of the price. Check the discount on {0}.","Punguzo haliwezi kuwa zaidi ya 100% ya bei. Angalia punguzo kwa {0}."
+"Count the cash first. Close the till from the till's Close screen so the count is saved.","Hesabu fedha kwanza. Funga till kupitia skrini ya Funga ya till ili hesabu ihifadhiwe."
 "the whole sale","mauzo yote"
 "The limit must be between 0 and 100 percent.","Kikomo lazima kiwe kati ya asilimia 0 na 100."
 "That record already exists.","Rekodi hiyo tayari ipo."

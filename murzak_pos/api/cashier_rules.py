@@ -59,6 +59,24 @@ def discount_problems(lines: list[dict], sale_discount: float, limit: float) -> 
 	return problems
 
 
+def full_price_problems(lines: list[dict], sale_discount: float, sale_discount_percent: float = 0.0) -> list[str]:
+	"""
+	What takes more than the whole price off, whoever is selling: the item codes of lines discounted past 100 percent
+	or priced below zero, and "sale" when the discount on the whole sale is past 100 percent or more than the lines
+	add up to. Taking exactly 100 percent off (a giveaway) is allowed; only a manager gets that far, as the cashier's
+	limit is lower. Each line is a dict with item_code, qty, rate and discount_percentage.
+	"""
+	problems = []
+	line_total = 0.0
+	for line in lines:
+		if float(line.get("discount_percentage") or 0) > 100 + TOLERANCE or float(line.get("rate") or 0) < -TOLERANCE:
+			problems.append(line.get("item_code"))
+		line_total += float(line.get("qty") or 0) * float(line.get("rate") or 0)
+	if (sale_discount_percent or 0) > 100 + TOLERANCE or (sale_discount or 0) > max(line_total, 0.0) + TOLERANCE:
+		problems.append("sale")
+	return problems
+
+
 def date_problem(posting_date: date, today: date, days_back: int = DAYS_BACK) -> str | None:
 	"""None when a sale may carry this date; "future" or "too_old" otherwise."""
 	if posting_date > today:

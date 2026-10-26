@@ -2,6 +2,7 @@
 A cashier's limits on a sale, checked every time a Sales Invoice or POS Invoice is saved (hooks.py), whichever way it
 was made: the till, an edited draft, an offline upload or the desk. The rules are in cashier_rules.py.
 
+- No sale, whoever rings it up, may take more than 100% off a line or off the whole sale.
 - A sale may not be dated in the future, nor more than a week back.
 - A cashier may take at most the business's limit (10% unless the owner changed it) off the price-list price, per line
   and on the whole sale; the shop's own pricing rules and batch discounts do not count.
@@ -84,8 +85,45 @@ def _batch_rule_percent(doc, item, list_price: float) -> float:
 	return flt(rule.discount_value) / list_price * 100 if list_price else 0.0
 
 
+def _full_price_check_applies(doc) -> bool:
+	"""The 100 percent ceiling holds for everyone, owners and managers included; only returns and merges are left out."""
+	if frappe.flags.in_install or frappe.flags.in_patch or frappe.flags.in_migrate or frappe.flags.in_import:
+		return False
+	return not (doc.get("is_return") or doc.get("is_consolidated"))
+
+
+def enforce_full_price_ceiling(doc) -> None:
+	"""Refuse a sale that takes more than the whole price off, whoever rings it up."""
+	if not _full_price_check_applies(doc):
+		return
+	lines = [
+		{
+			"item_code": item.item_code,
+			"qty": flt(item.get("qty")),
+			"rate": flt(item.get("rate")),
+			"discount_percentage": flt(item.get("discount_percentage")),
+		}
+		for item in doc.get("items") or []
+	]
+	over = cashier_rules.full_price_problems(
+		lines, flt(doc.get("discount_amount")), flt(doc.get("additional_discount_percentage"))
+	)
+	if not over:
+		return
+	names = [frappe.db.get_value("Item", code, "item_name") or code for code in over if code != "sale"] or [
+		_("the whole sale")
+	]
+	frappe.throw(
+		_("A discount cannot be more than 100% of the price. Check the discount on {0}.").format(
+			", ".join(names)
+		),
+		frappe.ValidationError,
+	)
+
+
 def enforce_on_sale(doc, method=None) -> None:
-	"""Sales Invoice and POS Invoice validate: refuse a date or a discount beyond a cashier's limits."""
+	"""Sales Invoice and POS Invoice validate: refuse a discount past 100%, then a date or discount beyond a cashier's limits."""
+	enforce_full_price_ceiling(doc)
 	if not _checks_apply(doc):
 		return
 
