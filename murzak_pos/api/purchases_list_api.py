@@ -871,6 +871,9 @@ def receive_goods(
 	company = head.get("company")
 	if warehouse and frappe.db.get_value("Warehouse", warehouse, "company") not in (None, company):
 		return _refusal("bad_warehouse", _("That store belongs to another business."))
+	setup_refusal = _provisional_setup_refusal(company)
+	if setup_refusal:
+		return setup_refusal
 
 	try:
 		return _receive(order, items, head, company, request, bill_no, bill_day, due_day, warehouse)
@@ -884,6 +887,25 @@ def receive_goods(
 		# For whoever supports the shop: the kind of error and its first words. The trace itself stays in the Error Log.
 		reply["error_detail"] = f"{type(error).__name__}: {plain_text(error, 200)}"
 		return reply
+
+
+def _provisional_setup_refusal(company) -> dict | None:
+	"""
+	When the business has provisional accounting on but no account chosen for it, ERPNext refuses the receipt halfway.
+	Set the account up here before anything is written (the same way onboarding does); only when that cannot be done
+	does a plain sentence come back. Returns None when all is well.
+	"""
+	from murzak_pos.api.account_provisioning_api import validate_and_get_provisional_account
+
+	ok, _error, _account = validate_and_get_provisional_account(company, auto_fix=True)
+	if ok:
+		return None
+	return _refusal(
+		"provisional_account_missing",
+		_failed(
+			_("Your business accounts are not fully set up for receiving goods. Please ask support to finish the setup.")
+		),
+	)
 
 
 def _failed(reason: str = "") -> str:
