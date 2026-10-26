@@ -3392,6 +3392,15 @@ def close_pos_opening_entry(
             if opening_entry.status == "Closed":
                 return _closing_outcome(opening_entry, "closed", _("Till closed. The shift has ended."))
 
+        # A close that submits on its own would record no cash count, so the till would close "Not counted yet".
+        # The till's close (till_api.close_till) asks for the count first and calls this with do_not_submit=True.
+        if not do_not_submit:
+            return {
+                "success": False,
+                "message": _("Count the cash first. Close the till from the till's Close screen so the count is saved."),
+                "error_type": "cash_count_required",
+            }
+
         # A failed earlier attempt leaves an unsubmitted closing entry behind; remove it so
         # the shift is closed from one fresh entry with every receipt up to now
         for draft in frappe.get_all(

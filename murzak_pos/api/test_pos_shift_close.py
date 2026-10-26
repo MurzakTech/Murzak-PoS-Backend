@@ -151,5 +151,11 @@ class TestCloseOutcomes(unittest.TestCase):
 		self.assertEqual(result["data"]["outcome"], "failed")
 		self.assertIn("Stock is negative", result["message"])
 
+	def test_a_close_that_would_submit_without_a_cash_count_is_refused(self):
+		result, closing_doc, _ = self.close()
+		self.assertFalse(result["success"])
+		self.assertEqual(result["error_type"], "cash_count_required")
+		closing_doc.submit.assert_not_called()
+
 if __name__ == "__main__":
 	unittest.main()
