@@ -327,6 +327,7 @@ class TestStaffCalls(unittest.TestCase):
 		patches = [
 			patch.object(frappe, "db", MagicMock(), create=True),
 			patch.object(online_orders, "require_online_orders"),
+			patch.object(online_orders, "require_online_orders_view"),
 			patch.object(online_orders, "resolve_company", return_value="Duka Ltd"),
 		]
 		for p in patches:
@@ -537,6 +538,7 @@ class TestStaffCallsOnASoldOrder(unittest.TestCase):
 		patches = [
 			patch.object(frappe, "db", MagicMock(), create=True),
 			patch.object(online_orders, "require_online_orders"),
+			patch.object(online_orders, "require_online_orders_view"),
 			patch.object(online_orders, "resolve_company", return_value="Duka Ltd"),
 		]
 		for p in patches:

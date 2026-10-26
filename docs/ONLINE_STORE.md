@@ -114,8 +114,11 @@ time it is needed, and is kept off the online product list.
 
 ## Working the orders at the till
 
-Staff holding the online store's `orders` permission (Business Owner, System Manager, Sales Manager or Online Orders
-Clerk) can:
+Staff holding the online store's `orders` permission (Business Owner, System Manager, Sales Manager, Sales User or Online
+Orders Clerk) can:
+
+A **Stock Manager** may only look: `list_online_orders` and `get_online_order`, to follow the stock the orders hold. They
+cannot change, pay, invoice or sell an order.
 
 * list online orders by status or channel (`list_online_orders`) and open one (`get_online_order`);
 * move an order along: **New > Confirmed > Ready > Delivered**, or **Cancelled** (`set_online_order_status`).
@@ -175,7 +178,8 @@ takes the tracking code.
 | `online_store_api` | `get_online_store`, `check_store_slug`, `save_online_store` | `settings`: owners, Sales Manager |
 | `ecommerce_api` | `get_ecommerce_products` | `catalogue` |
 | `ecommerce_api` | `get_ecommerce_settings`, `save_ecommerce_settings`, `test_woocommerce_connection`, `sync_woocommerce_catalog` (`sync_type="stock"` for stock only), `get_order_webhook`, `regenerate_order_webhook` | `integrations`: owners only |
-| `online_orders` | `list_online_orders`, `get_online_order`, `set_online_order_status`, `mark_online_order_paid`, `create_invoice_for_online_order` | `orders`: owners, Sales Manager, Online Orders Clerk |
+| `online_orders` | `list_online_orders`, `get_online_order` | `orders` (view): the roles below, plus Stock Manager |
+| `online_orders` | `set_online_order_status`, `mark_online_order_paid`, `create_invoice_for_online_order`, and a till sale with `online_order` | `orders`: owners, Sales Manager, Sales User, Online Orders Clerk |
 
 The owners are Business Owner and System Manager. The four permissions are defined in `api/access_control.py` and match the
 frontend's `onlineStoreAccess`.

@@ -419,10 +419,9 @@ SENSITIVE_CALLS = {
 		],
 	},
 	# The online store's four permissions
+	"require_online_orders_view": {"online_orders": ["list_online_orders", "get_online_order"]},
 	"require_online_orders": {
 		"online_orders": [
-			"list_online_orders",
-			"get_online_order",
 			"set_online_order_status",
 			"mark_online_order_paid",
 			"create_invoice_for_online_order",
@@ -448,6 +447,10 @@ SENSITIVE_CALLS = {
 }
 
 
+# The till's own role (Sales User) fulfils online orders, so these checks let a cashier through on purpose
+CASHIER_MAY_PASS = frozenset({"require_online_orders", "require_online_orders_view"})
+
+
 class TestRoleSets(AccessCase):
 	"""Which roles each kind of change takes, read from the frontend's role table."""
 
@@ -460,7 +463,7 @@ class TestRoleSets(AccessCase):
 		return True
 
 	def test_a_cashier_may_do_none_of_them(self):
-		for name in SENSITIVE_CALLS:
+		for name in SENSITIVE_CALLS.keys() - CASHIER_MAY_PASS:
 			with self.subTest(check=name):
 				self.assertFalse(self.allowed(getattr(access_control, name), CASHIER_ROLES))
 
@@ -515,20 +518,25 @@ class TestRoleSets(AccessCase):
 
 	def test_online_store_permissions_follow_the_frontends_online_store_access(self):
 		orders = access_control.require_online_orders
+		view = access_control.require_online_orders_view
 		catalogue = access_control.require_online_catalogue
 		settings = access_control.require_online_settings
 		integrations = access_control.require_online_integrations
 		expected = {
-			"Online Orders Clerk": (True, False, False, False),
-			"Sales Manager": (True, True, True, False),
-			"Item Manager": (False, True, False, False),
-			"Business Owner": (True, True, True, True),
-			"System Manager": (True, True, True, True),
-			"Stock Manager": (False, False, False, False),
-			"Sales User": (False, False, False, False),
+			"Online Orders Clerk": (True, True, False, False, False),
+			"Sales Manager": (True, True, True, True, False),
+			"Item Manager": (False, False, True, False, False),
+			"Business Owner": (True, True, True, True, True),
+			"System Manager": (True, True, True, True, True),
+			# a Stock Manager only looks at online orders; a Sales User (the till) fulfils them
+			"Stock Manager": (False, True, False, False, False),
+			"Sales User": (True, True, False, False, False),
+			"Purchase User": (False, False, False, False, False),
 		}
 		for role, wanted in expected.items():
-			got = tuple(self.allowed(check, (role,)) for check in (orders, catalogue, settings, integrations))
+			got = tuple(
+				self.allowed(check, (role,)) for check in (orders, view, catalogue, settings, integrations)
+			)
 			self.assertEqual(got, wanted, role)
 
 	def test_loyalty_programs_are_for_owners_and_accountants(self):
@@ -554,7 +562,9 @@ class TestSensitiveCallsRefuseACashier(AccessCase):
 			patch.object(frappe, "new_doc", create=True) as new_doc,
 			patch.object(frappe, "get_doc", create=True) as get_doc,
 		):
-			for modules in SENSITIVE_CALLS.values():
+			for check_name, modules in SENSITIVE_CALLS.items():
+				if check_name in CASHIER_MAY_PASS:
+					continue
 				for module_name, names in modules.items():
 					try:
 						module = importlib.import_module(f"murzak_pos.api.{module_name}")

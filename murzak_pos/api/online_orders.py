@@ -26,7 +26,7 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import add_days, cint, cstr, flt, nowdate
 
 from murzak_pos.api import online_catalogue
-from murzak_pos.api.access_control import require_online_orders
+from murzak_pos.api.access_control import require_online_orders, require_online_orders_view
 from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import resolve_company
 
@@ -453,7 +453,7 @@ def list_online_orders(
 	page_size: int = 20,
 ) -> dict:
 	"""The shop's online orders, newest first. `status` and `channel` narrow the list."""
-	require_online_orders()
+	require_online_orders_view()
 	company = resolve_company(company)
 	page = max(1, cint(page) or 1)
 	page_size = min(100, max(1, cint(page_size) or 20))
@@ -497,7 +497,7 @@ def list_online_orders(
 @frappe.whitelist()
 def get_online_order(order: str, company: str | None = None) -> dict:
 	"""One online order with its lines."""
-	require_online_orders()
+	require_online_orders_view()
 	company = resolve_company(company)
 	_owned_order(order, company)
 	doc = frappe.get_doc("Sales Order", order)

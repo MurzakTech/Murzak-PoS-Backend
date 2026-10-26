@@ -68,9 +68,11 @@ LOYALTY_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager
 TRANSFER_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager", "Stock User"})
 
 # The online store is one module with four permissions (src/config/roleAccessConfig.js, onlineStoreAccess, in the
-# frontend). The owner roles hold all four.
+# frontend). The owner roles hold all four. A Sales User (the till) fulfils orders; a Stock Manager may only look at
+# them, to follow the stock they hold and move.
 ONLINE_CLERK_ROLE = "Online Orders Clerk"
-ONLINE_ORDERS_ROLES = OWNER_ROLES | {"Sales Manager", ONLINE_CLERK_ROLE}
+ONLINE_ORDERS_ROLES = OWNER_ROLES | {"Sales Manager", "Sales User", ONLINE_CLERK_ROLE}
+ONLINE_ORDERS_VIEW_ROLES = ONLINE_ORDERS_ROLES | {"Stock Manager"}
 ONLINE_CATALOGUE_ROLES = OWNER_ROLES | {"Sales Manager", "Item Manager"}
 ONLINE_SETTINGS_ROLES = OWNER_ROLES | {"Sales Manager"}
 ONLINE_INTEGRATION_ROLES = frozenset(OWNER_ROLES)
@@ -165,6 +167,11 @@ def can_manage_online_orders(user: str | None = None) -> bool:
 	if user == "Administrator":
 		return True
 	return bool(ONLINE_ORDERS_ROLES & set(frappe.get_roles(user)))
+
+
+def require_online_orders_view() -> None:
+	"""Online store `orders`, view only: the list of online orders and one order's lines."""
+	require_any_role(ONLINE_ORDERS_VIEW_ROLES, _("see online orders"))
 
 
 def require_online_orders() -> None:
