@@ -723,8 +723,11 @@ class ReceiveCase(ApiCase):
 			patch.object(api, "_make_invoice", return_value=self.invoice),
 			patch.object(api, "_stock_codes", side_effect=lambda codes: set(codes)),
 			patch.object(api, "_stock_in_hand", side_effect=self.stock_in_hand),
+			patch.object(api, "_provisional_setup_refusal", return_value=None),
 		]
-		self.receipt_call, self.invoice_call, self.codes_call, self.stock_call = [p.start() for p in stack]
+		self.receipt_call, self.invoice_call, self.codes_call, self.stock_call, self.setup_call = [
+			p.start() for p in stack
+		]
 		for p in stack:
 			self.addCleanup(p.stop)
 
@@ -740,6 +743,18 @@ class ReceiveCase(ApiCase):
 			else [{"item_code": "A", "qty_received": 6}, {"item_code": "B", "qty_received": 5}]
 		)
 		return api.receive_goods("PUR-ORD-2026-00012", items, **extra)
+
+
+class TestReceiveGoodsAccountSetup(ReceiveCase):
+	def test_a_business_whose_account_cannot_be_set_up_gets_a_sentence_and_nothing_is_received(self):
+		self.setup_call.return_value = api._refusal("provisional_account_missing", "Not set up.")
+		reply = self.receive()
+		self.assertEqual(reply["error_type"], "provisional_account_missing")
+		self.receipt_call.assert_not_called()
+
+	def test_the_setup_is_checked_for_the_orders_business(self):
+		self.receive()
+		self.setup_call.assert_called_once_with(self.order.company)
 
 
 class TestReceiveGoodsHappyPath(ReceiveCase):
