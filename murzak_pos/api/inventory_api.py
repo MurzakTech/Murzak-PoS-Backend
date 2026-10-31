@@ -908,7 +908,7 @@ def create_stock_reconciliation(
         }
 
 
-def _balances_by_code(balances_res) -> Dict[str, float]:
+def _balances_by_code(balances_res) -> dict[str, float]:
     """
     Turn the answer of get_stock_balance_multiple into {item_code: quantity in the store}.
 
