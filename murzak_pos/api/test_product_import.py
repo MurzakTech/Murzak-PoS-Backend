@@ -706,6 +706,7 @@ class Shop:
 		self.warnings = []
 		self.fail_codes = set()
 		self.stock_fails = False
+		self.stock_error = None
 
 	def facts(self, rows, company):
 		return make_facts(
@@ -804,7 +805,7 @@ class CallCase(unittest.TestCase):
 
 	def stock(self, stock_data, company, warehouse=None, posting_date=None):
 		if self.shop.stock_fails:
-			raise frappe.ValidationError("Valuation rate required")
+			raise self.shop.stock_error or frappe.ValidationError("Valuation rate required")
 		self.shop.stock_entries.append(stock_data)
 		for entry in stock_data:
 			self.shop.items[entry["item_code"]]["has_stock"] = True
@@ -933,6 +934,31 @@ class TestImport(CallCase):
 		data = api.import_products(rows=ROWS)["data"]
 		self.assertEqual([r["status"] for r in data["rows"]], ["failed", "created", "left_out"])
 		self.assertEqual(data["rows"][0]["message"], "The product category does not exist.")
+		self.db.rollback.assert_called()
+
+	def test_a_failed_stock_entry_says_what_to_fix_and_puts_back_the_half_made_entry(self):
+		self.shop.stock_fails = True
+		self.shop.stock_error = frappe.ValidationError("Row 2: <b>Soda</b> needs a cost price")
+		data = api.import_products(rows=ROWS)["data"]
+		problem = data["stock"]["problem"]
+		self.assertEqual(
+			problem,
+			"The products were saved but the opening stock was not added. Row 2: Soda needs a cost price. "
+			"Import the same file again to add it.",
+		)
+		self.assertEqual(data["counts"]["created"], 2)
+		self.db.rollback.assert_called()
+		self.assertEqual(self.shop.stock_entries, [])
+
+	def test_an_unexpected_stock_failure_keeps_the_plain_sentence_and_hides_the_detail(self):
+		self.shop.stock_fails = True
+		self.shop.stock_error = RuntimeError("(1054, \"Unknown column 'x' in tabBin\")")
+		problem = api.import_products(rows=ROWS)["data"]["stock"]["problem"]
+		self.assertEqual(
+			problem,
+			"The products were saved but the opening stock was not added. Import the same file again to add it.",
+		)
+		self.assertNotIn("1054", problem)
 		self.db.rollback.assert_called()
 
 	def test_a_failed_stock_entry_keeps_the_products_and_a_retry_adds_the_stock(self):

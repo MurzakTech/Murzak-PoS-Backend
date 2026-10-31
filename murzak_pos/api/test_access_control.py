@@ -103,6 +103,32 @@ class TestRequireRolesHeld(AccessCase):
 			access_control.require_roles_held(["Sales User", "Auditor"])
 		self.assertIn("Auditor", str(refused.exception))
 
+	def test_an_owner_may_give_any_business_role_even_one_their_account_lacks(self):
+		# an owner whose account holds only Business Owner (an older account, or one made in the desk)
+		for owner_roles in (("Business Owner",), ("System Manager",)):
+			with self.subTest(roles=owner_roles):
+				self.as_user(roles=owner_roles)
+				access_control.require_roles_held(["Sales User"])
+				access_control.require_roles_held(sorted(access_control.BUSINESS_ROLES))
+
+	def test_an_owner_still_cannot_give_a_role_outside_the_business_roles_they_lack(self):
+		self.as_user(roles=("Business Owner",))
+		for role in ("System Manager", "Auditor", "Administrator"):
+			with self.subTest(role=role), self.assertRaises(frappe.PermissionError) as refused:
+				access_control.require_roles_held(["Sales User", role])
+			self.assertIn(role, str(refused.exception))
+
+	def test_a_manager_gets_no_extra_reach(self):
+		self.as_user(roles=("Sales Manager",))
+		with self.assertRaises(frappe.PermissionError):
+			access_control.require_roles_held(["Sales User"])
+		access_control.require_roles_held(["Sales Manager"])
+
+	def test_the_business_roles_are_the_ones_a_new_business_owner_is_given(self):
+		from murzak_pos.api import auth_api
+
+		self.assertEqual(access_control.BUSINESS_ROLES, frozenset(auth_api.STANDARD_BUSINESS_ROLES))
+
 	def test_nothing_to_give_is_fine(self):
 		self.as_user(roles=("System Manager",))
 		access_control.require_roles_held([])
