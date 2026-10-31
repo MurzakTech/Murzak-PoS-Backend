@@ -18,8 +18,8 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
-from murzak_pos.api.payment_gateway_common import get_user_companies
 from murzak_pos.api import role_tiers
+from murzak_pos.api.payment_gateway_common import get_user_companies
 from murzak_pos.api.role_tiers import OWNER_ROLES
 
 # The field that says which company owns a record. Most records have `company`; customers, items, price lists and
