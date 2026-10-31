@@ -91,11 +91,36 @@ def require_manager() -> None:
 		)
 
 
+# The roles a business is run with. Registering a business gives its owner all of them, so an owner may hand out any of
+# them to their staff; the same list is auth_api.STANDARD_BUSINESS_ROLES (a test keeps the two together). System Manager
+# and every role outside this list can be given only by someone who holds it.
+BUSINESS_ROLES = frozenset(
+	{
+		"Business Owner",
+		"Item Manager",
+		"Stock Manager",
+		"Stock User",
+		"Sales Manager",
+		"Sales User",
+		"Purchase Manager",
+		"Purchase User",
+		"Accounts Manager",
+		"Accounts User",
+	}
+)
+
+
 def require_roles_held(roles) -> None:
-	"""Refuse handing out a role the caller does not hold. The Administrator may hand out any role."""
+	"""
+	Refuse handing out a role the caller does not hold. The Administrator may hand out any role. An owner (Business
+	Owner or System Manager) may also hand out any of the business roles even if their own account lacks one, since
+	giving staff those roles is what an owner is for; a role outside that list still has to be one they hold.
+	"""
 	if frappe.session.user == "Administrator":
 		return
 	held = set(frappe.get_roles(frappe.session.user))
+	if held & OWNER_ROLES:
+		held |= BUSINESS_ROLES
 	missing = sorted(set(roles or []) - held)
 	if missing:
 		frappe.throw(

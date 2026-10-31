@@ -21,6 +21,7 @@ the same sheet again changes nothing that is already up to date.
 from __future__ import annotations
 
 import json
+import re
 
 import frappe
 from frappe import _
@@ -461,7 +462,9 @@ def _set_level(doc, store, level):
 		if row.get("warehouse") == store:
 			row.warehouse_reorder_level = listing.quantity(level)
 			if not row.get("warehouse_reorder_qty"):
-				row.warehouse_reorder_qty = listing.quantity(level)  # ERPNext needs a quantity beside the level
+				row.warehouse_reorder_qty = listing.quantity(
+					level
+				)  # ERPNext needs a quantity beside the level
 			return
 	doc.append("reorder_levels", listing.reorder_row(store, level))
 
@@ -585,15 +588,34 @@ def _add_stock(stock_rows, company, warehouse):
 	]
 	try:
 		reply = bulk_import_opening_stock(stock_data=data, company=company, warehouse=warehouse)
-	except Exception:
+	except Exception as error:
+		# The products are already saved (each is committed on its own), so this puts back only the half-made stock entry:
+		# without it every retry would leave another draft behind
+		frappe.db.rollback()
 		frappe.log_error("Product import stock error", frappe.get_traceback())
+		# A reason written for people (a product with no cost, a store that cannot hold stock) is shown, since it says
+		# what to fix; anything unexpected keeps the plain sentence, with its detail in the Error Log
+		reason = (
+			_plain_reason(error) if isinstance(error, frappe.ValidationError | frappe.PermissionError) else ""
+		)
 		frappe.clear_messages()
+		if reason:
+			return (
+				"",
+				f"{_('The products were saved but the opening stock was not added.')} {reason} {_('Import the same file again to add it.')}",
+			)
 		return "", str(
 			_(
 				"The products were saved but the opening stock was not added. Import the same file again to add it."
 			)
 		)
 	return str((reply or {}).get("stock_reconciliation") or ""), ""
+
+
+def _plain_reason(error, limit: int = 240) -> str:
+	"""The words of an error without tags or line breaks, ending in a full stop, so a person can read it."""
+	text = re.sub(r"\s+", " ", re.sub(r"<[^>]*>", " ", str(error or ""))).strip()[:limit]
+	return f"{text.rstrip('.')}." if text else ""
 
 
 @frappe.whitelist(methods=["POST"])

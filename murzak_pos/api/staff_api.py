@@ -290,8 +290,10 @@ def create_staff_user(
         }
     except frappe.PermissionError as e:
         frappe.db.rollback()
+        # Say the real reason (such as a role the person may not give). The old fixed sentence hid it, so an owner
+        # was told to ask an administrator when the fix was in their own hands.
         frappe.throw(
-            _("You don't have permission to create staff members. Please contact your administrator to grant you the necessary permissions."),
+            str(e) or _("You don't have permission to create staff members. Please contact your administrator to grant you the necessary permissions."),
             frappe.PermissionError
         )
     except Exception as e:
