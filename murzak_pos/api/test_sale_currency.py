@@ -22,6 +22,15 @@ def _doc():
 
 
 class TestSellInCompanyCurrency(unittest.TestCase):
+	def setUp(self):
+		# There is no database here: stand-ins are put in for each test and put back afterwards
+		for p in (
+			patch.object(frappe, "db", MagicMock(), create=True),
+			patch.object(frappe, "get_all", MagicMock(return_value=[]), create=True),
+		):
+			p.start()
+			self.addCleanup(p.stop)
+
 	def _run(self, doc, currencies, profile_list=None, lists=()):
 		def get_value(doctype, name, field=None, *args, **kwargs):
 			if doctype == "Company":
