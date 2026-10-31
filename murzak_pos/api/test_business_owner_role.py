@@ -31,8 +31,11 @@ class TestTheOwnerRole(unittest.TestCase):
 			)
 		)
 
-	def test_making_someone_an_owner_gives_business_owner(self):
-		self.assertEqual(role_tiers.ROLES_TO_GRANT[role_tiers.OWNER], ("Business Owner",))
+	def test_making_someone_an_owner_gives_business_owner_and_the_other_business_roles_but_never_system_manager(self):
+		granted = role_tiers.ROLES_TO_GRANT[role_tiers.OWNER]
+		self.assertIn("Business Owner", granted)
+		self.assertNotIn("System Manager", granted)
+		self.assertEqual(set(granted), set(auth_api.STANDARD_BUSINESS_ROLES))
 
 	def test_no_sign_up_or_onboarding_role_list_holds_system_manager(self):
 		for module in (auth_api, auth):

@@ -18,6 +18,7 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from murzak_pos.api import role_tiers
 from murzak_pos.api.payment_gateway_common import get_user_companies
 from murzak_pos.api.role_tiers import OWNER_ROLES
 
@@ -91,23 +92,9 @@ def require_manager() -> None:
 		)
 
 
-# The roles a business is run with. Registering a business gives its owner all of them, so an owner may hand out any of
-# them to their staff; the same list is auth_api.STANDARD_BUSINESS_ROLES (a test keeps the two together). System Manager
-# and every role outside this list can be given only by someone who holds it.
-BUSINESS_ROLES = frozenset(
-	{
-		"Business Owner",
-		"Item Manager",
-		"Stock Manager",
-		"Stock User",
-		"Sales Manager",
-		"Sales User",
-		"Purchase Manager",
-		"Purchase User",
-		"Accounts Manager",
-		"Accounts User",
-	}
-)
+# An owner may hand out any of the business roles to their staff even if their own account lacks one (see
+# role_tiers.BUSINESS_ROLES); System Manager and every role outside that list can be given only by someone who holds it.
+BUSINESS_ROLES = frozenset(role_tiers.BUSINESS_ROLES)
 
 
 def require_roles_held(roles) -> None:

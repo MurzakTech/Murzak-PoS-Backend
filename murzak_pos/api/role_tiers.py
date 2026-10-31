@@ -61,10 +61,27 @@ CAPABILITIES = {
 	"team": (OWNER,),
 }
 
+# The roles a business is run with. A business owner holds all of them: ERPNext decides what a person may do inside
+# a purchase, a stock entry or a payment from the roles they hold, so an owner holding only "Business Owner" is refused
+# in the middle of ordinary work. Registering a business gives its owner all of them (auth_api.STANDARD_BUSINESS_ROLES,
+# which a test keeps equal to this list). System Manager is not one of them: it reaches every business on the site.
+BUSINESS_ROLES = (
+	"Business Owner",
+	"Item Manager",
+	"Stock Manager",
+	"Stock User",
+	"Sales Manager",
+	"Sales User",
+	"Purchase Manager",
+	"Purchase User",
+	"Accounts Manager",
+	"Accounts User",
+)
+
 # What to give a person so they become each kind. Used by the Team page when it assigns a role; nothing here
-# changes anyone's roles by itself.
+# changes anyone's roles by itself. An owner is given every business role, the same as the person who registered.
 ROLES_TO_GRANT = {
-	OWNER: ("Business Owner",),
+	OWNER: BUSINESS_ROLES,
 	MANAGER: ("Sales Manager", "Purchase Manager", "Stock Manager", "Accounts Manager", "Item Manager"),
 	CASHIER: ("Sales User",),
 }
