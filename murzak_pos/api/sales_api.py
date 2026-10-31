@@ -786,6 +786,40 @@ def _apply_sales_taxes(doc, company: str, pos_profile: Optional[str] = None) -> 
     doc.set_taxes()
 
 
+def _sell_in_company_currency(doc, company, pos_profile=None) -> None:
+    """
+    Make a till sale in the shop's own currency, whatever the customer or a price list says.
+
+    Left alone, ERPNext takes the sale's currency from the customer or the price list. A shared price list
+    ("Standard Selling") or a customer in another currency (INR) made it a foreign-currency sale, which stops
+    with "Exchange Rate is mandatory" when no exchange record exists. The till prices every line itself, so the
+    sale is in the company currency at rate 1, and uses a price list in that currency when there is one.
+    """
+    currency = frappe.db.get_value("Company", company, "default_currency")
+    if not currency:
+        return
+    doc.currency = currency
+    doc.conversion_rate = 1
+    doc.plc_conversion_rate = 1
+    if not doc.meta.has_field("selling_price_list"):
+        return
+    price_lists = []
+    if pos_profile:
+        price_lists.append(frappe.db.get_value("POS Profile", pos_profile, "selling_price_list"))
+    price_lists += frappe.get_all(
+        "Price List",
+        filters={"selling": 1, "enabled": 1, "currency": currency},
+        pluck="name",
+        order_by="creation asc",
+        limit_page_length=5,
+    )
+    for name in price_lists:
+        if name and frappe.db.get_value("Price List", name, "currency") == currency:
+            doc.selling_price_list = name
+            doc.price_list_currency = currency
+            return
+
+
 def _create_invoice_document(
     doctype: str,
     customer: str,
@@ -831,6 +865,7 @@ def _create_invoice_document(
         doc.is_pos = 1 if is_pos else 0
     if pos_profile and hasattr(doc, "pos_profile"):
         doc.pos_profile = pos_profile
+    _sell_in_company_currency(doc, company, pos_profile)
 
     # Build items
     sold_offline = parse_sold_at(offline_sold_at)
