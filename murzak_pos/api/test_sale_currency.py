@@ -31,10 +31,13 @@ class TestSellInCompanyCurrency(unittest.TestCase):
 			if doctype == "Price List":
 				return currencies.get(name)
 
-		with patch.object(frappe.db, "get_value", side_effect=get_value), patch.object(
-			frappe, "get_all", return_value=list(lists)
+		with (
+			patch.object(frappe.db, "get_value", side_effect=get_value),
+			patch.object(frappe, "get_all", return_value=list(lists)),
 		):
-			sales_api._sell_in_company_currency(doc, "Test Co", "Profile" if profile_list is not None else None)
+			sales_api._sell_in_company_currency(
+				doc, "Test Co", "Profile" if profile_list is not None else None
+			)
 
 	def test_sale_is_pinned_to_company_currency_at_rate_one(self):
 		doc = _doc()
@@ -45,7 +48,12 @@ class TestSellInCompanyCurrency(unittest.TestCase):
 
 	def test_a_profile_list_in_another_currency_is_not_used(self):
 		doc = _doc()
-		self._run(doc, {"Standard Selling": "INR", "Selling KES": "KES"}, profile_list="Standard Selling", lists=["Selling KES"])
+		self._run(
+			doc,
+			{"Standard Selling": "INR", "Selling KES": "KES"},
+			profile_list="Standard Selling",
+			lists=["Selling KES"],
+		)
 		self.assertEqual(doc.selling_price_list, "Selling KES")
 		self.assertEqual(doc.price_list_currency, "KES")
 
