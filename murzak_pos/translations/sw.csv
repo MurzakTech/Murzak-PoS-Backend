@@ -1448,6 +1448,7 @@
 "Please move no more than 200 products at a time.","Tafadhali hamisha bidhaa zisizozidi 200 kwa wakati mmoja."
 "Please type a name for the store.","Tafadhali andika jina la duka."
 "The list of products to move could not be understood.","Orodha ya bidhaa za kuhamisha haikueleweka."
+"The list of products could not be understood.","Orodha ya bidhaa haikueleweka."
 "There is only {0} of {1} in the first store, so {2} cannot be moved.","Kuna {0} tu ya {1} kwenye duka la kwanza, kwa hivyo {2} haziwezi kuhamishwa."
 "You already have a store called {0}.","Tayari una duka linaloitwa {0}."
 "Please choose no more than 200 people at a time.","Tafadhali chagua watu wasiozidi 200 kwa wakati mmoja."

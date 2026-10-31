@@ -928,7 +928,7 @@ def _balances_by_code(balances_res) -> dict[str, float]:
 @frappe.whitelist()
 def bulk_update_stock(
     items: Union[str, List[Dict]],
-    warehouse: str,
+    warehouse: str | None = None,
     company: str = None,
     mode: str = "set",
     posting_date: str = None,
@@ -953,6 +953,16 @@ def bulk_update_stock(
     require_stock_role()
     # Refuses a company the caller does not belong to; with none named, the caller's own
     company = resolve_company(company)
+
+    if not warehouse:
+        # Like Stock in and Stock out: a shop with one store needs no store named; with two or more, it must be chosen
+        from murzak_pos.api import stock_levels_calc as levels_calc
+        from murzak_pos.api.stock_levels_api import _locations, _refuse
+
+        try:
+            warehouse = levels_calc.pick_warehouse(None, _locations(company))
+        except levels_calc.StockError as error:
+            _refuse(error.code)
 
     ensure_record_access("Warehouse", warehouse)
 

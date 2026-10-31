@@ -67,6 +67,22 @@ def get_all_roles() -> dict:
     }
 
 
+def _new_api_keys(user_name: str) -> dict:
+    """
+    Make the API key of a person who has just been added.
+
+    Frappe's generate_keys is for a System Manager only, and a business owner is deliberately not one, so it
+    failed for every owner and the person was never added. It runs for this one new user as the Administrator,
+    and the owner is put back at once, as the sign-up code does.
+    """
+    original_user = frappe.session.user
+    try:
+        frappe.set_user("Administrator")
+        return generate_keys(user_name)
+    finally:
+        frappe.set_user(original_user)
+
+
 @frappe.whitelist()
 def create_staff_user(
     email: str,
@@ -205,7 +221,7 @@ def create_staff_user(
             parent_industry = None
         
         # Generate API keys for staff user
-        api_keys = generate_keys(staff_user.name)
+        api_keys = _new_api_keys(staff_user.name)
         
         # Get the assigned industry for response
         try:
@@ -290,8 +306,11 @@ def create_staff_user(
         }
     except frappe.PermissionError as e:
         frappe.db.rollback()
+        # Say what was refused (for example a role the owner does not hold), not one wrong sentence for every cause
+        reason = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', str(e))).strip()
+        frappe.log_error("Staff User Creation Refused", f"Creating staff user '{email}' was refused: {reason}")
         frappe.throw(
-            _("You don't have permission to create staff members. Please contact your administrator to grant you the necessary permissions."),
+            reason or _("You don't have permission to create staff members. Please contact your administrator to grant you the necessary permissions."),
             frappe.PermissionError
         )
     except Exception as e:
