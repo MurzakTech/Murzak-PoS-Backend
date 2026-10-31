@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 from frappe.query_builder import DocType
 
-from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.access_control import ensure_record_access, require_stock_role
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.error_handler import safe_error_message
 
@@ -1141,6 +1141,8 @@ def set_default_warehouse(company: str, warehouse: str) -> dict:
     Returns:
         dict: Operation result
     """
+    # The main store decides where sales and stock in go: only the roles that may change stock, never a cashier
+    require_stock_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
