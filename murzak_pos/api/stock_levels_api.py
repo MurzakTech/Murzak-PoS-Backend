@@ -135,6 +135,8 @@ def _refuse(code: str):
 		frappe.throw(_("Please choose which store this is for."), frappe.ValidationError)
 	if code == "no_store":
 		frappe.throw(_("This business has no store to put stock in yet."), frappe.ValidationError)
+	if code == "bad_codes":
+		frappe.throw(_("The list of products could not be understood."), frappe.ValidationError)
 	if code == "empty_count":
 		frappe.throw(_("Please count at least one product."), frappe.ValidationError)
 	if code == "bad_count":
@@ -656,6 +658,29 @@ def _expected(store, codes) -> dict:
 		as_dict=True,
 	)
 	return {r["item_code"]: r["actual_qty"] for r in rows}
+
+
+@frappe.whitelist()
+def get_current_stock(codes, warehouse=None, company=None):
+	"""
+	What a store holds of the products named (a list of product codes): {code: quantity}. A product the store has
+	never held counts as 0. Used by the Bulk stock update screen, so that an uploaded sheet shows what is in the
+	store now beside the new figure. Nothing is changed.
+	"""
+	require_stock_role()
+	ensure_record_access("Warehouse", warehouse)
+	company = resolve_company(company)
+	try:
+		wanted = calc.clean_code_list(codes)
+		store = calc.pick_warehouse(warehouse, _locations(company))
+	except calc.StockError as error:
+		_refuse(error.code)
+	_check_store(company, store)
+	held = _expected(store, wanted) if wanted else {}
+	return {
+		"success": True,
+		"data": {"warehouse": store, "stock": {code: calc.qty(held.get(code)) for code in wanted}},
+	}
 
 
 @frappe.whitelist()
