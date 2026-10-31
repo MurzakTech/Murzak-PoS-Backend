@@ -83,6 +83,11 @@ EXPECTED_GUARDS = {
 		"submit_count": ("Warehouse warehouse",),
 		"move_stock": ("Item line['item_code']", "Warehouse from_warehouse", "Warehouse to_warehouse"),
 	},
+	"store_admin_api": {
+		"edit_store": ("Warehouse warehouse",),
+		"get_store_people": ("Warehouse warehouse",),
+		"set_store_people": ("Warehouse warehouse",),
+	},
 	"held_sales_api": {
 		"list_held_sales": ("Warehouse warehouse",),
 		"save_held_sale": ("Warehouse warehouse",),

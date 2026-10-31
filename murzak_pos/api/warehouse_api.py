@@ -7,7 +7,13 @@ import frappe
 from frappe import _
 from frappe.query_builder import DocType
 
-from murzak_pos.api.access_control import ensure_record_access, require_stock_role
+from murzak_pos.api import access_control
+from murzak_pos.api.access_control import (
+    ensure_record_access,
+    require_manager,
+    require_stock_role,
+    require_store_role,
+)
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.error_handler import safe_error_message
 
@@ -74,6 +80,16 @@ def get_allowed_warehouses_for_user(user_email: str = None) -> list:
     return warehouse_names
 
 
+def _ensure_same_business(user_email):
+    """A person named in a call must belong to the caller's own business."""
+    if frappe.session.user == "Administrator" or not user_email:
+        return
+    owner = frappe.db.get_value("User", user_email, "custom_company")
+    if owner and owner not in access_control.get_user_companies(frappe.session.user):
+        frappe.throw(_("You do not have access to this person."), frappe.PermissionError)
+
+
+
 @frappe.whitelist()
 def create_warehouse(
     warehouse_name: str,
@@ -122,6 +138,8 @@ def create_warehouse(
     Returns:
         dict: Created warehouse details
     """
+    # Adding a store: the owner and the stock managers
+    require_store_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
@@ -559,6 +577,8 @@ def update_warehouse(
     Returns:
         dict: Update result
     """
+    # Changing a store: the owner and the stock managers
+    require_store_role()
     ensure_record_access("Warehouse", name)
     ensure_record_access("Warehouse", parent_warehouse)
     try:
@@ -672,6 +692,9 @@ def assign_warehouses_to_staff(
     Returns:
         dict: Assignment result
     """
+    # Who works where is the owner's call, and only for people of this business
+    require_manager()
+    _ensure_same_business(user_email)
     try:
         # Validate user exists
         if not frappe.db.exists("User", user_email):
@@ -768,6 +791,10 @@ def get_staff_warehouses(user_email: str = None) -> dict:
     Returns:
         dict: List of assigned warehouses
     """
+    # Anyone may see their own stores; another person's are for the owner, and only within this business
+    if user_email and user_email != frappe.session.user:
+        require_manager()
+        _ensure_same_business(user_email)
     try:
         if not user_email:
             user_email = frappe.session.user
@@ -847,6 +874,8 @@ def get_warehouse_staff(warehouse: str) -> dict:
     Returns:
         dict: List of assigned staff members
     """
+    # Who works at a store is for the owner to see
+    require_manager()
     ensure_record_access("Warehouse", warehouse)
     try:
         if not frappe.db.exists("Warehouse", warehouse):
@@ -919,6 +948,9 @@ def remove_warehouse_from_staff(
     Returns:
         dict: Removal result
     """
+    # Who works where is the owner's call, and only for people of this business
+    require_manager()
+    _ensure_same_business(user_email)
     ensure_record_access("Warehouse", warehouse)
     try:
         # Find and delete the user permission
