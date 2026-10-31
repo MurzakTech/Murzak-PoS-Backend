@@ -172,6 +172,15 @@ def get_stock_balance_multiple(
                     "message": "Company is required. Please set a default company or provide company parameter.",
                 }
         
+        # The till may send the store's short name ("Main Store") rather than its full name ("Main Store - MT"):
+        # without this the lookup finds no store and every product reads as having no stock
+        if warehouse and not frappe.db.exists("Warehouse", warehouse):
+            warehouse = (
+                frappe.db.get_value("Warehouse", {"warehouse_name": warehouse, "company": company}, "name")
+                or warehouse
+            )
+            ensure_record_access("Warehouse", warehouse)
+
         # Fast bulk bin query when warehouse is provided
         if warehouse and frappe.db.exists("Warehouse", warehouse):
             bins = frappe.db.get_all(
@@ -899,10 +908,27 @@ def create_stock_reconciliation(
         }
 
 
+def _balances_by_code(balances_res) -> dict[str, float]:
+    """
+    Turn the answer of get_stock_balance_multiple into {item_code: quantity in the store}.
+
+    That answer carries a list of rows ({item_code, actual_qty, ...}); a row that could not be read has an
+    "error" and no quantity, so it is left out and counts as nothing in the store.
+    """
+    data = balances_res.get("data") if isinstance(balances_res, dict) else None
+    if isinstance(data, dict):  # already {item_code: qty}
+        return {code: flt(qty) for code, qty in data.items()}
+    balances = {}
+    for row in data or []:
+        if isinstance(row, dict) and row.get("item_code") and "error" not in row:
+            balances[row["item_code"]] = flt(row.get("actual_qty", row.get("balance", 0)))
+    return balances
+
+
 @frappe.whitelist()
 def bulk_update_stock(
     items: Union[str, List[Dict]],
-    warehouse: str,
+    warehouse: str | None = None,
     company: str = None,
     mode: str = "set",
     posting_date: str = None,
@@ -927,6 +953,16 @@ def bulk_update_stock(
     require_stock_role()
     # Refuses a company the caller does not belong to; with none named, the caller's own
     company = resolve_company(company)
+
+    if not warehouse:
+        # Like Stock in and Stock out: a shop with one store needs no store named; with two or more, it must be chosen
+        from murzak_pos.api import stock_levels_calc as levels_calc
+        from murzak_pos.api.stock_levels_api import _locations, _refuse
+
+        try:
+            warehouse = levels_calc.pick_warehouse(None, _locations(company))
+        except levels_calc.StockError as error:
+            _refuse(error.code)
 
     ensure_record_access("Warehouse", warehouse)
 
@@ -1010,7 +1046,7 @@ def bulk_update_stock(
 
     valid_codes = [v["item_code"] for v in valid_items]
     balances_res = get_stock_balance_multiple(items=valid_codes, warehouse=warehouse, company=company)
-    current_balances = (balances_res.get("data") or {}) if isinstance(balances_res, dict) else {}
+    current_balances = _balances_by_code(balances_res)
 
     reconcile_items = []
     changed_summary = []

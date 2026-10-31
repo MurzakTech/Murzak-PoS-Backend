@@ -72,7 +72,10 @@ class TestBulkStockUpdate(unittest.TestCase):
 					)
 				],
 			):
-				mock_balances.return_value = {"success": True, "data": {"ITEM-1": 15.0}}
+				mock_balances.return_value = {
+					"success": True,
+					"data": [{"item_code": "ITEM-1", "actual_qty": 15.0}],
+				}
 				res = inventory_api.bulk_update_stock(
 					items=[{"item_code": "ITEM-1", "qty": 15.0}],
 					warehouse="Main - TC",
@@ -113,7 +116,13 @@ class TestBulkStockUpdate(unittest.TestCase):
 					),
 				],
 			):
-				mock_balances.return_value = {"success": True, "data": {"ITEM-1": 10.0, "ITEM-2": 5.0}}
+				mock_balances.return_value = {
+					"success": True,
+					"data": [
+						{"item_code": "ITEM-1", "actual_qty": 10.0},
+						{"item_code": "ITEM-2", "actual_qty": 5.0},
+					],
+				}
 				mock_reco.return_value = {"success": True, "data": {"name": "MAT-RECO-2026-00009"}}
 
 				res = inventory_api.bulk_update_stock(
@@ -130,6 +139,39 @@ class TestBulkStockUpdate(unittest.TestCase):
 				self.assertEqual(res["data"]["unchanged_count"], 1)
 				self.assertEqual(res["data"]["reconciliation"], "MAT-RECO-2026-00009")
 				self.assertEqual(res["data"]["items"][0]["difference"], 15.0)
+
+	def test_balances_by_code_reads_the_rows_the_balance_api_returns(self):
+		res = {
+			"success": True,
+			"data": [
+				{"item_code": "A", "actual_qty": 4.0},
+				{"item_code": "B", "error": "Warehouse does not exist"},
+				{"item_code": "C", "actual_qty": 0.0},
+			],
+		}
+		self.assertEqual(inventory_api._balances_by_code(res), {"A": 4.0, "C": 0.0})
+		self.assertEqual(inventory_api._balances_by_code({"success": False, "message": "x"}), {})
+		self.assertEqual(inventory_api._balances_by_code(None), {})
+
+	@patch("murzak_pos.api.inventory_api.require_stock_role")
+	@patch("murzak_pos.api.inventory_api.ensure_record_access")
+	@patch("murzak_pos.api.inventory_api.resolve_company", return_value="Test Company")
+	@patch("murzak_pos.api.stock_levels_api._locations", return_value=["Only Store - TC"])
+	def test_the_only_store_is_used_when_none_is_named(self, mock_locations, mock_co, mock_acc, mock_role):
+		with patch.object(frappe.db, "exists", return_value=False) as exists:
+			res = inventory_api.bulk_update_stock(
+				items=[{"item_code": "ITEM-1", "qty": 1}], company="Test Company"
+			)
+			# It went on to look for the only store, not for a store called "None"
+			exists.assert_called_with("Warehouse", "Only Store - TC")
+			self.assertFalse(res["success"])
+
+	@patch("murzak_pos.api.inventory_api.require_stock_role")
+	@patch("murzak_pos.api.inventory_api.resolve_company", return_value="Test Company")
+	@patch("murzak_pos.api.stock_levels_api._locations", return_value=["A - TC", "B - TC"])
+	def test_two_stores_and_none_named_asks_which(self, mock_locations, mock_co, mock_role):
+		with self.assertRaises(frappe.ValidationError):
+			inventory_api.bulk_update_stock(items=[{"item_code": "ITEM-1", "qty": 1}], company="Test Company")
 
 
 if __name__ == "__main__":

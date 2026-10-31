@@ -263,6 +263,25 @@ def selling_locations(warehouses) -> list[str]:
 	return [w["name"] for w in warehouses or [] if is_selling_location(w)]
 
 
+def clean_code_list(codes, limit: int = 1000) -> list[str]:
+	"""A list of product codes (a list, or the JSON text of one), each trimmed, without repeats, at most `limit`."""
+	if isinstance(codes, str):
+		try:
+			codes = json.loads(codes)
+		except ValueError:
+			raise StockError("bad_codes") from None
+	if not isinstance(codes, list):
+		raise StockError("bad_codes")
+	seen = []
+	for code in codes:
+		text = str(code or "").strip()
+		if text and text not in seen:
+			seen.append(text)
+	if len(seen) > limit:
+		raise StockError("too_many")
+	return seen
+
+
 def pick_warehouse(requested, locations: list[str]) -> str:
 	"""
 	The store a stock change or a count is for: the one asked for, or the only one the shop has. With two or more
