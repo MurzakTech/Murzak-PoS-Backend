@@ -150,10 +150,29 @@ class TestOrderAndCounts(unittest.TestCase):
 		self.assertEqual(team_calc.build_team([user("x@shop.test")], {}, AUTOMATIC)[0]["tier"], "cashier")
 
 
+class TestAnOwnerIsGivenEveryBusinessRole(unittest.TestCase):
+	def test_an_owner_added_on_the_team_page_gets_what_a_registered_owner_gets(self):
+		from murzak_pos.api import auth_api
+
+		self.assertEqual(set(role_tiers.ROLES_TO_GRANT["owner"]), set(auth_api.STANDARD_BUSINESS_ROLES))
+		self.assertEqual(len(role_tiers.BUSINESS_ROLES), len(set(role_tiers.BUSINESS_ROLES)))
+
+	def test_the_owner_grant_never_includes_system_manager(self):
+		self.assertNotIn("System Manager", role_tiers.ROLES_TO_GRANT["owner"])
+		self.assertIn(role_tiers.OWNER_ROLE, role_tiers.ROLES_TO_GRANT["owner"])
+
+	def test_a_manager_and_a_cashier_are_given_no_more_than_before(self):
+		self.assertEqual(
+			role_tiers.ROLES_TO_GRANT["manager"],
+			("Sales Manager", "Purchase Manager", "Stock Manager", "Accounts Manager", "Item Manager"),
+		)
+		self.assertEqual(role_tiers.ROLES_TO_GRANT["cashier"], ("Sales User",))
+
+
 class TestTierSetup(unittest.TestCase):
 	def test_it_gives_the_roles_of_each_kind_from_the_one_table(self):
 		setup = team_calc.tier_setup()
-		self.assertEqual(setup["grant"]["owner"], ["Business Owner"])
+		self.assertEqual(setup["grant"]["owner"], list(role_tiers.BUSINESS_ROLES))
 		self.assertEqual(setup["grant"]["cashier"], ["Sales User"])
 		self.assertEqual(set(setup["grant"]["manager"]), set(role_tiers.ROLES_TO_GRANT["manager"]))
 		self.assertEqual(setup["owner_roles"], ["Business Owner", "System Manager"])

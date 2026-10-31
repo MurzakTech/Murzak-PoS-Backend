@@ -20,3 +20,4 @@ murzak_pos.patches.seal_ecommerce_keys
 murzak_pos.patches.move_owners_to_business_owner
 murzak_pos.patches.add_online_order_fields
 murzak_pos.patches.backfill_item_company
+murzak_pos.patches.ensure_owner_business_roles
