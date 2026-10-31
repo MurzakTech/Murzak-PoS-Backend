@@ -11,6 +11,7 @@ from frappe import _
 from typing import Dict, List, Optional
 from frappe.utils import flt, nowdate, getdate, get_first_day, get_last_day
 
+from murzak_pos.api.access_control import require_system_manager
 from murzak_pos.api.etims_optional import relax_etims_mandatory
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.vat_setup import item_tax_template_for
@@ -173,7 +174,10 @@ def bulk_upload_products():
 
       - dry_run=true  → preview only, no DB writes
       - strict + Dry-run : POST /api/method/murzak_pos.api.product_seeding.bulk_upload_products?strict=true&dry_run=true
+
+    The templates it writes are shared by every business on the site, so only a System Manager may run it.
     """
+    require_system_manager()
 
     strict = frappe.form_dict.get("strict") in ("1", "true", "True")
     dry_run = frappe.form_dict.get("dry_run") in ("1", "true", "True")

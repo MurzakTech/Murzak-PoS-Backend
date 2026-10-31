@@ -810,15 +810,15 @@ def cancel_purchase_order(purchase_order, force=0, reason=None):
         It has linked submitted Purchase Receipts
         It has linked submitted Purchase Invoices
         It is already cancelled
-        
+
+    Answers { success, message, data, errors }.
+    """
     response = {
         "success": False,
         "message": "",
         "data": {},
         "errors": []
     }
-    """
-
 
     ensure_record_access("Purchase Order", purchase_order)
     try:

@@ -35,7 +35,7 @@ OWNERS = {"Acme": "Shop A", "Both Ltd": "", "Zeta": "Shop B", "Nobody Ltd": "", 
 
 
 class SupplierCase(unittest.TestCase):
-	def as_user(self, user="buyer@shop-a.test", companies=("Shop A",), has_field=True):
+	def as_user(self, user="buyer@shop-a.test", companies=("Shop A",), has_field=True, roles=("Business Owner",)):
 		def get_all(doctype, filters=None, pluck=None, **kwargs):
 			if doctype in ("Purchase Order", "Purchase Receipt", "Purchase Invoice"):
 				return list(PURCHASES.get((doctype, filters["company"]), []))
@@ -55,6 +55,7 @@ class SupplierCase(unittest.TestCase):
 		self.db = db
 		stack = [
 			patch.object(frappe, "session", frappe._dict(user=user)),
+			patch.object(frappe, "get_roles", create=True, side_effect=lambda user=None: list(roles)),
 			patch.object(frappe, "db", db, create=True),
 			patch.object(frappe, "get_all", create=True, side_effect=get_all),
 			patch.object(frappe, "log_error", create=True),
