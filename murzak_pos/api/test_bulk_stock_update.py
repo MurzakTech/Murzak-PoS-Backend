@@ -72,7 +72,7 @@ class TestBulkStockUpdate(unittest.TestCase):
 					)
 				],
 			):
-				mock_balances.return_value = {"success": True, "data": {"ITEM-1": 15.0}}
+				mock_balances.return_value = {"success": True, "data": [{"item_code": "ITEM-1", "actual_qty": 15.0}]}
 				res = inventory_api.bulk_update_stock(
 					items=[{"item_code": "ITEM-1", "qty": 15.0}],
 					warehouse="Main - TC",
@@ -113,7 +113,7 @@ class TestBulkStockUpdate(unittest.TestCase):
 					),
 				],
 			):
-				mock_balances.return_value = {"success": True, "data": {"ITEM-1": 10.0, "ITEM-2": 5.0}}
+				mock_balances.return_value = {"success": True, "data": [{"item_code": "ITEM-1", "actual_qty": 10.0}, {"item_code": "ITEM-2", "actual_qty": 5.0}]}
 				mock_reco.return_value = {"success": True, "data": {"name": "MAT-RECO-2026-00009"}}
 
 				res = inventory_api.bulk_update_stock(
@@ -130,6 +130,19 @@ class TestBulkStockUpdate(unittest.TestCase):
 				self.assertEqual(res["data"]["unchanged_count"], 1)
 				self.assertEqual(res["data"]["reconciliation"], "MAT-RECO-2026-00009")
 				self.assertEqual(res["data"]["items"][0]["difference"], 15.0)
+
+	def test_balances_by_code_reads_the_rows_the_balance_api_returns(self):
+		res = {
+			"success": True,
+			"data": [
+				{"item_code": "A", "actual_qty": 4.0},
+				{"item_code": "B", "error": "Warehouse does not exist"},
+				{"item_code": "C", "actual_qty": 0.0},
+			],
+		}
+		self.assertEqual(inventory_api._balances_by_code(res), {"A": 4.0, "C": 0.0})
+		self.assertEqual(inventory_api._balances_by_code({"success": False, "message": "x"}), {})
+		self.assertEqual(inventory_api._balances_by_code(None), {})
 
 
 if __name__ == "__main__":
