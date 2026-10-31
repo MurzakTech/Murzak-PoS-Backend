@@ -34,7 +34,13 @@ from frappe import _
 
 from murzak_pos.api import overview_calc, role_tiers
 from murzak_pos.api import stock_levels_calc as calc
-from murzak_pos.api.access_control import STOCK_ROLES, ensure_record_access, require_stock_role
+from murzak_pos.api.access_control import (
+	STOCK_ROLES,
+	ensure_record_access,
+	require_manager,
+	require_stock_role,
+	require_transfer_role,
+)
 from murzak_pos.api.payment_gateway_common import resolve_company
 
 CACHE_SECONDS = 30
@@ -80,7 +86,9 @@ def _refuse(code: str):
 	if code == "bad_status":
 		frappe.throw(_("That status is not one of the choices for this list."), frappe.ValidationError)
 	if code == "bad_kind":
-		frappe.throw(_("Choose a kind of movement: ledger, entry, receipt or issue."), frappe.ValidationError)
+		frappe.throw(
+			_("Choose a kind of movement: ledger, entry, receipt, issue or transfer."), frappe.ValidationError
+		)
 	if code == "bad_date":
 		frappe.throw(_("Dates must look like 2026-10-13."), frappe.ValidationError)
 	if code == "date_order":
@@ -103,6 +111,26 @@ def _refuse(code: str):
 		)
 	if code == "need_note":
 		frappe.throw(_("Please add a short note when the reason is Other."), frappe.ValidationError)
+	if code == "duplicate_move":
+		frappe.throw(_("A product appears twice in the list to move."), frappe.ValidationError)
+	if code == "too_many_moves":
+		frappe.throw(_("Please move no more than 200 products at a time."), frappe.ValidationError)
+	if code == "empty_move":
+		frappe.throw(_("Please choose at least one product to move."), frappe.ValidationError)
+	if code == "bad_move":
+		frappe.throw(_("The list of products to move could not be understood."), frappe.ValidationError)
+	if code == "same_store":
+		frappe.throw(
+			_("Choose two different stores: the stock cannot move to the store it is in."),
+			frappe.ValidationError,
+		)
+	if code == "need_store_name":
+		frappe.throw(_("Please type a name for the store."), frappe.ValidationError)
+	if code == "bad_store_name":
+		frappe.throw(
+			_("A store name must be 2 to 60 characters, without the characters < > / or a backslash."),
+			frappe.ValidationError,
+		)
 	if code == "need_store":
 		frappe.throw(_("Please choose which store this is for."), frappe.ValidationError)
 	if code == "no_store":
@@ -511,6 +539,102 @@ def stock_out(item_code, qty, reason, warehouse=None, note=None, company=None):
 			"in_stock": _stock_of(code, store),
 		},
 	}
+
+
+@frappe.whitelist(methods=["POST"])
+def move_stock(items, from_warehouse, to_warehouse, note=None, company=None):
+	"""
+	Move stock from one store to another in ONE step (a material transfer): it leaves the first store and arrives in the
+	second at once, with no request to approve, dispatch or receive. Nothing is moved unless every product has enough
+	in the first store, so a half-done move is never left behind. For a shop that wants someone to approve and receive
+	the goods, the Stock transfers screen still does that.
+	"""
+	require_transfer_role()
+	ensure_record_access("Warehouse", from_warehouse)
+	ensure_record_access("Warehouse", to_warehouse)
+	company = resolve_company(company)
+	try:
+		lines = calc.clean_move(items)
+		source, target = calc.clean_move_stores(from_warehouse, to_warehouse)
+		text = calc.clean_text(note)
+	except calc.StockError as error:
+		_refuse(error.code)
+	_check_store(company, source)
+	_check_store(company, target)
+	for line in lines:
+		ensure_record_access("Item", line["item_code"])
+	held = {line["item_code"]: _stock_of(line["item_code"], source) for line in lines}
+	short = calc.shortages(lines, held)
+	if short:
+		first = short[0]
+		name = frappe.db.get_value("Item", first["item_code"], "item_name") or first["item_code"]
+		frappe.throw(
+			_("There is only {0} of {1} in the first store, so {2} cannot be moved.").format(
+				calc.plain_qty(first["held"]), name, calc.plain_qty(first["wanted"])
+			),
+			frappe.ValidationError,
+		)
+
+	from murzak_pos.api.inventory_api import create_material_transfer
+
+	result = create_material_transfer(
+		items=lines, source_warehouse=source, target_warehouse=target, company=company
+	)
+	if not result or not result.get("success"):
+		frappe.db.rollback()  # the helper can leave a half-made draft behind when it fails
+		return {"success": False, "message": _plain(result)}
+	entry = result["data"]["name"]
+	_remember(entry, calc.transfer_remark(text))
+	_cache_clear(company)
+	return {
+		"success": True,
+		"data": {
+			"entry": entry,
+			"products": len(lines),
+			"from_warehouse": source,
+			"to_warehouse": target,
+			"in_stock": {line["item_code"]: _stock_of(line["item_code"], target) for line in lines},
+		},
+	}
+
+
+def _store_parent(company):
+	"""The folder a new store belongs under: the one the shop's other stores share, else the company's own top folder."""
+	rows = frappe.get_all(
+		"Warehouse",
+		filters={"company": company, "is_group": 0, "parent_warehouse": ["is", "set"]},
+		pluck="parent_warehouse",
+		limit_page_length=50,
+	)
+	if rows:
+		return max(set(rows), key=rows.count)
+	return frappe.db.get_value(
+		"Warehouse", {"company": company, "is_group": 1, "parent_warehouse": ["is", "not set"]}, "name"
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def add_store(store_name, company=None):
+	"""
+	Add a place to keep and sell stock. Only a business owner may. The store goes under the same folder as the shop's
+	other stores, and a name the shop already uses is refused in plain words.
+	"""
+	require_manager()
+	company = resolve_company(company)
+	try:
+		name = calc.clean_store_name(store_name)
+	except calc.StockError as error:
+		_refuse(error.code)
+	if frappe.db.exists("Warehouse", {"warehouse_name": name, "company": company}):
+		frappe.throw(_("You already have a store called {0}.").format(name), frappe.ValidationError)
+	values = {"doctype": "Warehouse", "warehouse_name": name, "company": company}
+	parent = _store_parent(company)
+	if parent:
+		values["parent_warehouse"] = parent
+	doc = frappe.get_doc(values)
+	doc.insert(ignore_permissions=True)  # the owner check above is the permission for this page
+	_cache_clear(company)
+	return {"success": True, "data": {"name": doc.name, "warehouse_name": doc.warehouse_name}}
 
 
 # --- counting stock -----------------------------------------------------------------------------------------------

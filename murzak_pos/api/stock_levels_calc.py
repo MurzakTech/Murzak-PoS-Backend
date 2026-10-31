@@ -36,7 +36,7 @@ from murzak_pos.api.expiry_rules import CRITICAL, EXPIRED, SOON
 TABS = ("overview", "low", "movements", "expiry")
 LEVELS = ("ok", "low", "out")
 MOVEMENT_STATUSES = ("draft", "submitted", "cancelled")
-MOVEMENT_KINDS = ("ledger", "entry", "receipt", "issue")
+MOVEMENT_KINDS = ("ledger", "entry", "receipt", "issue", "transfer")
 EXPIRY_STATES = ("expired", "critical", "soon")
 
 DEFAULT_PAGE_SIZE = 20
@@ -44,6 +44,8 @@ MAX_PAGE_SIZE = 100
 DEFAULT_MOVEMENT_DAYS = 30
 MAX_MOVEMENT_DAYS = 366
 MAX_COUNT_ROWS = 1000
+MAX_MOVE_ROWS = 200
+MAX_STORE_NAME = 60
 MAX_NOTE = 140
 MAX_QUANTITY = 1_000_000
 LOW_TAB_LEVELS = ("out", "low")  # the Low stock tab lists what to reorder: out first, then low
@@ -505,6 +507,10 @@ def movements_query(company, start: date, end: date, *, warehouse=None, search=N
 		use_drafts = False
 	elif kind == "entry":
 		ledger.append("sle.voucher_type = 'Stock Entry'")
+	elif kind == "transfer":
+		values["transfer_purposes"] = TRANSFER_PURPOSES
+		ledger.append("sle.voucher_type = 'Stock Entry' AND se.purpose IN %(transfer_purposes)s")
+		drafts.append("se.purpose IN %(transfer_purposes)s")
 	elif kind in ("receipt", "issue"):
 		values["purpose"] = "Material Receipt" if kind == "receipt" else "Material Issue"
 		ledger.append("sle.voucher_type = 'Stock Entry' AND se.purpose = %(purpose)s")
@@ -633,6 +639,74 @@ def clean_reason(reason, note) -> tuple[str, str]:
 
 def receipt_remark(note: str) -> str:
 	return f"Stock in: {note}" if note else ""
+
+
+def plain_qty(value) -> str:
+	"""A quantity as people say it: 4 not 4.0, 2.5 as 2.5, 1000000 not 1e+06."""
+	return f"{qty(value):.3f}".rstrip("0").rstrip(".")
+
+
+def transfer_remark(note: str) -> str:
+	return f"Stock moved: {note}" if note else "Stock moved between stores"
+
+
+def clean_move(items) -> list[dict]:
+	"""
+	The products to move between stores, checked: a list (or JSON text) of { item_code, qty } with a quantity above
+	zero, each product once. Refused with `empty_move`, `bad_move`, `too_many_moves`, `bad_qty`, `need_item` or `duplicate_move`.
+	"""
+	if isinstance(items, str):
+		try:
+			items = json.loads(items or "[]")
+		except ValueError:
+			raise StockError("bad_move") from None
+	if not isinstance(items, list) or not items:
+		raise StockError("empty_move")
+	if len(items) > MAX_MOVE_ROWS:
+		raise StockError("too_many_moves")
+	cleaned, seen = [], set()
+	for line in items:
+		if not isinstance(line, dict):
+			raise StockError("bad_move")
+		code = clean_item(line.get("item_code"))
+		if code in seen:
+			raise StockError("duplicate_move")
+		seen.add(code)
+		cleaned.append({"item_code": code, "qty": clean_quantity(line.get("qty"))})
+	return cleaned
+
+
+def clean_move_stores(source, target) -> tuple[str, str]:
+	"""(from store, to store) for a move: both named, and not the same store."""
+	source, target = str(source or "").strip(), str(target or "").strip()
+	if not source or not target:
+		raise StockError("need_store")
+	if source == target:
+		raise StockError("same_store")
+	return source, target
+
+
+def shortages(lines, held_by_item) -> list[dict]:
+	"""The lines asking for more than the store holds: [{ item_code, wanted, held }]."""
+	return [
+		{
+			"item_code": line["item_code"],
+			"wanted": line["qty"],
+			"held": qty(held_by_item.get(line["item_code"])),
+		}
+		for line in lines or []
+		if line["qty"] > qty(held_by_item.get(line["item_code"]))
+	]
+
+
+def clean_store_name(value) -> str:
+	"""The name of a new store: one tidy line of 2 to 60 characters. Refused with `need_store_name` or `bad_store_name`."""
+	name = clean_text(value, MAX_STORE_NAME + 1)
+	if not name:
+		raise StockError("need_store_name")
+	if len(name) < 2 or len(name) > MAX_STORE_NAME or re.search(r"[<>\\/]", name):
+		raise StockError("bad_store_name")
+	return name
 
 
 # --- counting ---------------------------------------------------------------------------------------------

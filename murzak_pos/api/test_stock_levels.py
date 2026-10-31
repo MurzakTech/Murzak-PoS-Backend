@@ -1539,6 +1539,232 @@ class TestTheReadsKeepTheirRules(unittest.TestCase):
 		self.assertEqual(rows[0]["state"], "critical")
 
 
+class TestMoveRules(unittest.TestCase):
+	def test_a_move_lists_each_product_once_with_a_quantity(self):
+		self.assertEqual(
+			calc.clean_move([{"item_code": " MLK ", "qty": "2"}, {"item_code": "UNG", "qty": 1.5}]),
+			[{"item_code": "MLK", "qty": 2.0}, {"item_code": "UNG", "qty": 1.5}],
+		)
+
+	def test_a_move_may_arrive_as_json_text(self):
+		self.assertEqual(
+			calc.clean_move('[{"item_code": "MLK", "qty": 3}]'), [{"item_code": "MLK", "qty": 3.0}]
+		)
+
+	def test_a_bad_move_is_refused_with_its_reason(self):
+		cases = {
+			"empty_move": [None, [], "[]"],
+			"bad_move": ["not json", ["MLK"], [{"item_code": "MLK", "qty": 1}, "x"]],
+			"bad_qty": [
+				[{"item_code": "MLK", "qty": 0}],
+				[{"item_code": "MLK", "qty": -2}],
+				[{"item_code": "MLK"}],
+			],
+			"need_item": [[{"qty": 1}], [{"item_code": " ", "qty": 1}]],
+			"duplicate_move": [[{"item_code": "MLK", "qty": 1}, {"item_code": "MLK", "qty": 2}]],
+		}
+		for code, bad_moves in cases.items():
+			for bad in bad_moves:
+				with self.subTest(code=code, move=bad), self.assertRaises(calc.StockError) as caught:
+					calc.clean_move(bad)
+				self.assertEqual(caught.exception.code, code)
+
+	def test_too_many_products_are_refused(self):
+		lines = [{"item_code": f"P{n}", "qty": 1} for n in range(calc.MAX_MOVE_ROWS + 1)]
+		with self.assertRaises(calc.StockError) as caught:
+			calc.clean_move(lines)
+		self.assertEqual(caught.exception.code, "too_many_moves")
+
+	def test_a_move_needs_two_different_stores(self):
+		self.assertEqual(calc.clean_move_stores(" A ", "B"), ("A", "B"))
+		for source, target, code in (
+			("A", "A", "same_store"),
+			("", "B", "need_store"),
+			("A", None, "need_store"),
+		):
+			with self.subTest(source=source, target=target), self.assertRaises(calc.StockError) as caught:
+				calc.clean_move_stores(source, target)
+			self.assertEqual(caught.exception.code, code)
+
+	def test_only_the_lines_asking_for_more_than_is_held_are_short(self):
+		lines = [
+			{"item_code": "MLK", "qty": 5.0},
+			{"item_code": "UNG", "qty": 40.0},
+			{"item_code": "SUK", "qty": 1.0},
+		]
+		self.assertEqual(
+			calc.shortages(lines, {"MLK": 4.0, "UNG": 40.0}),
+			[
+				{"item_code": "MLK", "wanted": 5.0, "held": 4.0},
+				{"item_code": "SUK", "wanted": 1.0, "held": 0.0},
+			],
+		)
+
+	def test_a_quantity_is_said_the_way_people_say_it(self):
+		self.assertEqual(
+			[calc.plain_qty(v) for v in (4.0, 2.5, 1000000, 0.125, 0)], ["4", "2.5", "1000000", "0.125", "0"]
+		)
+
+	def test_the_transfer_remark(self):
+		self.assertEqual(calc.transfer_remark("for the weekend"), "Stock moved: for the weekend")
+		self.assertEqual(calc.transfer_remark(""), "Stock moved between stores")
+
+	def test_a_store_name_is_one_tidy_line(self):
+		self.assertEqual(calc.clean_store_name("  Duka   la  Pili "), "Duka la Pili")
+		for blank in (None, "", "   "):
+			with self.subTest(name=blank), self.assertRaises(calc.StockError) as caught:
+				calc.clean_store_name(blank)
+			self.assertEqual(caught.exception.code, "need_store_name")
+		for bad in ("A", "x" * 61, "Shop <b>", "a/b", "a\\b"):
+			with self.subTest(name=bad), self.assertRaises(calc.StockError) as caught:
+				calc.clean_store_name(bad)
+			self.assertEqual(caught.exception.code, "bad_store_name")
+
+	def test_transfer_is_a_kind_of_movement(self):
+		self.assertEqual(calc.clean_kind("Transfer"), "transfer")
+		count_sql, page_sql, values = calc.movements_query("Shop A", TODAY, TODAY, kind="transfer")
+		self.assertEqual(values["transfer_purposes"], calc.TRANSFER_PURPOSES)
+		self.assertIn("se.purpose IN %(transfer_purposes)s", page_sql)
+		self.assertIn("se.purpose IN %(transfer_purposes)s", count_sql)
+
+
+class TestMoveStock(StockCase):
+	def setUp(self):
+		super().setUp()
+		self.as_user(locations=(STORE, STORE_2))
+		self.helpers.create_material_transfer = MagicMock(
+			return_value={"success": True, "data": {"name": "MAT-STE-2026-00020"}}
+		)
+		self.bin_quantities = {"MLK": 4.0, "UNG": 40.0}
+
+	def move(self, **kwargs):
+		arguments = {
+			"items": [{"item_code": "MLK", "qty": 2}, {"item_code": "UNG", "qty": 10}],
+			"from_warehouse": STORE,
+			"to_warehouse": STORE_2,
+		}
+		arguments.update(kwargs)
+		return api.move_stock(**arguments)
+
+	def test_a_move_makes_one_transfer_and_writes_the_note_on_it(self):
+		result = self.move(note="for the weekend")
+		self.assertTrue(result["success"])
+		call = self.helpers.create_material_transfer.call_args.kwargs
+		self.assertEqual(
+			(call["items"], call["source_warehouse"], call["target_warehouse"], call["company"]),
+			([{"item_code": "MLK", "qty": 2.0}, {"item_code": "UNG", "qty": 10.0}], STORE, STORE_2, "Shop A"),
+		)
+		self.db.set_value.assert_called_once_with(
+			"Stock Entry",
+			"MAT-STE-2026-00020",
+			"remarks",
+			"Stock moved: for the weekend",
+			update_modified=False,
+		)
+		self.assertEqual(result["data"]["entry"], "MAT-STE-2026-00020")
+		self.assertEqual(result["data"]["products"], 2)
+		self.assertEqual(self.cleared, ["Shop A"])
+
+	def test_moving_more_than_the_store_holds_is_refused_and_nothing_is_made(self):
+		with self.assertRaises(frappe.ValidationError) as caught:
+			self.move(items=[{"item_code": "UNG", "qty": 10}, {"item_code": "MLK", "qty": 5}])
+		self.assertIn(
+			"There is only 4 of MLK in the first store, so 5 cannot be moved.", str(caught.exception)
+		)
+		self.helpers.create_material_transfer.assert_not_called()
+		self.assertEqual(self.cleared, [])
+
+	def test_moving_all_that_is_held_is_allowed(self):
+		self.assertTrue(self.move(items=[{"item_code": "MLK", "qty": 4}])["success"])
+
+	def test_the_same_store_is_refused(self):
+		with self.assertRaises(frappe.ValidationError) as caught:
+			self.move(to_warehouse=STORE)
+		self.assertIn("two different stores", str(caught.exception))
+		self.helpers.create_material_transfer.assert_not_called()
+
+	def test_an_empty_or_bad_list_is_refused(self):
+		for bad in ([], "nonsense", [{"item_code": "MLK", "qty": 0}]):
+			with self.subTest(items=bad), self.assertRaises(frappe.ValidationError):
+				self.move(items=bad)
+		self.helpers.create_material_transfer.assert_not_called()
+
+	def test_a_store_of_another_business_is_refused(self):
+		self.db.get_value.side_effect = lambda doctype, name=None, field=None, *a, **k: (
+			"Shop B" if doctype == "Warehouse" and name == STORE_2 else self.get_value(doctype, name, field)
+		)
+		with self.assertRaises(frappe.PermissionError):
+			self.move()
+		self.helpers.create_material_transfer.assert_not_called()
+
+	def test_a_failure_in_the_helper_is_put_back_and_said_plainly(self):
+		self.helpers.create_material_transfer.return_value = {
+			"success": False,
+			"message": "<b>Validation error:</b> Item MLK needs a batch",
+		}
+		result = self.move()
+		self.assertFalse(result["success"])
+		self.assertEqual(result["message"], "Item MLK needs a batch")
+		self.db.rollback.assert_called_once()
+		self.db.set_value.assert_not_called()
+		self.assertEqual(self.cleared, [])
+
+	def test_a_cashier_cannot_move_stock(self):
+		self.as_user(user="till@shop-a.test", roles=("Sales User",), locations=(STORE, STORE_2))
+		with self.assertRaises(frappe.PermissionError):
+			self.move()
+		self.helpers.create_material_transfer.assert_not_called()
+
+
+class TestAddStore(StockCase):
+	def setUp(self):
+		super().setUp()
+		self.as_user(locations=(STORE,))
+		self.db.exists.return_value = None
+		self.document = MagicMock()
+		self.document.name = "Duka la Pili - SA"
+		self.document.warehouse_name = "Duka la Pili"
+		self.get_doc = self.start((frappe, "get_doc"), return_value=self.document, create=True)
+		self.parent = self.start((api, "_store_parent"), return_value="All Warehouses - SA")
+
+	def test_an_owner_adds_a_store_under_the_shops_folder(self):
+		result = api.add_store(" Duka   la Pili ")
+		self.assertEqual(
+			self.get_doc.call_args.args[0],
+			{
+				"doctype": "Warehouse",
+				"warehouse_name": "Duka la Pili",
+				"company": "Shop A",
+				"parent_warehouse": "All Warehouses - SA",
+			},
+		)
+		self.document.insert.assert_called_once_with(ignore_permissions=True)
+		self.assertEqual(
+			result, {"success": True, "data": {"name": "Duka la Pili - SA", "warehouse_name": "Duka la Pili"}}
+		)
+		self.assertEqual(self.cleared, ["Shop A"])
+
+	def test_a_name_already_used_is_refused_in_plain_words(self):
+		self.db.exists.return_value = "Duka la Pili - SA"
+		with self.assertRaises(frappe.ValidationError) as caught:
+			api.add_store("Duka la Pili")
+		self.assertIn("You already have a store called Duka la Pili.", str(caught.exception))
+		self.document.insert.assert_not_called()
+
+	def test_a_missing_or_bad_name_is_refused_before_anything_is_read(self):
+		for bad in (None, "", " ", "A", "a/b"):
+			with self.subTest(name=bad), self.assertRaises(frappe.ValidationError):
+				api.add_store(bad)
+		self.document.insert.assert_not_called()
+		self.db.exists.assert_not_called()
+
+	def test_only_the_owner_may_add_a_store(self):
+		self.as_user(user="mgr@shop-a.test", roles=("Stock Manager",))
+		with self.assertRaises(frappe.PermissionError):
+			api.add_store("Duka la Pili")
+		self.document.insert.assert_not_called()
+
+
 class TestTheSourceKeepsItsPromises(unittest.TestCase):
 	def test_every_call_is_whitelisted(self):
 		for function in (
@@ -1548,11 +1774,13 @@ class TestTheSourceKeepsItsPromises(unittest.TestCase):
 			api.stock_out,
 			api.get_count_sheet,
 			api.submit_count,
+			api.move_stock,
+			api.add_store,
 		):
 			self.assertIn(function, frappe.whitelisted)
 
 	def test_the_writes_are_post_only(self):
-		for function in (api.stock_in, api.stock_out, api.submit_count):
+		for function in (api.stock_in, api.stock_out, api.submit_count, api.move_stock, api.add_store):
 			self.assertEqual(frappe.allowed_http_methods_for_whitelisted_func[function], ["POST"])
 
 	def test_the_pure_module_needs_no_database(self):
@@ -1569,7 +1797,12 @@ class TestTheSourceKeepsItsPromises(unittest.TestCase):
 
 	def test_the_existing_helpers_are_called_not_copied(self):
 		source = inspect.getsource(api)
-		for name in ("create_material_receipt", "create_material_issue", "create_stock_reconciliation"):
+		for name in (
+			"create_material_receipt",
+			"create_material_issue",
+			"create_material_transfer",
+			"create_stock_reconciliation",
+		):
 			self.assertIn(f"import {name}", source)
 
 	def test_the_existing_helpers_are_not_edited(self):

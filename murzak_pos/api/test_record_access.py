@@ -81,6 +81,7 @@ EXPECTED_GUARDS = {
 		"stock_out": ("Item item_code", "Warehouse warehouse"),
 		"get_count_sheet": ("Warehouse warehouse",),
 		"submit_count": ("Warehouse warehouse",),
+		"move_stock": ("Item line['item_code']", "Warehouse from_warehouse", "Warehouse to_warehouse"),
 	},
 	"held_sales_api": {
 		"list_held_sales": ("Warehouse warehouse",),
