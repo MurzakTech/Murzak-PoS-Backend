@@ -1561,7 +1561,7 @@ class TestMoveRules(unittest.TestCase):
 				[{"item_code": "MLK"}],
 			],
 			"need_item": [[{"qty": 1}], [{"item_code": " ", "qty": 1}]],
-			"duplicate_item": [[{"item_code": "MLK", "qty": 1}, {"item_code": "MLK", "qty": 2}]],
+			"duplicate_move": [[{"item_code": "MLK", "qty": 1}, {"item_code": "MLK", "qty": 2}]],
 		}
 		for code, bad_moves in cases.items():
 			for bad in bad_moves:
@@ -1573,7 +1573,7 @@ class TestMoveRules(unittest.TestCase):
 		lines = [{"item_code": f"P{n}", "qty": 1} for n in range(calc.MAX_MOVE_ROWS + 1)]
 		with self.assertRaises(calc.StockError) as caught:
 			calc.clean_move(lines)
-		self.assertEqual(caught.exception.code, "too_many")
+		self.assertEqual(caught.exception.code, "too_many_moves")
 
 	def test_a_move_needs_two_different_stores(self):
 		self.assertEqual(calc.clean_move_stores(" A ", "B"), ("A", "B"))

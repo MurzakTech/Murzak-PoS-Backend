@@ -111,6 +111,10 @@ def _refuse(code: str):
 		)
 	if code == "need_note":
 		frappe.throw(_("Please add a short note when the reason is Other."), frappe.ValidationError)
+	if code == "duplicate_move":
+		frappe.throw(_("A product appears twice in the list to move."), frappe.ValidationError)
+	if code == "too_many_moves":
+		frappe.throw(_("Please move no more than 200 products at a time."), frappe.ValidationError)
 	if code == "empty_move":
 		frappe.throw(_("Please choose at least one product to move."), frappe.ValidationError)
 	if code == "bad_move":
@@ -136,11 +140,9 @@ def _refuse(code: str):
 	if code == "bad_count":
 		frappe.throw(_("Each counted quantity must be a number, zero or more."), frappe.ValidationError)
 	if code == "too_many":
-		frappe.throw(
-			_("There are too many products in one go: 1000 to count or 200 to move."), frappe.ValidationError
-		)
+		frappe.throw(_("Please count no more than 1000 products at a time."), frappe.ValidationError)
 	if code == "duplicate_item":
-		frappe.throw(_("A product appears twice in the list."), frappe.ValidationError)
+		frappe.throw(_("A product appears twice in the count."), frappe.ValidationError)
 	if code == "bad_scope":
 		frappe.throw(_("Choose to count the whole store or one category."), frappe.ValidationError)
 	if code == "need_category":

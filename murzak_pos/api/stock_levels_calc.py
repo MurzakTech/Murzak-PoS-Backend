@@ -653,7 +653,7 @@ def transfer_remark(note: str) -> str:
 def clean_move(items) -> list[dict]:
 	"""
 	The products to move between stores, checked: a list (or JSON text) of { item_code, qty } with a quantity above
-	zero, each product once. Refused with `empty_move`, `bad_move`, `too_many`, `bad_qty`, `need_item` or `duplicate_item`.
+	zero, each product once. Refused with `empty_move`, `bad_move`, `too_many_moves`, `bad_qty`, `need_item` or `duplicate_move`.
 	"""
 	if isinstance(items, str):
 		try:
@@ -663,14 +663,14 @@ def clean_move(items) -> list[dict]:
 	if not isinstance(items, list) or not items:
 		raise StockError("empty_move")
 	if len(items) > MAX_MOVE_ROWS:
-		raise StockError("too_many")
+		raise StockError("too_many_moves")
 	cleaned, seen = [], set()
 	for line in items:
 		if not isinstance(line, dict):
 			raise StockError("bad_move")
 		code = clean_item(line.get("item_code"))
 		if code in seen:
-			raise StockError("duplicate_item")
+			raise StockError("duplicate_move")
 		seen.add(code)
 		cleaned.append({"item_code": code, "qty": clean_quantity(line.get("qty"))})
 	return cleaned
