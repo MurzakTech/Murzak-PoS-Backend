@@ -38,7 +38,7 @@ class TestBulkStockUpdate(unittest.TestCase):
 				company="Test Company",
 			)
 			self.assertFalse(res["success"])
-			self.assertIn("non-empty list", res["message"])
+			self.assertIn("Add at least one product", res["message"])
 
 	@patch("murzak_pos.api.inventory_api.require_stock_role")
 	@patch("murzak_pos.api.inventory_api.ensure_record_access")
