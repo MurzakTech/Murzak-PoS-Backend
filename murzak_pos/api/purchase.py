@@ -64,6 +64,11 @@ def extract_frappe_error(e):
     return str(e)
 
 
+def _iso_day(value):
+    """A posting date as 'yyyy-mm-dd', whether it arrives as a date, a datetime or text (nothing stays nothing)."""
+    return str(getdate(value)) if value else value
+
+
 def update_stock_valuation(item_code, accepted_qty, warehouse):
     """
     Updates stock valuation (FIFO or Weighted Average) when GRN is applied.
@@ -964,7 +969,7 @@ def create_stock_receipt(grn_no):
             )
 
         # Convert posting_date to string (ensure it's in 'yyyy-mm-dd' format)
-        posting_date_str = str(grn.posting_date) if isinstance(grn.posting_date, datetime.date) else grn.posting_date
+        posting_date_str = _iso_day(grn.posting_date)
 
         # Call the stock entry creation method
         stock_entry_response = create_stock_entry(
