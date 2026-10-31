@@ -8,7 +8,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
 
-from murzak_pos.api.access_control import require_shared_record_manageable, require_supplier_role
+from murzak_pos.api.access_control import (
+    require_shared_record_manageable,
+    require_supplier_editor,
+    require_supplier_role,
+)
 from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import get_user_companies, resolve_company
 from murzak_pos.api.error_handler import safe_error_message
@@ -303,6 +307,8 @@ def create_supplier(
     Returns:
         dict: Created supplier details
     """
+    # Suppliers are changed by the owner and purchasing managers, never by a cashier
+    require_supplier_editor()
     try:
         # Validate user permissions
         if frappe.session.user == "Guest":
@@ -440,6 +446,8 @@ def update_supplier(
     Returns:
         dict: Update result
     """
+    # Suppliers are changed by the owner and purchasing managers, never by a cashier
+    require_supplier_editor()
     try:
         # Validate user permissions
         if frappe.session.user == "Guest":

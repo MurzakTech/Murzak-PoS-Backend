@@ -61,6 +61,7 @@ class PartyCase(unittest.TestCase):
 		self.db = db
 		stack = [
 			patch.object(frappe, "session", frappe._dict(user="buyer@shop-a.test")),
+			patch.object(frappe, "get_roles", create=True, side_effect=lambda user=None: ["Business Owner"]),
 			patch.object(frappe, "db", db, create=True),
 			patch.object(frappe, "log_error", create=True),
 			patch.object(frappe, "logger", create=True),

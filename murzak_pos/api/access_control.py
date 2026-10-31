@@ -165,6 +165,16 @@ def require_supplier_role() -> None:
 	require_any_role(SUPPLIER_ROLES, _("change supplier groups"))
 
 
+def require_supplier_editor() -> None:
+	"""Adding, changing or switching off a supplier (the same people who may change supplier groups)."""
+	require_any_role(SUPPLIER_ROLES, _("change suppliers"))
+
+
+def require_system_manager() -> None:
+	"""Work that changes records every business on the site shares, such as loading the starter products."""
+	require_any_role({"System Manager"}, _("load the starter products"))
+
+
 def require_shared_record_manageable(doctype: str, name) -> None:
 	"""
 	Refuse renaming or deleting a record every business on the site shares: a unit, a product category, a brand or
