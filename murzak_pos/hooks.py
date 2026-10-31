@@ -157,6 +157,8 @@ after_install = "murzak_pos.install.after_install"
 override_doctype_class = {
 	"POS Invoice": "murzak_pos.overrides.pos_invoice_class.POSInvoice",
 	"POS Closing Entry": "murzak_pos.overrides.pos_closing_entry_class.POSClosingEntry",
+	# Loads the guard that keeps the Kenya tax app (eTIMS) out of supplier bills for a business that does not use it
+	"Purchase Invoice": "murzak_pos.overrides.purchase_invoice_class.PurchaseInvoice",
 }
 
 # Document Events
