@@ -298,7 +298,7 @@ def create_stock_entry(
         if not isinstance(items, list) or len(items) == 0:
             return {
                 "success": False,
-                "message": "Items must be a non-empty list",
+                "message": _("Add at least one product."),
             }
         
         # Get company if not provided
@@ -307,7 +307,7 @@ def create_stock_entry(
             if not company:
                 return {
                     "success": False,
-                    "message": "Company is required. Please set a default company or provide company parameter.",
+                    "message": _("We could not tell which business this is for. Please sign out and sign in again, or contact support."),
                 }
         
         # Ensure fiscal year exists for the company (auto-create if needed)
@@ -348,21 +348,21 @@ def create_stock_entry(
             if not item_code:
                 return {
                     "success": False,
-                    "message": "item_code is required for all items",
+                    "message": _("Every line needs a product."),
                 }
             
             # Validate item exists
             if not frappe.db.exists("Item", item_code):
                 return {
                     "success": False,
-                    "message": f"Item '{item_code}' does not exist",
+                    "message": _("There is no product with the code '{0}'.").format(item_code),
                 }
             
             qty = flt(item.get("qty", 0))
             if qty <= 0:
                 return {
                     "success": False,
-                    "message": f"Quantity must be greater than 0 for item '{item_code}'",
+                    "message": _("The quantity of '{0}' must be more than zero.").format(item_code),
                 }
             
             # For Material Receipt, source warehouse is optional (stock coming from external source)
@@ -377,13 +377,13 @@ def create_stock_entry(
             if s_warehouse and not frappe.db.exists("Warehouse", s_warehouse):
                 return {
                     "success": False,
-                    "message": f"Source warehouse '{s_warehouse}' does not exist",
+                    "message": _("We could not find the store '{0}' to take the stock from.").format(s_warehouse),
                 }
             
             if t_warehouse and not frappe.db.exists("Warehouse", t_warehouse):
                 return {
                     "success": False,
-                    "message": f"Target warehouse '{t_warehouse}' does not exist",
+                    "message": _("We could not find the store '{0}' to put the stock in.").format(t_warehouse),
                 }
             
             # Build item dictionary
@@ -432,7 +432,7 @@ def create_stock_entry(
                             )
         return {
             "success": True,
-            "message": "Stock entry created successfully",
+            "message": _("Your stock change has been saved."),
             "data": {
                 "name": stock_entry.name,
                 "stock_entry_type": stock_entry.stock_entry_type,
@@ -446,14 +446,14 @@ def create_stock_entry(
         frappe.log_error("Create Stock Entry Validation Error", f"Validation error creating stock entry: {str(e)}")
         return {
             "success": False,
-            "message": f"Validation error: {safe_error_message(e)}",
+            "message": safe_error_message(e),
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Create Stock Entry Error", f"Error creating stock entry: {str(e)}")
         return {
             "success": False,
-            "message": f"Error creating stock entry: {safe_error_message(e)}",
+            "message": _("The stock change could not be saved. {0}").format(safe_error_message(e)),
         }
 
 
@@ -671,7 +671,7 @@ def create_stock_reconciliation(
         if not isinstance(items, list) or len(items) == 0:
             return {
                 "success": False,
-                "message": "Items must be a non-empty list",
+                "message": _("Add at least one product."),
             }
         
         # Get company if not provided
@@ -680,14 +680,14 @@ def create_stock_reconciliation(
             if not company:
                 return {
                     "success": False,
-                    "message": "Company is required. Please set a default company or provide company parameter.",
+                    "message": _("We could not tell which business this is for. Please sign out and sign in again, or contact support."),
                 }
         
         # Validate warehouse exists
         if not frappe.db.exists("Warehouse", warehouse):
             return {
                 "success": False,
-                "message": f"Warehouse '{warehouse}' does not exist",
+                "message": _("We could not find the store '{0}'. Choose one of your stores and try again.").format(warehouse),
             }
         
         # Check if this will be treated as an opening entry (no Stock Ledger Entries exist)
@@ -737,10 +737,9 @@ def create_stock_reconciliation(
                     )
             
             if not expense_account:
-                account_type_msg = "Asset/Liability type (preferably Temporary)" if is_opening_entry else "Profit and Loss type"
                 return {
                     "success": False,
-                    "message": f"Difference Account (expense_account) is required. Please set 'stock_adjustment_account' in Company '{company}' settings or provide expense_account parameter. For opening entries, the account must be an {account_type_msg} account. Use the 'list_stock_reconciliation_accounts' endpoint to find suitable accounts.",
+                    "message": _("Your stock cannot be updated yet, because {0} has no account set up to record stock differences. Please ask your accountant or Murzak support to set a stock adjustment account for it.").format(company),
                 }
         else:
             # User provided an account, but we need to validate it's correct type for opening entries
@@ -755,27 +754,27 @@ def create_stock_reconciliation(
                 if not account_details:
                     return {
                         "success": False,
-                        "message": f"Difference Account '{expense_account}' does not exist",
+                        "message": _("The account '{0}' chosen for stock differences does not exist.").format(expense_account),
                     }
                 
                 if account_details.disabled:
                     return {
                         "success": False,
-                        "message": f"Difference Account '{expense_account}' is disabled",
+                        "message": _("The account '{0}' chosen for stock differences is switched off.").format(expense_account),
                     }
                 
                 # For opening entry, account must be Asset/Liability (not Profit and Loss)
                 if account_details.report_type == "Profit and Loss":
                     return {
                         "success": False,
-                        "message": f"Difference Account '{expense_account}' must be an Asset/Liability type account for Opening Stock. Current type: {account_details.report_type}. Please provide a valid Asset or Liability account in the expense_account parameter. Use the 'list_stock_reconciliation_accounts' endpoint to find suitable accounts.",
+                        "message": _("The account '{0}' cannot be used for opening stock. Opening stock needs an asset or liability account.").format(expense_account),
                     }
         
         # Validate expense_account exists (final check)
         if not frappe.db.exists("Account", expense_account):
             return {
                 "success": False,
-                "message": f"Difference Account '{expense_account}' does not exist",
+                "message": _("The account '{0}' chosen for stock differences does not exist.").format(expense_account),
             }
         
         # Get cost_center if not provided
@@ -805,21 +804,21 @@ def create_stock_reconciliation(
             if not item_code:
                 return {
                     "success": False,
-                    "message": "item_code is required for all items",
+                    "message": _("Every line needs a product."),
                 }
             
             # Validate item exists
             if not frappe.db.exists("Item", item_code):
                 return {
                     "success": False,
-                    "message": f"Item '{item_code}' does not exist",
+                    "message": _("There is no product with the code '{0}'.").format(item_code),
                 }
             
             qty = flt(item.get("qty", 0))
             if qty < 0:
                 return {
                     "success": False,
-                    "message": f"Quantity cannot be negative for item '{item_code}'",
+                    "message": _("The quantity of '{0}' cannot be below zero.").format(item_code),
                 }
             
             # Get current stock balance
@@ -882,7 +881,7 @@ def create_stock_reconciliation(
         
         return {
             "success": True,
-            "message": "Stock reconciliation created successfully",
+            "message": _("Your stock has been updated."),
             "data": {
                 "name": stock_reconciliation.name,
                 "company": stock_reconciliation.company,
@@ -897,14 +896,14 @@ def create_stock_reconciliation(
         frappe.log_error("Create Stock Reconciliation Validation Error", f"Validation error creating stock reconciliation: {str(e)}")
         return {
             "success": False,
-            "message": f"Validation error: {safe_error_message(e)}",
+            "message": safe_error_message(e),
             "error_type": "validation_error",
         }
     except Exception as e:
         frappe.log_error("Create Stock Reconciliation Error", f"Error creating stock reconciliation: {str(e)}")
         return {
             "success": False,
-            "message": f"Error creating stock reconciliation: {safe_error_message(e)}",
+            "message": _("The stock could not be updated. {0}").format(safe_error_message(e)),
         }
 
 
@@ -967,16 +966,16 @@ def bulk_update_stock(
     ensure_record_access("Warehouse", warehouse)
 
     if not frappe.db.exists("Warehouse", warehouse):
-        return {"success": False, "message": _("Warehouse '{0}' does not exist").format(warehouse)}
+        return {"success": False, "message": _("We could not find the store '{0}'. Choose one of your stores and try again.").format(warehouse)}
 
     if isinstance(items, str):
         try:
             items = json.loads(items)
         except Exception:
-            return {"success": False, "message": _("Invalid JSON format for items")}
+            return {"success": False, "message": _("The list of products could not be read. Please upload the file again.")}
 
     if not isinstance(items, list) or len(items) == 0:
-        return {"success": False, "message": _("Items must be a non-empty list")}
+        return {"success": False, "message": _("Add at least one product.")}
 
     item_codes = []
     sanitized_items = []
@@ -984,16 +983,16 @@ def bulk_update_stock(
 
     for idx, raw in enumerate(items):
         if not isinstance(raw, dict):
-            failed_items.append({"index": idx, "error": _("Item row must be an object")})
+            failed_items.append({"index": idx, "error": _("This line of the list could not be read.")})
             continue
         code = cstr(raw.get("item_code") or raw.get("itemCode") or "").strip()
         if not code:
-            failed_items.append({"index": idx, "error": _("item_code is required")})
+            failed_items.append({"index": idx, "error": _("This line has no product code.")})
             continue
         try:
             qty = flt(raw.get("qty", 0.0))
         except (ValueError, TypeError):
-            failed_items.append({"item_code": code, "error": _("Invalid quantity value")})
+            failed_items.append({"item_code": code, "error": _("The quantity on this line is not a number.")})
             continue
 
         rate = raw.get("valuation_rate") if raw.get("valuation_rate") is not None else raw.get("valuationRate")
@@ -1009,7 +1008,7 @@ def bulk_update_stock(
     if not sanitized_items:
         return {
             "success": False,
-            "message": _("No valid items to update"),
+            "message": _("None of the lines could be used, so nothing was changed. Check the product codes and quantities."),
             "data": {"failed_items": failed_items},
         }
 
@@ -1029,10 +1028,10 @@ def bulk_update_stock(
         code = s_item["item_code"]
         meta = existing_map.get(code)
         if not meta:
-            failed_items.append({"item_code": code, "error": _("Item '{0}' does not exist").format(code)})
+            failed_items.append({"item_code": code, "error": _("There is no product with the code '{0}'.").format(code)})
             continue
         if not meta.get("is_stock_item"):
-            msg = _("Item '{0}' is not a stock item (service or non-inventory)").format(code)
+            msg = _("'{0}' is a service, or a product that is not kept in stock, so it has no stock to update.").format(code)
             failed_items.append({"item_code": code, "error": msg})
             continue
         valid_items.append(s_item)
@@ -1040,7 +1039,7 @@ def bulk_update_stock(
     if not valid_items:
         return {
             "success": False,
-            "message": _("None of the specified items are valid stock items"),
+            "message": _("None of these products are kept in stock, so nothing was changed."),
             "data": {"failed_items": failed_items},
         }
 
@@ -1063,7 +1062,7 @@ def bulk_update_stock(
             target_qty = v_item["qty"]
 
         if target_qty < 0:
-            msg = _("Resulting quantity for item '{0}' cannot be negative ({1})").format(code, target_qty)
+            msg = _("'{0}' would end up at {1}, and stock cannot be below zero. Check the number you entered.").format(code, target_qty)
             failed_items.append({"item_code": code, "error": msg})
             continue
 
@@ -1093,7 +1092,7 @@ def bulk_update_stock(
     if not reconcile_items:
         return {
             "success": True,
-            "message": _("All item stock levels already match the target. No adjustments needed."),
+            "message": _("The stock already matches your list, so nothing was changed."),
             "data": {
                 "warehouse": warehouse,
                 "reconciliation": None,
@@ -1117,7 +1116,7 @@ def bulk_update_stock(
     if not reco_result or not reco_result.get("success"):
         return {
             "success": False,
-            "message": reco_result.get("message") if reco_result else _("Failed to create stock reconciliation"),
+            "message": reco_result.get("message") if reco_result else _("The stock update could not be saved. Please try again."),
             "data": {"failed_items": failed_items},
         }
 

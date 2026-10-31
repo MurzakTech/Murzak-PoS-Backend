@@ -51,7 +51,7 @@ class TestBulkStockUpdate(unittest.TestCase):
 				company="Test Company",
 			)
 			self.assertFalse(res["success"])
-			self.assertIn("does not exist", res["message"])
+			self.assertIn("could not find the store", res["message"])
 
 	@patch("murzak_pos.api.inventory_api.require_stock_role")
 	@patch("murzak_pos.api.inventory_api.ensure_record_access")
