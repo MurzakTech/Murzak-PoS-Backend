@@ -1132,7 +1132,7 @@ def _plain_sale_error(error, items=None) -> str:
     """The sentence a cashier sees for a sale that failed; the original wording goes in "error_detail"."""
     from murzak_pos.api.friendly_errors import friendly
 
-    names: Dict[str, str] = {}
+    names: dict[str, str] = {}
     for it in items or []:
         if isinstance(it, dict) and it.get("item_code") and it.get("item_name"):
             names[str(it["item_code"])] = str(it["item_name"])

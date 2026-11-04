@@ -105,7 +105,7 @@ def relax_purchase_invoice(
 	return True
 
 
-def missing_bill_core(doc) -> List[str]:
+def missing_bill_core(doc) -> list[str]:
 	"""The core details of a supplier bill that are still empty."""
 	missing = [field for field in CORE_BILL_FIELDS if _is_blank(doc.get(field))]
 	for row in doc.get("items") or []:
