@@ -621,7 +621,7 @@ class TestAccountingOnlyAccountsAreNotCategories(unittest.TestCase):
 		from murzak_pos.api import expenses_calc as calc
 
 		for name, kind in (
-			("Depreciation - LI", "Depreciation"),
+			("Depreciation - LI", None),
 			("Impairment - LI", None),
 			("Exchange Gain/Loss - LI", None),
 			("Gain/Loss on Asset Disposal - LI", None),
