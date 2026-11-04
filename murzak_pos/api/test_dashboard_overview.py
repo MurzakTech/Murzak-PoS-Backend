@@ -758,7 +758,7 @@ class OverviewCase(unittest.TestCase):
 		self.stub("_open_sessions", lambda scope: [dict(SESSION)])
 		self.stub("_session_cash", lambda session: copy.deepcopy(SESSION_CASH))
 		self.stub("_low_stock_rows", lambda scope: copy.deepcopy(LOW))
-		self.stub("_sold_recently", lambda scope: copy.deepcopy(SOLD))
+		self.stub("_tracked_products", lambda scope: copy.deepcopy(SOLD))
 		self.stub("_stock_quantities", lambda scope, codes: {})
 
 	def stub(self, name, function):
