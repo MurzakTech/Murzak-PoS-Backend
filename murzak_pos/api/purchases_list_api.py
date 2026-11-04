@@ -29,6 +29,7 @@ from murzak_pos.api import business_lists, role_tiers
 from murzak_pos.api import overview_calc as calc
 from murzak_pos.api import purchases_list_calc as rules
 from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.friendly_errors import friendly
 from murzak_pos.api.payment_gateway_common import get_user_companies, resolve_company
 from murzak_pos.api.purchase_orders_api import CANCEL_PURCHASE_ROLES, _order_lines
 
@@ -778,7 +779,7 @@ def _make_receipt(order, items, warehouse):
 	reply = create_pr_from_po(order, items=lines, submit=1)
 	name = ((reply or {}).get("data") or {}).get("purchase_receipt")
 	if not (reply or {}).get("success") or not name:
-		return None, plain_text((reply or {}).get("message"))
+		return None, friendly((reply or {}).get("message"))
 	return name, None
 
 
@@ -879,7 +880,7 @@ def receive_goods(
 		frappe.db.rollback()
 		frappe.log_error("Receive goods error", f"{order}\n{frappe.get_traceback()}")
 		reply = _refusal(
-			"server_error", _failed(plain_text(error) if isinstance(error, frappe.ValidationError) else "")
+			"server_error", _failed(friendly(error) if isinstance(error, frappe.ValidationError) else "")
 		)
 		# For whoever supports the shop: the kind of error and its first words. The trace itself stays in the Error Log.
 		reply["error_detail"] = f"{type(error).__name__}: {plain_text(error, 200)}"

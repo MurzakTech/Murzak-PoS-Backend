@@ -73,3 +73,50 @@ class TestEtimsOptional(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _Row:
+    def __init__(self, item_code="ITEM039", qty=1):
+        self._v = {"item_code": item_code, "qty": qty}
+
+    def get(self, field, default=None):
+        return self._v.get(field, default)
+
+
+class _Bill(_Doc):
+    def __init__(self, rows=None, **values):
+        values.setdefault("supplier", "Gilanis Wholesalers")
+        values.setdefault("company", "Linda mwananchi")
+        values["items"] = [_Row()] if rows is None else rows
+        super().__init__(**values)
+
+    def get(self, field, default=None):
+        return self._values.get(field, default)
+
+
+class TestRelaxPurchaseInvoice(unittest.TestCase):
+    def relax(self, bill, uses=False, prevented=False):
+        from murzak_pos.api.etims_optional import relax_purchase_invoice
+
+        return relax_purchase_invoice(bill, lambda company: uses, lambda code: prevented)
+
+    def test_business_without_etims_may_save_without_tax_fields(self):
+        bill = _Bill()
+        self.assertTrue(self.relax(bill))
+        self.assertTrue(bill.flags.ignore_mandatory)
+
+    def test_etims_business_keeps_the_tax_fields_required(self):
+        bill = _Bill()
+        self.assertFalse(self.relax(bill, uses=True))
+        self.assertFalse(getattr(bill.flags, "ignore_mandatory", False))
+
+    def test_etims_business_with_only_unsent_products_may_skip_them(self):
+        self.assertTrue(self.relax(_Bill(), uses=True, prevented=True))
+
+    def test_etims_business_with_one_sent_product_keeps_them_required(self):
+        self.assertFalse(self.relax(_Bill(rows=[_Row("A"), _Row("B")]), uses=True, prevented=False))
+
+    def test_a_missing_core_detail_is_still_reported(self):
+        for bill in (_Bill(supplier=""), _Bill(rows=[_Row(qty=0)]), _Bill(rows=[_Row(item_code="")])):
+            self.assertFalse(self.relax(bill))
+            self.assertFalse(getattr(bill.flags, "ignore_mandatory", False))

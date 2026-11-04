@@ -312,6 +312,22 @@ class TestTheStockList(unittest.TestCase):
 		]
 		self.assertEqual(by_code(calc.build_stock_rows(BINS, low, SOLD))["UNG"]["level"], "low")
 
+	def test_tracked_products_with_no_stock_record_are_listed_as_out(self):
+		tracked = [
+			{"item_code": "ITEM900", "item_name": "Never stocked", "item_group": "Household", "stock_uom": "Nos"},
+		]
+		found = by_code(calc.build_stock_rows([], [], [], tracked_items=tracked))
+		self.assertEqual(found["ITEM900"]["level"], "out")
+		self.assertEqual(found["ITEM900"]["qty"], 0)
+		self.assertEqual(calc.tiles(list(found.values()), False)["out_of_stock"], 1)
+
+	def test_a_tracked_product_with_stock_keeps_its_stock(self):
+		tracked = [{"item_code": code, "item_name": code} for code in {r["item_code"] for r in BINS}]
+		with_tracking = by_code(calc.build_stock_rows(BINS, LOW, SOLD, tracked_items=tracked))
+		without = by_code(calc.build_stock_rows(BINS, LOW, SOLD))
+		for code, row in without.items():
+			self.assertEqual(with_tracking[code]["qty"], row["qty"])
+
 	def test_a_product_with_no_warning_level_is_never_low(self):
 		low = [
 			{"item_code": "UNG", "item_name": "Unga", "warehouse": STORE, "actual_qty": 1, "reorder_level": 0}

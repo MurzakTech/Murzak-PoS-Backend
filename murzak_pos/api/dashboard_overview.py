@@ -386,10 +386,16 @@ def _stock_status(scope: _Scope):
 	"""(products running low, products out of stock) as attention items."""
 
 	def compute():
+		from murzak_pos.api.stock_catalogue import tracked_items
+
 		low = calc.running_low_items(_low_stock_rows(scope))
-		sold = _sold_recently(scope)
-		quantities = _stock_quantities(scope, [row["item_code"] for row in sold])
-		return low, calc.out_of_stock_items(sold, quantities)
+		# Every product the business keeps in stock, not just those that sold lately, so Home, Products and
+		# Stock levels all give the same out-of-stock count
+		products = [
+			{"item_code": row["item_code"], "item_name": row["item_name"]} for row in tracked_items(scope.company)
+		]
+		quantities = _stock_quantities(scope, [row["item_code"] for row in products])
+		return low, calc.out_of_stock_items(products, quantities)
 
 	return scope.memo("stock", compute)
 

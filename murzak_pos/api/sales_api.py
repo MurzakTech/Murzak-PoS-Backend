@@ -1128,6 +1128,27 @@ def create_sales_invoice(
         }
 
 
+def _plain_sale_error(error, items=None) -> str:
+    """The sentence a cashier sees for a sale that failed; the original wording goes in "error_detail"."""
+    from murzak_pos.api.friendly_errors import friendly
+
+    names: Dict[str, str] = {}
+    for it in items or []:
+        if isinstance(it, dict) and it.get("item_code") and it.get("item_name"):
+            names[str(it["item_code"])] = str(it["item_name"])
+
+    def name_of(code):
+        if code in names:
+            return names[code]
+        try:
+            return frappe.db.get_value("Item", code, "item_name")
+        except Exception:
+            return None
+
+    text = friendly(error, name_of)
+    return text or _("The sale could not be completed. Please try again.")
+
+
 @frappe.whitelist()
 def create_pos_invoice(
     customer: str,
@@ -1425,6 +1446,9 @@ def create_pos_invoice(
             },
         }
     except frappe.ValidationError as e:
+        # Put back the draft invoice that was saved before the failed submit; otherwise this reply ends the
+        # request normally and Frappe keeps the draft, leaving an orphan (and a duplicate on every retry)
+        frappe.db.rollback()
         enriched_msg = _enrich_item_error_message(str(e), parsed_items if "parsed_items" in locals() else None)
         frappe.log_error(
             "Create POS Invoice Validation Error",
@@ -1432,10 +1456,12 @@ def create_pos_invoice(
         )
         return {
             "success": False,
-            "message": f"Validation error: {enriched_msg}",
+            "message": _plain_sale_error(e, parsed_items if "parsed_items" in locals() else None),
+            "error_detail": enriched_msg,
             "error_type": "validation_error",
         }
     except Exception as e:
+        frappe.db.rollback()
         enriched_msg = _enrich_item_error_message(str(e), parsed_items if "parsed_items" in locals() else None)
         frappe.log_error(
             "Create POS Invoice Error",
@@ -1443,7 +1469,8 @@ def create_pos_invoice(
         )
         return {
             "success": False,
-            "message": f"Error creating POS Invoice: {enriched_msg}",
+            "message": _plain_sale_error(e, parsed_items if "parsed_items" in locals() else None),
+            "error_detail": enriched_msg,
         }
 
 

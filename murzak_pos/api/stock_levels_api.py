@@ -281,7 +281,11 @@ def _stock_rows(company, store) -> list[dict]:
 	sold = _sold_items(company, store)
 	held = {row["item_code"] for row in bins}
 	missing = [row["item_code"] for row in sold if row["item_code"] not in held]
-	return calc.build_stock_rows(bins, _low_rows(company, store), sold, _item_info(missing))
+	from murzak_pos.api.stock_catalogue import tracked_items
+
+	return calc.build_stock_rows(
+		bins, _low_rows(company, store), sold, _item_info(missing), tracked_items=tracked_items(company)
+	)
 
 
 def _bin_rows(company, store) -> list[dict]:
