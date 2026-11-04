@@ -671,6 +671,18 @@ def clean_reason(reason, note) -> tuple[str, str]:
 	return key, text
 
 
+def stock_in_cost(typed, last_purchase_rate, valuation_rate) -> float:
+	"""
+	What each unit coming in cost: the cost typed, else the last price paid to a supplier, else the item's valuation
+	rate. 0 when none of them is known. It is never the selling price: with no cost given ERPNext fell back to the
+	selling price, which overstated the value of the stock.
+	"""
+	for candidate in (typed, last_purchase_rate, valuation_rate):
+		if num(candidate) > 0:
+			return num(candidate)
+	return 0.0
+
+
 def receipt_remark(note: str) -> str:
 	return f"Stock in: {note}" if note else ""
 

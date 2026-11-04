@@ -2752,6 +2752,12 @@ def create_sales_return(
         if discount_amount is not None:
             cn.discount_amount = flt(discount_amount)
 
+        # A POS Invoice return must carry the payment that pays the money back, or ERPNext refuses it
+        refunded_in_return = False
+        if return_doctype == "POS Invoice":
+            _add_refund_payment(cn, original_invoice, refund_mode, company)
+            refunded_in_return = True
+
         cn.insert(ignore_permissions=True)
 
         # A refund above the business's limit waits for a manager's approval as a draft
@@ -2766,7 +2772,10 @@ def create_sales_return(
             cn.submit()
 
         refund = None
-        if refund_mode and cn.docstatus == 1:
+        if refunded_in_return and cn.docstatus == 1:
+            # The money went back in the return's own payment line; there is no separate credit note to pay out
+            refund = {"success": True, "message": _("Refund recorded on the return."), "data": {"mode": refund_mode}}
+        elif refund_mode and cn.docstatus == 1:
             from murzak_pos.api import refund_api
 
             # The return stands whatever happens to the payout, so it is saved first
@@ -2822,6 +2831,29 @@ def create_sales_return(
             "success": False,
             "message": f"Error creating Sales Return: {safe_error_message(e)}",
         }
+
+
+def _add_refund_payment(cn, original, asked_mode, company) -> None:
+    """Give a POS Invoice return the negative payment line that pays the whole return back."""
+    from murzak_pos.api.return_payments import refund_amount, refund_mode
+
+    cn.calculate_taxes_and_totals()
+    sale_payments = [
+        {"mode_of_payment": p.mode_of_payment, "amount": p.amount} for p in (original.get("payments") or [])
+    ] if original else []
+    mode = refund_mode(asked_mode, sale_payments)
+    account = frappe.db.get_value(
+        "Mode of Payment Account", {"parent": mode, "company": company}, "default_account"
+    )
+    cn.set("payments", [])
+    cn.append(
+        "payments",
+        {
+            "mode_of_payment": mode,
+            "amount": refund_amount(cn.get("rounded_total") or cn.get("grand_total")),
+            **({"account": account} if account else {}),
+        },
+    )
 
 
 def _returnable_totals(doctype: str, original, parsed_items: list[dict]):

@@ -18,7 +18,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate, nowdate
 
-from murzak_pos.api import cashier_rules, role_tiers
+from murzak_pos.api import cashier_rules, discount_bounds, role_tiers
 
 LIMIT_KEY = "murzak_cashier_discount_limit_{company}"
 
@@ -84,8 +84,24 @@ def _batch_rule_percent(doc, item, list_price: float) -> float:
 	return flt(rule.discount_value) / list_price * 100 if list_price else 0.0
 
 
+def _refuse_impossible_discount(doc) -> None:
+	"""For everyone, whatever their role: a discount is from 0 to 100 percent and never more than the sale."""
+	if doc.get("is_return"):
+		return
+	problem = discount_bounds.problem(
+		doc.get("additional_discount_percentage"), doc.get("discount_amount"), doc.get("total")
+	)
+	if problem == "percent_range":
+		frappe.throw(_("A discount must be between 0% and 100%."), frappe.ValidationError)
+	if problem == "amount_negative":
+		frappe.throw(_("A discount cannot be a negative amount."), frappe.ValidationError)
+	if problem == "amount_too_big":
+		frappe.throw(_("A discount cannot be more than the total of the sale."), frappe.ValidationError)
+
+
 def enforce_on_sale(doc, method=None) -> None:
 	"""Sales Invoice and POS Invoice validate: refuse a date or a discount beyond a cashier's limits."""
+	_refuse_impossible_discount(doc)
 	if not _checks_apply(doc):
 		return
 

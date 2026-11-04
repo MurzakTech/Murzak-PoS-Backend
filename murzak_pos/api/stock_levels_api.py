@@ -450,6 +450,12 @@ def _plain(result) -> str:
 	)
 
 
+def _known_costs(code):
+	"""(the last price paid to a supplier, the valuation rate) of a product; either may be None."""
+	row = frappe.db.get_value("Item", code, ["last_purchase_rate", "valuation_rate"], as_dict=True) or {}
+	return row.get("last_purchase_rate"), row.get("valuation_rate")
+
+
 @frappe.whitelist(methods=["POST"])
 def stock_in(item_code, qty, warehouse=None, note=None, company=None, unit_cost=None):
 	"""
@@ -472,9 +478,17 @@ def stock_in(item_code, qty, warehouse=None, note=None, company=None, unit_cost=
 	from murzak_pos.api.inventory_api import create_material_receipt
 
 	line = {"item_code": code, "qty": amount}
-	cost = calc.num(unit_cost)
-	if cost > 0 and role_tiers.can("cost_of_goods"):
-		line["basic_rate"] = cost
+	typed = unit_cost if role_tiers.can("cost_of_goods") else None
+	last_paid, valuation = _known_costs(code)
+	cost = calc.stock_in_cost(typed, last_paid, valuation)
+	if cost <= 0:
+		# Never let the selling price stand in for the cost
+		return {
+			"success": False,
+			"message": _("Enter what each one cost. This product has no earlier cost to use."),
+			"error_type": "cost_required",
+		}
+	line["basic_rate"] = cost
 	result = create_material_receipt(items=[line], target_warehouse=store, company=company)
 	if not result or not result.get("success"):
 		frappe.db.rollback()  # the helper can leave a half-made draft behind when it fails
