@@ -1492,3 +1492,8 @@
 "An owner's password can only be changed by that owner.","Nenosiri la mmiliki linaweza kubadilishwa na mmiliki huyo pekee."
 "The password needs: {0}.","Nenosiri linahitaji: {0}."
 "A new password was set for {0}.","Nenosiri jipya limewekwa kwa {0}."
+"The shop type cannot be set on this site.","Aina ya duka haiwezi kuwekwa kwenye tovuti hii."
+"Choose a shop type from the list.","Chagua aina ya duka kutoka kwenye orodha."
+"That is already your shop type.","Hiyo tayari ni aina ya duka lako."
+"The shop type was changed recently. It can be changed again on {0}.","Aina ya duka ilibadilishwa hivi karibuni. Inaweza kubadilishwa tena tarehe {0}."
+"Shop type saved.","Aina ya duka imehifadhiwa."
