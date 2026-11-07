@@ -8,6 +8,9 @@ an owner. Nothing here ever returns, logs or emails a password.
 
 from __future__ import annotations
 
+import socket
+from contextlib import contextmanager
+
 import frappe
 from frappe import _
 
@@ -63,9 +66,20 @@ def _locked_minutes(user: str) -> int:
 		return 0
 
 
+@contextmanager
+def _short_wait(seconds: int = 15):
+	"""Give a mail server a few seconds to answer, then restore the earlier wait."""
+	earlier = socket.getdefaulttimeout()
+	socket.setdefaulttimeout(seconds)
+	try:
+		yield
+	finally:
+		socket.setdefaulttimeout(earlier)
+
+
 def send_welcome(user: str, shop: str | None = None) -> dict:
 	"""
-	Email the welcome message to a team member. Never raises: the answer says whether it was handed to the mail queue and, when
+	Email the welcome message to a team member. Never raises: the answer says whether it was sent and, when
 	not, why, in words the owner can act on. The password is never in it.
 	"""
 	if not email_ready():
@@ -78,7 +92,10 @@ def send_welcome(user: str, shop: str | None = None) -> dict:
 		roles = [r for r in frappe.get_roles(user) if r not in ("All", "Guest", "Desk User")]
 		url = calc.sign_in_url(frappe.get_request_header("Origin"), frappe.conf.get("pos_base_url") or "")
 		subject, body = calc.welcome_message(shop or "", row.first_name, row.email, url, roles)
-		frappe.sendmail(recipients=[row.email], subject=subject, message=body)
+		# Sent now, not left in the email queue, so it does not depend on the scheduler; a mail server that does not answer
+		# is given up on after a few seconds instead of holding the screen
+		with _short_wait():
+			frappe.sendmail(recipients=[row.email], subject=subject, message=body, delayed=False)
 		return {"sent": True, "reason": ""}
 	except Exception:
 		frappe.log_error("Welcome email could not be sent", frappe.get_traceback())
