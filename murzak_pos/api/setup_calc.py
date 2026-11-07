@@ -4,7 +4,7 @@ First-time set-up: the plain rules, with no database and no Frappe import so the
 
 What lives here
 - the four answers to "What do you sell?" and the features each one turns on
-- the six steps of the wizard, and how progress through them is read and written
+- the nine steps of the wizard, and how progress through them is read and written
 - the one rule for when a business is offered the wizard
 - tidying the "usual opening cash" amount
 """
@@ -21,7 +21,7 @@ OTHER = "other"
 KINDS = (PHARMACY, RETAIL, SERVICES, OTHER)
 
 # The wizard's steps in the order they are shown
-STEPS = ("business", "shop", "cash", "payments", "products", "staff")
+STEPS = ("business", "shop", "brand", "cash", "payments", "etims", "products", "staff", "check")
 
 # A business with this many products or more is not new
 PRODUCT_LIMIT = 5
@@ -77,7 +77,7 @@ def kind_from_industry(code) -> str | None:
 
 
 def clean_step(value) -> str | None:
-	"""One of the six step names; None for anything else."""
+	"""One of the step names; None for anything else."""
 	text = str(value if value is not None else "").strip().lower()
 	return text if text in STEPS else None
 
@@ -159,7 +159,7 @@ def passed_steps(progress: dict) -> list[str]:
 
 
 def next_step(progress: dict) -> str | None:
-	"""The first step not passed yet, which is where a refresh continues. None when all six were passed."""
+	"""The first step not passed yet, which is where a refresh continues. None when every step was passed."""
 	passed = set(passed_steps(progress))
 	for step in STEPS:
 		if step not in passed:

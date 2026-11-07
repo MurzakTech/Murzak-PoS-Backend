@@ -52,8 +52,23 @@ class TestKinds(unittest.TestCase):
 
 
 class TestSteps(unittest.TestCase):
-	def test_the_six_steps_in_order(self):
-		self.assertEqual(calc.STEPS, ("business", "shop", "cash", "payments", "products", "staff"))
+	def test_the_nine_steps_in_order(self):
+		self.assertEqual(
+			calc.STEPS,
+			("business", "shop", "brand", "cash", "payments", "etims", "products", "staff", "check"),
+		)
+
+	def test_a_shop_part_way_through_the_old_six_steps_carries_on_at_the_first_gap(self):
+		# Saved before the new steps existed: it has passed business and shop, so it continues at the new brand step
+		saved = '{"done":["business","shop"],"skipped":[],"finished":false}'
+		self.assertEqual(calc.next_step(calc.parse_progress(saved)), "brand")
+
+	def test_a_shop_that_finished_the_old_six_steps_is_not_offered_the_wizard_again(self):
+		saved = '{"done":["business","shop","cash","payments","products","staff"],"skipped":[],"finished":true}'
+		progress = calc.parse_progress(saved)
+		self.assertTrue(progress["finished"])
+		self.assertFalse(calc.needs_setup(False, 0, 0, progress["finished"]))
+		self.assertFalse(calc.should_resume(progress, 0, 0))
 
 	def test_a_step_name_is_checked(self):
 		self.assertEqual(calc.clean_step(" Cash "), "cash")
@@ -75,14 +90,14 @@ class TestProgress(unittest.TestCase):
 		self.assertEqual(calc.next_step(progress), "shop")
 		progress = calc.record_step(progress, "shop")
 		self.assertEqual(progress["done"], ["business", "shop"])
-		self.assertEqual(calc.next_step(progress), "cash")
+		self.assertEqual(calc.next_step(progress), "brand")
 
 	def test_a_skipped_step_also_moves_the_wizard_on_and_is_remembered_as_skipped(self):
 		progress = calc.record_step(calc.empty_progress(), "business")
 		progress = calc.record_step(progress, "shop", skipped=True)
 		self.assertEqual(progress["skipped"], ["shop"])
 		self.assertEqual(progress["done"], ["business"])
-		self.assertEqual(calc.next_step(progress), "cash")
+		self.assertEqual(calc.next_step(progress), "brand")
 		self.assertEqual(calc.passed_steps(progress), ["business", "shop"])
 
 	def test_doing_a_skipped_step_later_takes_it_off_the_skipped_list(self):
