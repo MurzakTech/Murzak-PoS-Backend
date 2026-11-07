@@ -33,6 +33,7 @@ TRACKED_DOCTYPES: dict[str, str] = {
 	"Item": "Products",
 	"Item Price": "Products",
 	"Pricing Rule": "Products",
+	"POS Profile": "Settings",
 	"Customer": "Customers",
 	"Supplier": "Suppliers",
 	"User": "Users & Security",
@@ -71,6 +72,14 @@ IGNORED_FIELDS = {
 	"last_known_versions",
 }
 
+# The till switches an owner can flip in Settings, in the words the Settings screen uses
+SWITCH_LABELS = {
+	"update_stock": "Take sold items out of stock",
+	"allow_discount_change": "Let cashiers change discounts",
+	"allow_rate_change": "Let cashiers change prices at the till",
+	"allow_partial_payment": "Let customers pay part now and the rest later",
+}
+
 # Fields that hold secrets: show that they changed, never their values.
 SECRET_FIELDS = {"new_password", "password", "api_secret", "api_key"}
 
@@ -81,6 +90,24 @@ def humanize_field(fieldname: str) -> str:
 	"""grand_total -> Grand total"""
 	text = (fieldname or "").replace("_", " ").strip()
 	return text[:1].upper() + text[1:]
+
+
+def _is_blank_like(value) -> bool:
+	"""Nothing, an empty text, or a zero: the way a field with no value is stored."""
+	if value is None:
+		return True
+	if isinstance(value, str):
+		text = value.strip()
+		if text == "":
+			return True
+		try:
+			return float(text) == 0
+		except ValueError:
+			return False
+	try:
+		return float(value) == 0
+	except (TypeError, ValueError):
+		return False
 
 
 def _short(value) -> str:
@@ -124,6 +151,12 @@ def describe_version(raw) -> dict[str, str]:
 			continue
 		if field in SECRET_FIELDS:
 			parts.append(f"{humanize_field(field)} changed")
+		elif field in SWITCH_LABELS:
+			was_on, now_on = not _is_blank_like(old), not _is_blank_like(new)
+			if was_on != now_on:  # a switch left as it was is not a change
+				parts.append(f"Turned {'on' if now_on else 'off'} \u2018{SWITCH_LABELS[field]}\u2019")
+		elif _is_blank_like(old) and _is_blank_like(new):
+			continue  # 0 to empty, or empty to 0.0: the same "nothing" stored another way, not a change anyone made
 		else:
 			parts.append(f"{humanize_field(field)}: {_short(old)} → {_short(new)}")
 

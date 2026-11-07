@@ -28,4 +28,10 @@ def prompt_problem(present) -> str | None:
 	gaps = missing(present)
 	if not gaps:
 		return None
-	return "M-Pesa prompts are not ready: add " + ", ".join(gaps[:-1]) + (" and " if len(gaps) > 1 else "") + gaps[-1] + " in Settings > Payment gateways."
+	return (
+		"M-Pesa prompts are not ready: add "
+		+ ", ".join(gaps[:-1])
+		+ (" and " if len(gaps) > 1 else "")
+		+ gaps[-1]
+		+ " in Settings > Payment gateways."
+	)
