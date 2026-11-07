@@ -3,6 +3,11 @@ import frappe
 from erpnext.accounts.doctype.pos_invoice.pos_invoice import POSInvoice as ERPNextPOSInvoice
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import SalesInvoice
 
+from murzak_pos.overrides import pos_stock_check
+
+# This app takes stock off the shelf at the moment of sale, so ERPNext must not also treat those sales as "reserved"
+pos_stock_check.install()
+
 
 class POSInvoice(ERPNextPOSInvoice):
     """

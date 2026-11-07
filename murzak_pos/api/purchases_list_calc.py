@@ -646,3 +646,16 @@ def money_text(value) -> str:
 	amount = calc.money(value)
 	text = f"{amount:,.0f}" if abs(amount - round(amount)) < 0.005 else f"{amount:,.2f}"
 	return f"KES {text}"
+
+
+def tax_rate_of(rows) -> float:
+	"""
+	The percentage a default purchase tax template adds on the net total, from its rows (charge_type, rate). Only
+	"On Net Total" rows count, because a row on a previous row's amount, or a fixed amount, is not a simple percentage
+	of the bill. Returns 0.0 when there are none.
+	"""
+	total = 0.0
+	for row in rows or []:
+		if str(row.get("charge_type") or "").strip() == "On Net Total":
+			total += calc.num(row.get("rate"))
+	return round(total, 2)

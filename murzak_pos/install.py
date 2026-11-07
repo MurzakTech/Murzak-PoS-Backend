@@ -9,6 +9,7 @@ Swahili until the next time the server is updated. These are the same two steps 
 from __future__ import annotations
 
 from murzak_pos.api.batch_order import pick_earliest_expiry_first
+from murzak_pos.api.currency_symbol import use_kes_symbol
 from murzak_pos.api.language_api import enable_languages
 from murzak_pos.api.print_api import install_print_formats
 from murzak_pos.api.role_tiers import ensure_owner_role
@@ -22,3 +23,4 @@ def after_install() -> None:
 	enable_languages()
 	pick_earliest_expiry_first()
 	use_kenya_time()
+	use_kes_symbol()

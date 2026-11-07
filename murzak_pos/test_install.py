@@ -19,6 +19,7 @@ class TestAfterInstall(unittest.TestCase):
 			patch.object(install, "enable_languages") as languages,
 			patch.object(install, "pick_earliest_expiry_first") as batch_order,
 			patch.object(install, "use_kenya_time") as kenya_time,
+			patch.object(install, "use_kes_symbol") as kes_symbol,
 		):
 			install.after_install()
 		owner_role.assert_called_once_with()
@@ -26,6 +27,7 @@ class TestAfterInstall(unittest.TestCase):
 		languages.assert_called_once_with()
 		batch_order.assert_called_once_with()
 		kenya_time.assert_called_once_with()
+		kes_symbol.assert_called_once_with()
 
 	def test_everything_a_migrate_sets_up_is_also_set_up_on_install(self):
 		"""If a step is added to after_migrate, a new shop must get it too."""

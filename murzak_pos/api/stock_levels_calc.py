@@ -304,7 +304,7 @@ def tracks_expiry(batches_with_expiry, details_with_expiry) -> bool:
 # --- the stock list --------------------------------------------------------------------------------------
 
 
-def build_stock_rows(bins, low_rows, sold_items, item_info=None) -> list[dict]:
+def build_stock_rows(bins, low_rows, sold_items, item_info=None, tracked_items=None) -> list[dict]:
 	"""
 	One row per product from the store-level stock rows.
 
@@ -312,6 +312,8 @@ def build_stock_rows(bins, low_rows, sold_items, item_info=None) -> list[dict]:
 	low_rows    item_code, item_name, warehouse, actual_qty, reorder_level: stores at or below their warning level
 	sold_items  item_code, item_name: stock products that sold in the last 30 days
 	item_info   item_code -> item_name, item_group, stock_uom, for sold products that have no stock record yet
+	tracked_items  item_code, item_name, item_group, stock_uom of every enabled stock product the business sells. They
+	            are listed even with no stock record, so "out of stock" here is the same count as on the Products page.
 	"""
 	item_info = item_info or {}
 	low = {row["item_code"]: row for row in overview_calc.running_low_items(low_rows)}
@@ -349,10 +351,23 @@ def build_stock_rows(bins, low_rows, sold_items, item_info=None) -> list[dict]:
 			"value": 0.0,
 			"stores": 0,
 		}
+	tracked = {row.get("item_code"): row for row in tracked_items or []}
+	for code, row in tracked.items():
+		if code in products:
+			continue
+		products[code] = {
+			"item_code": code,
+			"item_name": row.get("item_name") or code,
+			"category": row.get("item_group") or "",
+			"unit": row.get("stock_uom") or "",
+			"qty": 0.0,
+			"value": 0.0,
+			"stores": 0,
+		}
 	rows = []
 	for code, product in products.items():
 		total = qty(product["qty"])
-		if total == 0 and code not in sold:
+		if total == 0 and code not in sold and code not in tracked:
 			continue  # no stock and not selling: not part of the stock list
 		level = "out" if total <= 0 else "low" if code in low else "ok"
 		rows.append(
@@ -654,6 +669,18 @@ def clean_reason(reason, note) -> tuple[str, str]:
 	if key in REASON_NEEDS_NOTE and not text:
 		raise StockError("need_note")
 	return key, text
+
+
+def stock_in_cost(typed, last_purchase_rate, valuation_rate) -> float:
+	"""
+	What each unit coming in cost: the cost typed, else the last price paid to a supplier, else the item's valuation
+	rate. 0 when none of them is known. It is never the selling price: with no cost given ERPNext fell back to the
+	selling price, which overstated the value of the stock.
+	"""
+	for candidate in (typed, last_purchase_rate, valuation_rate):
+		if num(candidate) > 0:
+			return num(candidate)
+	return 0.0
 
 
 def receipt_remark(note: str) -> str:

@@ -754,3 +754,15 @@ def check_amount(amount, outstanding) -> str | None:
 	if amount > round(calc.num(outstanding), 2) + TOLERANCE:
 		return "too_much"
 	return None
+
+
+def short_sale_number(text) -> str | None:
+	"""
+	The running number at the end of a sale's name, when a person typed only that number (0001, #47, 00047), as five
+	digits (00001); None when they typed a full name or something else. The receipt shows "#0047", so the box that
+	finds a sale by its number has to accept it.
+	"""
+	import re
+
+	found = re.fullmatch(r"#?\s*(\d{1,6})", str(text or "").strip())
+	return found.group(1).zfill(5) if found else None

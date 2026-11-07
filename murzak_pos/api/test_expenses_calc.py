@@ -614,3 +614,23 @@ class TestAC30NetProfitFallsByTheAmount(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestAccountingOnlyAccountsAreNotCategories(unittest.TestCase):
+	def test_depreciation_impairment_and_gain_loss_accounts_are_not_offered(self):
+		from murzak_pos.api import expenses_calc as calc
+
+		for name, kind in (
+			("Depreciation - LI", None),
+			("Impairment - LI", None),
+			("Exchange Gain/Loss - LI", None),
+			("Gain/Loss on Asset Disposal - LI", None),
+		):
+			account = {"name": name, "account_name": name.split(" - ")[0], "account_type": kind, "root_type": "Expense"}
+			self.assertFalse(calc.is_category(account), name)
+
+	def test_an_ordinary_expense_account_still_is(self):
+		from murzak_pos.api import expenses_calc as calc
+
+		account = {"name": "Rent - LI", "account_name": "Rent", "account_type": None, "root_type": "Expense"}
+		self.assertTrue(calc.is_category(account))

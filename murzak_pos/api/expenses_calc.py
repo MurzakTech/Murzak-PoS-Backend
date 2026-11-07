@@ -54,9 +54,12 @@ HOME_EXCLUDED_TYPES = (
 )
 # Also never offered as a category: stock received but not billed holds goods that arrived before their bill
 CATEGORY_EXCLUDED_TYPES = (*HOME_EXCLUDED_TYPES, "Stock Received But Not Billed")
-# Accounts that do the same job under another type are caught by name
+# Accounts that do the same job under another type are caught by name. Depreciation, impairment, exchange gain/loss
+# and asset disposal accounts are accountant's entries, not money a shop spends, so they are caught here too (by name
+# only: an account of type Depreciation with an ordinary name is still allowed).
 _NOT_A_COST_NAME = re.compile(
-	r"cost of goods|cost of sales|stock adjustment|stock received but not billed|round(ing)? off",
+	r"cost of goods|cost of sales|stock adjustment|stock received but not billed|round(ing)? off"
+	r"|depreciation|impairment|exchange gain|gain/loss|gain or loss|asset disposal",
 	re.IGNORECASE,
 )
 

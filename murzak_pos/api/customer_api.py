@@ -14,6 +14,20 @@ from murzak_pos.api.access_control import require_credit_role
 from murzak_pos.api.error_handler import safe_error_message
 
 
+def _default_group_or_territory(doctype: str, setting: str, preferred: str):
+    """
+    The group or territory a new customer gets when none is chosen: the one set in Selling Settings, else
+    `preferred` (Individual, Kenya) when the site has it, else any leaf. Taking just the first leaf gave customers
+    made at the till the group "Government" and the territory "Rest Of The World".
+    """
+    chosen = frappe.db.get_single_value("Selling Settings", setting)
+    if chosen and frappe.db.exists(doctype, chosen):
+        return chosen
+    if frappe.db.exists(doctype, preferred):
+        return preferred
+    return frappe.db.get_value(doctype, {"is_group": 0}, "name")
+
+
 @frappe.whitelist()
 def create_customer(
     customer_name: str,
@@ -107,13 +121,13 @@ def create_customer(
         
         # Get default customer group if not provided
         if not customer_group:
-            customer_group = frappe.db.get_value("Customer Group", {"is_group": 0}, "name")
+            customer_group = _default_group_or_territory("Customer Group", "customer_group", "Individual")
             if not customer_group:
                 customer_group = "All Customer Groups"
         
         # Get default territory if not provided
         if not territory:
-            territory = frappe.db.get_value("Territory", {"is_group": 0}, "name")
+            territory = _default_group_or_territory("Territory", "territory", "Kenya")
             if not territory:
                 territory = "All Territories"
         

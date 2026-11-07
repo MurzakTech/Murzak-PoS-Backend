@@ -90,3 +90,28 @@ class TestHumanizeField(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestQuietAuditWording(unittest.TestCase):
+	def test_zero_to_empty_noise_is_not_listed(self):
+		result = describe_version(
+			version([["loyalty_points", 0, None], ["loyalty_amount", 0.0, None], ["additional_discount_percentage", 0.0, ""]])
+		)
+		self.assertEqual(result, {"action": "Updated", "summary": "Saved with no visible changes"})
+
+	def test_a_real_change_beside_the_noise_is_kept(self):
+		result = describe_version(version([["loyalty_points", 0, None], ["grand_total", 100, 150]]))
+		self.assertEqual(result["summary"], "Grand total: 100 → 150")
+
+	def test_a_till_switch_reads_as_a_sentence(self):
+		result = describe_version(version([["update_stock", 1, 0], ["allow_rate_change", 0, 1], ["allow_partial_payment", 0, 0]]))
+		self.assertEqual(
+			result["summary"],
+			"Turned off 'Take sold items out of stock'; Turned on 'Let cashiers change prices at the till'",
+		)
+
+	def test_pos_profile_is_audited_under_settings(self):
+		from murzak_pos.api.audit_events import MODULES, TRACKED_DOCTYPES
+
+		self.assertEqual(TRACKED_DOCTYPES["POS Profile"], "Settings")
+		self.assertIn("Settings", MODULES)

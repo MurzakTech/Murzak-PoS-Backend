@@ -312,6 +312,28 @@ class TestTheStockList(unittest.TestCase):
 		]
 		self.assertEqual(by_code(calc.build_stock_rows(BINS, low, SOLD))["UNG"]["level"], "low")
 
+	def test_stock_in_cost_prefers_typed_then_last_purchase_then_valuation_never_the_selling_price(self):
+		self.assertEqual(calc.stock_in_cost(40, 30, 20), 40)
+		self.assertEqual(calc.stock_in_cost("", 30, 20), 30)
+		self.assertEqual(calc.stock_in_cost(None, 0, 20), 20)
+		self.assertEqual(calc.stock_in_cost(None, None, None), 0)
+
+	def test_tracked_products_with_no_stock_record_are_listed_as_out(self):
+		tracked = [
+			{"item_code": "ITEM900", "item_name": "Never stocked", "item_group": "Household", "stock_uom": "Nos"},
+		]
+		found = by_code(calc.build_stock_rows([], [], [], tracked_items=tracked))
+		self.assertEqual(found["ITEM900"]["level"], "out")
+		self.assertEqual(found["ITEM900"]["qty"], 0)
+		self.assertEqual(calc.tiles(list(found.values()), False)["out_of_stock"], 1)
+
+	def test_a_tracked_product_with_stock_keeps_its_stock(self):
+		tracked = [{"item_code": code, "item_name": code} for code in {r["item_code"] for r in BINS}]
+		with_tracking = by_code(calc.build_stock_rows(BINS, LOW, SOLD, tracked_items=tracked))
+		without = by_code(calc.build_stock_rows(BINS, LOW, SOLD))
+		for code, row in without.items():
+			self.assertEqual(with_tracking[code]["qty"], row["qty"])
+
 	def test_a_product_with_no_warning_level_is_never_low(self):
 		low = [
 			{"item_code": "UNG", "item_name": "Unga", "warehouse": STORE, "actual_qty": 1, "reorder_level": 0}
@@ -1320,6 +1342,7 @@ class TestStockIn(StockCase):
 	def setUp(self):
 		super().setUp()
 		self.as_user()
+		self.stub("_known_costs", lambda code: (30.0, 20.0))  # last paid, valuation
 
 	def into(self, **kwargs):
 		arguments = {"item_code": "MLK", "qty": 12, "warehouse": STORE}
@@ -1332,7 +1355,7 @@ class TestStockIn(StockCase):
 		call = self.helpers.create_material_receipt.call_args.kwargs
 		self.assertEqual(
 			(call["items"], call["target_warehouse"], call["company"]),
-			([{"item_code": "MLK", "qty": 12.0}], STORE, "Shop A"),
+			([{"item_code": "MLK", "qty": 12.0, "basic_rate": 30.0}], STORE, "Shop A"),
 		)
 		self.db.set_value.assert_called_once_with(
 			"Stock Entry", "MAT-STE-2026-00010", "remarks", "Stock in: from the depot", update_modified=False
@@ -1353,7 +1376,22 @@ class TestStockIn(StockCase):
 	def test_the_cost_is_ignored_for_a_person_who_may_not_see_cost(self):
 		self.as_user("store@shop-a.test", roles=("Stock User",))
 		self.into(unit_cost="55.5")
-		self.assertNotIn("basic_rate", self.helpers.create_material_receipt.call_args.kwargs["items"][0])
+		# The typed cost is not used; the last price paid is
+		self.assertEqual(
+			self.helpers.create_material_receipt.call_args.kwargs["items"][0]["basic_rate"], 30.0
+		)
+
+	def test_no_cost_given_uses_the_last_price_paid_never_the_selling_price(self):
+		self.into()
+		self.assertEqual(
+			self.helpers.create_material_receipt.call_args.kwargs["items"][0]["basic_rate"], 30.0
+		)
+
+	def test_with_no_cost_and_none_known_it_asks_for_one(self):
+		self.stub("_known_costs", lambda code: (None, None))
+		result = self.into()
+		self.assertEqual((result["success"], result["error_type"]), (False, "cost_required"))
+		self.helpers.create_material_receipt.assert_not_called()
 
 	def test_a_bad_quantity_is_refused_before_anything_is_written(self):
 		for bad in (0, "x", -4):

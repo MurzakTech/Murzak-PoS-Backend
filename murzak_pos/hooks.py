@@ -104,6 +104,8 @@ after_migrate = [
 	"murzak_pos.api.batch_order.pick_earliest_expiry_first",
 	# Dates and times in Kenya's time, not Frappe's India default (api/shop_timezone.py)
 	"murzak_pos.api.shop_timezone.use_kenya_time",
+	# Kenyan shillings read "KES" in the ERP too, as in the POS, not ERPNext's "Sh" (api/currency_symbol.py)
+	"murzak_pos.api.currency_symbol.use_kes_symbol",
 ]
 
 # before_install = "murzak_pos.install.before_install"
