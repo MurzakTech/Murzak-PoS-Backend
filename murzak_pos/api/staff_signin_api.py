@@ -16,7 +16,7 @@ from murzak_pos.api.access_control import require_manager
 from murzak_pos.api.payment_gateway_common import get_user_companies
 from murzak_pos.api.role_tiers import OWNER_ROLES
 
-PROTECTED_USERS = ("Administrator", "Guest")
+PROTECTED_USERS = ("administrator", "guest")  # compared in lower case, as the email is lowered first
 
 
 def email_ready() -> bool:
