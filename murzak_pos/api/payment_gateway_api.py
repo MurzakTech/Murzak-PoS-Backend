@@ -270,9 +270,19 @@ def _gateway_modes(company: str) -> dict:
 		as_dict=True,
 	)
 	if mpesa and mpesa.mode_of_payment:
+		from murzak_pos.api import mpesa_ready
+		from murzak_pos.api.mpesa_client import get_secret
+
+		doc = frappe.get_doc("MPESA Settings", mpesa.name)
+		problem = mpesa_ready.prompt_problem(
+			{field: bool(get_secret(doc, field)) for field, _words in mpesa_ready.NEEDED}
+		)
 		modes[mpesa.mode_of_payment] = {
 			"gateway": "mpesa",
 			"settings": mpesa.name,
+			# Can a prompt be sent to the customer's phone? When not, the till offers the M-Pesa code only
+			"prompt_ready": problem is None,
+			"prompt_problem": problem,
 			"allow_manual_code": cint(mpesa.allow_manual_code),
 			"c2b_enabled": cint(mpesa.enable_c2b),
 			"pay_to": mpesa.till_number or mpesa.shortcode,

@@ -59,6 +59,13 @@ def _bool(value) -> int:
 	return 1 if value else 0
 
 
+def plain_message(e: Exception) -> str:
+	"""An M-Pesa client error's own words, without markup or line breaks."""
+	from murzak_pos.api.friendly_errors import clean
+
+	return clean(e) or _("The M-Pesa request failed. Please try again.")
+
+
 def _error_response(e: Exception) -> dict:
 	if isinstance(e, MpesaAuthenticationError):
 		code, kind = "MPESA_AUTHENTICATION_ERROR", "AuthenticationError"
@@ -68,7 +75,10 @@ def _error_response(e: Exception) -> dict:
 		code, kind = "MPESA_CLIENT_ERROR", "ClientError"
 	else:
 		code, kind = "UNEXPECTED_ERROR", "Exception"
-	return {"success": False, "error_code": code, "error_type": kind, "message": safe_error_message(e)}
+	# The M-Pesa client writes its messages for people ("M-Pesa is not set up for ...", "Enter the passkey ..."), so they
+	# are shown as they are; anything else goes through the general rule that hides internal detail
+	message = plain_message(e) if isinstance(e, MpesaClientError) else safe_error_message(e)
+	return {"success": False, "error_code": code, "error_type": kind, "message": message}
 
 
 def _get_settings_doc(company: str):

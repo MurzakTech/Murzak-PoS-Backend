@@ -136,15 +136,16 @@ def get_sale(id, doctype=None):
 	tier = role_tiers.get_tier()
 	if tier is None:
 		frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
-	# A sale of another business is refused whichever kind of document it is; a number that is not a document
-	# of that kind has no owner recorded and passes, and the call then says it was not found
-	ensure_record_access("POS Invoice", id)
-	ensure_record_access("Sales Invoice", id)
-
 	try:
 		doctype = rules.normalize_doctype(doctype)
 	except rules.ListError as error:
 		_refuse_list(error.code)
+	# Only the running number was typed (0001, #47): find the newest sale of the person's own businesses that ends so
+	id = _complete_number(id, doctype) or id
+	# A sale of another business is refused whichever kind of document it is; a number that is not a document
+	# of that kind has no owner recorded and passes, and the call then says it was not found
+	ensure_record_access("POS Invoice", id)
+	ensure_record_access("Sales Invoice", id)
 	kind = _kind_of(id, doctype)
 	if kind is None:
 		return _not_found(id)
@@ -438,6 +439,30 @@ def _not_found(id):
 		"message": _("Sale {0} was not found.").format(id),
 		"error_type": "not_found",
 	}
+
+
+def _complete_number(typed, doctype):
+	"""The full name of the newest submitted sale, in a business the person belongs to, whose number ends with what was typed."""
+	tail = rules.short_sale_number(typed)
+	if not tail:
+		return None
+	from murzak_pos.api.payment_gateway_common import get_user_companies
+
+	companies = list(get_user_companies() or [])
+	if not companies:
+		return None
+	best = None
+	for kind in (doctype,) if doctype else rules.KINDS:
+		rows = frappe.get_all(
+			kind,
+			filters={"docstatus": 1, "company": ["in", companies], "name": ["like", f"%-{tail}"]},
+			fields=["name", "posting_date", "creation"],
+			order_by="posting_date desc, creation desc",
+			limit_page_length=1,
+		)
+		if rows and (best is None or (rows[0].posting_date, rows[0].creation) > (best.posting_date, best.creation)):
+			best = rows[0]
+	return best.name if best else None
 
 
 def _kind_of(id, doctype):

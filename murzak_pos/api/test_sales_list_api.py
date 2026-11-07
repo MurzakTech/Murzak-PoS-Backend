@@ -2117,3 +2117,18 @@ class TestPaymentRules(unittest.TestCase):
 	def test_money_in_a_message(self):
 		self.assertEqual(rules.money_text(1000), "KES 1,000")
 		self.assertEqual(rules.money_text(250.5), "KES 250.50")
+
+
+class TestShortSaleNumber(unittest.TestCase):
+	def test_only_a_running_number_is_completed(self):
+		from murzak_pos.api import sales_list_calc as rules
+
+		self.assertEqual(rules.short_sale_number("0001"), "00001")
+		self.assertEqual(rules.short_sale_number("#47"), "00047")
+		self.assertEqual(rules.short_sale_number(" 00050 "), "00050")
+
+	def test_a_full_name_or_other_text_is_left_alone(self):
+		from murzak_pos.api import sales_list_calc as rules
+
+		for text in ("ACC-PSINV-2026-00050", "abc", "", None, "1234567"):
+			self.assertIsNone(rules.short_sale_number(text), text)
