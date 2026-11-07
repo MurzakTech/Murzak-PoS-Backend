@@ -24,6 +24,13 @@ class TestSetupHealth(unittest.TestCase):
 		report = build_report(HEALTHY)
 		self.assertTrue(report["ok"])
 		self.assertEqual(report["summary"], {"green": 9, "amber": 0, "red": 0})
+		self.assertEqual(report["percent"], 100)
+		self.assertEqual(report["total"], 9)
+
+	def test_the_percentage_is_the_share_of_checks_that_are_fine(self):
+		report = build_report({**HEALTHY, "scheduler": "off", "etims": "absent", "shop_type": False})
+		self.assertEqual(report["summary"]["green"], 6)
+		self.assertEqual(report["percent"], 67)
 
 	def test_the_scheduler_off_is_red_and_unknown_is_amber(self):
 		self.assertEqual(status(build_report({**HEALTHY, "scheduler": "off"}), "scheduler"), "red")

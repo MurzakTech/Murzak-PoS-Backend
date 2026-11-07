@@ -191,7 +191,7 @@ def build_report(facts: dict) -> dict:
 				"Shop type",
 				AMBER,
 				"Your shop type is not set, so no starter products are offered.",
-				"Ask your support contact to set it.",
+				"Settings > Business > Shop type.",
 			)
 		)
 
@@ -211,8 +211,12 @@ def build_report(facts: dict) -> dict:
 	counts = {GREEN: 0, AMBER: 0, RED: 0}
 	for item in checks:
 		counts[item["status"]] += 1
+	total = len(checks)
 	return {
 		"checks": checks,
 		"summary": {"green": counts[GREEN], "amber": counts[AMBER], "red": counts[RED]},
 		"ok": counts[RED] == 0,
+		# How much is in place: the share of checks that are fine, whole numbers
+		"percent": round(100 * counts[GREEN] / total) if total else 0,
+		"total": total,
 	}
