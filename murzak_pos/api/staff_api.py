@@ -185,7 +185,8 @@ def create_staff_user(
         staff_user.last_name = last_name
         staff_user.mobile_no = phone
         staff_user.enabled = 1 if enabled else 0
-        staff_user.send_welcome_email = 1 if send_welcome_email else 0
+        # Frappe's own welcome mail is never used: it can fail the whole creation. The welcome email is sent below, after the person exists.
+        staff_user.send_welcome_email = 0
         staff_user.user_type = "System User"
         staff_user.new_password = password
         staff_user.insert(ignore_permissions=True)
@@ -236,10 +237,18 @@ def create_staff_user(
             )
             assigned_industry = None
         
+        # The welcome email, once the person exists and has their role. It never stops the person being added.
+        welcome = None
+        if send_welcome_email:
+            from murzak_pos.api.staff_signin_api import send_welcome
+
+            welcome = send_welcome(staff_user.name, company)
+
         # Set HTTP status code for successful creation
         frappe.local.response["http_status_code"] = 201
         
         return {
+            "welcome_email": welcome,
             "staff_user": {
                 "name": staff_user.name,
                 "email": staff_user.email,
