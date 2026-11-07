@@ -561,3 +561,21 @@ class TestDirectBill(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestTaxRateOf(unittest.TestCase):
+	def test_only_on_net_total_rows_count(self):
+		from murzak_pos.api import purchases_list_calc as rules
+
+		rows = [
+			{"charge_type": "On Net Total", "rate": 16},
+			{"charge_type": "Actual", "rate": 0},
+			{"charge_type": "On Previous Row Amount", "rate": 5},
+		]
+		self.assertEqual(rules.tax_rate_of(rows), 16.0)
+
+	def test_none_means_zero(self):
+		from murzak_pos.api import purchases_list_calc as rules
+
+		self.assertEqual(rules.tax_rate_of([]), 0.0)
+		self.assertEqual(rules.tax_rate_of(None), 0.0)

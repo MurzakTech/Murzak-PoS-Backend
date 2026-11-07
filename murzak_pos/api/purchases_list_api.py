@@ -717,6 +717,22 @@ def _panel(doc) -> dict:
 	return data
 
 
+@frappe.whitelist()
+def get_purchase_tax_rate(company=None):
+	"""The percentage the business's default purchase tax adds to a bill, so the New purchase form can show tax as it is typed."""
+	_require_buyer()
+	company = resolve_company(company)
+	template = frappe.db.get_value(
+		"Purchase Taxes and Charges Template", {"company": company, "is_default": 1, "disabled": 0}, "name"
+	)
+	if not template:
+		return {"success": True, "data": {"rate": 0.0, "template": None}}
+	rows = frappe.get_all(
+		"Purchase Taxes and Charges", filters={"parent": template}, fields=["charge_type", "rate"]
+	)
+	return {"success": True, "data": {"rate": rules.tax_rate_of(rows), "template": template}}
+
+
 # --- receive goods: the goods received note, the stock and the bill, together -------------------------
 
 
