@@ -115,5 +115,6 @@ class TestWelcomeEmail(unittest.TestCase):
 		self.assertTrue(result["sent"])
 		kwargs = send.call_args.kwargs
 		self.assertEqual(kwargs["recipients"], ["amina@shop.test"])
+		self.assertIs(kwargs["delayed"], False)  # sent now, not left in the email queue
 		self.assertIn("https://shop.pos.example", kwargs["message"])
 		self.assertNotIn("password:", kwargs["message"].lower())

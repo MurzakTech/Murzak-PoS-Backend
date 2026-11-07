@@ -13,6 +13,7 @@ from murzak_pos.api.currency_symbol import use_kes_symbol
 from murzak_pos.api.language_api import enable_languages
 from murzak_pos.api.print_api import install_print_formats
 from murzak_pos.api.role_tiers import ensure_owner_role
+from murzak_pos.api.scheduler_setup import ensure_scheduler_on
 from murzak_pos.api.shop_timezone import use_kenya_time
 
 
@@ -24,3 +25,4 @@ def after_install() -> None:
 	pick_earliest_expiry_first()
 	use_kenya_time()
 	use_kes_symbol()
+	ensure_scheduler_on()

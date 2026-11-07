@@ -106,6 +106,8 @@ after_migrate = [
 	"murzak_pos.api.shop_timezone.use_kenya_time",
 	# Kenyan shillings read "KES" in the ERP too, as in the POS, not ERPNext's "Sh" (api/currency_symbol.py)
 	"murzak_pos.api.currency_symbol.use_kes_symbol",
+	# Background jobs and the email queue need the scheduler on (api/scheduler_setup.py)
+	"murzak_pos.api.scheduler_setup.ensure_scheduler_on",
 ]
 
 # before_install = "murzak_pos.install.before_install"
