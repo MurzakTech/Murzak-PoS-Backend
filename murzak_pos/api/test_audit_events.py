@@ -107,7 +107,7 @@ class TestQuietAuditWording(unittest.TestCase):
 		result = describe_version(version([["update_stock", 1, 0], ["allow_rate_change", 0, 1], ["allow_partial_payment", 0, 0]]))
 		self.assertEqual(
 			result["summary"],
-			"Turned off ‘Take sold items out of stock’; Turned on ‘Let cashiers change prices at the till’",
+			"Turned off 'Take sold items out of stock'; Turned on 'Let cashiers change prices at the till'",
 		)
 
 	def test_pos_profile_is_audited_under_settings(self):

@@ -154,7 +154,7 @@ def describe_version(raw) -> dict[str, str]:
 		elif field in SWITCH_LABELS:
 			was_on, now_on = not _is_blank_like(old), not _is_blank_like(new)
 			if was_on != now_on:  # a switch left as it was is not a change
-				parts.append(f"Turned {'on' if now_on else 'off'} \u2018{SWITCH_LABELS[field]}\u2019")
+				parts.append(f"Turned {'on' if now_on else 'off'} '{SWITCH_LABELS[field]}'")
 		elif _is_blank_like(old) and _is_blank_like(new):
 			continue  # 0 to empty, or empty to 0.0: the same "nothing" stored another way, not a change anyone made
 		else:
