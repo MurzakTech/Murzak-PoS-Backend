@@ -8,7 +8,7 @@ from erpnext.stock.get_item_details import get_item_details as erpnext_get_item_
 from frappe import _, as_json
 from frappe.query_builder import DocType, functions as fn
 from frappe.utils import flt, nowdate
-from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.access_control import ensure_record_access, require_stock_role
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.error_handler import safe_error_message
 
@@ -1718,6 +1718,7 @@ def return_items():
         "return_notes": "Packaging damaged"
     }
     """
+    require_stock_role()
     if frappe.request.method != "POST":
         frappe.throw(_("Only POST allowed"), frappe.PermissionError)
 
