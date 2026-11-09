@@ -41,6 +41,7 @@ class TestCancellingAPurchaseOrder(unittest.TestCase):
 			patch.object(frappe, "log_error", create=True),
 			patch.object(frappe, "get_traceback", create=True, return_value="trace"),
 			patch.object(stock, "ensure_record_access"),
+			patch.object(stock, "require_stock_role"),  # who may cancel is tested in test_purchasing_roles
 		):
 			function = getattr(stock.cancel_purchase_order, "__wrapped__", stock.cancel_purchase_order)
 			return function("PO-0001", **kwargs)
