@@ -666,6 +666,7 @@ def create_pr_from_po(purchase_order, items=None, submit=1, external_ref=None):
 
     """
 
+    require_stock_role()
     ensure_record_access("Purchase Order", purchase_order)
     response = {
         "success": False,
@@ -813,6 +814,7 @@ def cancel_purchase_order(purchase_order, force=0, reason=None):
 
     Answers { success, message, data, errors }.
     """
+    require_stock_role()
     response = {
         "success": False,
         "message": "",

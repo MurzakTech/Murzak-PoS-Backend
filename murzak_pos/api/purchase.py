@@ -25,7 +25,7 @@ from erpnext.stock.get_item_details import get_item_details
 import frappe
 from frappe.model.document import Document
 from frappe.exceptions import ValidationError
-from murzak_pos.api.access_control import ensure_record_access, require_stock_role
+from murzak_pos.api.access_control import ensure_record_access, require_billing_role, require_stock_role
 from murzak_pos.api.business_lists import first_mode_of_payment, mode_of_payment_usable
 from murzak_pos.api.payment_gateway_common import resolve_company
 
@@ -115,6 +115,7 @@ def create_purchase_order():
     POS-safe, normalized, ERPNext v15 compatible
     """
 
+    require_stock_role()
     try:
         data = frappe.local.form_dict
 
@@ -335,6 +336,7 @@ def submit_purchase_order():
     Submit an existing Purchase Order (POS-safe)
     """
 
+    require_stock_role()
     data = frappe.local.form_dict
     lpo_no = data.get("lpo_no") or data.get("purchase_order")
 
@@ -668,6 +670,7 @@ def resolve_warehouse(item, company):
 
 @frappe.whitelist(methods=["POST"])
 def create_grn():
+    require_stock_role()
     frappe.logger().debug("Create GRN. Starting...")
     print(f"\n\nCreate GRN. Starting...")
 
@@ -1331,6 +1334,7 @@ def create_purchase_invoice(reference_type, reference_name):
     :param reference_name: The name of the Purchase Order or Purchase Receipt
     :return: A dict containing the status and the name of the created Purchase Invoice
     """
+    require_billing_role()
     if reference_type in ['Purchase Order', 'Purchase Receipt']:
         ensure_record_access(reference_type, reference_name)
     try:
@@ -1463,6 +1467,7 @@ def create_purchase_invoice_from_grn(
             "supplier_invoice_filename": "supplier_invoice.pdf"
         }
     """
+    require_billing_role()
     ensure_record_access("Purchase Receipt", grn_no)
     try:
         # Validate GRN exists
@@ -2069,6 +2074,7 @@ def update_purchase_invoice(
             "supplier_invoice_filename": "updated_invoice.pdf"
         }
     """
+    require_billing_role()
     try:
         # Validate invoice number
         if not invoice_no:
@@ -2282,6 +2288,7 @@ def create_delivery_note_from_po(purchase_order_name):
     """
     Creates a Delivery Note from a Purchase Order
     """
+    require_stock_role()
     ensure_record_access("Purchase Order", purchase_order_name)
     try:
         # Fetch the Purchase Order document
@@ -2365,6 +2372,7 @@ def pay_purchase_invoice(
     Returns:
         dict: Payment Entry details and updated invoice status
     """
+    require_billing_role()
     ensure_record_access("Purchase Invoice", invoice_no)
     try:
         # Validate purchase invoice exists

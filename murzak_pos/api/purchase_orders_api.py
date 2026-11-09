@@ -15,11 +15,16 @@ from frappe import _
 from frappe.utils import cint, flt, getdate, today
 
 from murzak_pos.api import approvals_api
-from murzak_pos.api.access_control import ensure_record_access, require_any_role, require_stock_role
+from murzak_pos.api.access_control import (
+	BILLING_ROLES,
+	ensure_record_access,
+	require_any_role,
+	require_stock_role,
+)
 from murzak_pos.api.payment_gateway_common import resolve_company
 
 # People who may cancel a supplier invoice, which reverses the stock and the books
-CANCEL_PURCHASE_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager", "Purchase Manager"})
+CANCEL_PURCHASE_ROLES = BILLING_ROLES
 SETTINGS_DOCTYPE = "Navari KRA eTims Settings"
 
 

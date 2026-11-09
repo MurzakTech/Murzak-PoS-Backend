@@ -69,6 +69,10 @@ LOYALTY_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager
 TRANSFER_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager", "Stock User"})
 
 
+# Who may handle supplier bills and pay suppliers: the owner, the accountants and the purchase manager (the same people who
+# may cancel a supplier invoice)
+BILLING_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager", "Purchase Manager"})
+
 # Who may add or change a store: the owner and the stock managers
 STORE_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager"})
 
@@ -212,6 +216,11 @@ def require_shared_record_manageable(doctype: str, name) -> None:
 		),
 		frappe.PermissionError,
 	)
+
+
+def require_billing_role() -> None:
+	"""Supplier bills and payments to suppliers."""
+	require_any_role(BILLING_ROLES, _("handle supplier bills and payments"))
 
 
 def require_stock_role() -> None:
