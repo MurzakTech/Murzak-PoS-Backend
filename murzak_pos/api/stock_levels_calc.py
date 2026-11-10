@@ -35,6 +35,7 @@ from murzak_pos.api.expiry_rules import CRITICAL, EXPIRED, SOON
 
 TABS = ("overview", "low", "movements", "expiry")
 LEVELS = ("ok", "low", "out")
+CHECK = "check"  # a status filter on the overview: products whose figures need a look (see stock_flags)
 MOVEMENT_STATUSES = ("draft", "submitted", "cancelled")
 MOVEMENT_KINDS = ("ledger", "entry", "receipt", "issue", "transfer")
 EXPIRY_STATES = ("expired", "critical", "soon")
@@ -183,7 +184,7 @@ def clean_status(tab: str, status) -> str | None:
 	if not status:
 		return None
 	allowed = {
-		"overview": LEVELS,
+		"overview": (*LEVELS, CHECK),
 		"low": LEVELS,
 		"movements": MOVEMENT_STATUSES,
 		"expiry": EXPIRY_STATES,
@@ -304,7 +305,51 @@ def tracks_expiry(batches_with_expiry, details_with_expiry) -> bool:
 # --- the stock list --------------------------------------------------------------------------------------
 
 
-def build_stock_rows(bins, low_rows, sold_items, item_info=None, tracked_items=None) -> list[dict]:
+def stock_flags(total, value, price) -> list[str]:
+	"""
+	What is wrong with a product's figures, in keys the page turns into words. Only a product that holds stock can have
+	a cost or price problem; negative stock is a problem on its own.
+
+	negative    the stock is below zero, so the count and the value cannot be trusted
+	no_cost     it holds stock but no cost is recorded, so the stock value is too low
+	no_price    it holds stock but has no selling price, so it cannot be sold at a known price
+	below_cost  it is priced below what the stock cost
+	"""
+	total, value, price = num(total), num(value), num(price)
+	flags = []
+	if total < 0:
+		flags.append("negative")
+	if total > 0:
+		if value <= 0:
+			flags.append("no_cost")
+		if price <= 0:
+			flags.append("no_price")
+		if price > 0 and value > 0 and value / total > price:
+			flags.append("below_cost")
+	return flags
+
+
+def selling_figures(total, value, price) -> dict:
+	"""
+	The selling side of a product: its price, what the stock would sell for, the margin on it, and its warnings.
+	The margin is left out (None) when there is no cost to compare with, instead of showing a made-up 100%.
+	"""
+	total, value, price = num(total), num(value), num(price)
+	price = money(price) if price > 0 else 0.0
+	holding = total > 0
+	retail = money(total * price) if holding and price > 0 else 0.0
+	margin = None
+	if holding and price > 0 and value > 0:
+		margin = round((price - value / total) / price * 100, 1)
+	return {
+		"price": price,
+		"retail_value": retail,
+		"margin_pct": margin,
+		"flags": stock_flags(total, value, price),
+	}
+
+
+def build_stock_rows(bins, low_rows, sold_items, item_info=None, tracked_items=None, prices=None) -> list[dict]:
 	"""
 	One row per product from the store-level stock rows.
 
@@ -314,6 +359,8 @@ def build_stock_rows(bins, low_rows, sold_items, item_info=None, tracked_items=N
 	item_info   item_code -> item_name, item_group, stock_uom, for sold products that have no stock record yet
 	tracked_items  item_code, item_name, item_group, stock_uom of every enabled stock product the business sells. They
 	            are listed even with no stock record, so "out of stock" here is the same count as on the Products page.
+	prices      item_code -> selling price per stock unit. When given, each row also carries its selling figures
+	            (see selling_figures); without it the rows are as they always were.
 	"""
 	item_info = item_info or {}
 	low = {row["item_code"]: row for row in overview_calc.running_low_items(low_rows)}
@@ -370,20 +417,21 @@ def build_stock_rows(bins, low_rows, sold_items, item_info=None, tracked_items=N
 		if total == 0 and code not in sold and code not in tracked:
 			continue  # no stock and not selling: not part of the stock list
 		level = "out" if total <= 0 else "low" if code in low else "ok"
-		rows.append(
-			{
-				**product,
-				"qty": total,
-				"value": money(product["value"]),
-				"level": level,
-				"warning_level": qty(low[code]["warning_level"]) if level == "low" else None,
-			}
-		)
+		row = {
+			**product,
+			"qty": total,
+			"value": money(product["value"]),
+			"level": level,
+			"warning_level": qty(low[code]["warning_level"]) if level == "low" else None,
+		}
+		if prices is not None:
+			row.update(selling_figures(total, product["value"], (prices or {}).get(code)))
+		rows.append(row)
 	return sorted(rows, key=lambda r: (str(r["item_name"]).lower(), str(r["item_code"])))
 
 
 def filter_stock_rows(rows, search=None, category=None, status=None) -> list[dict]:
-	"""Rows whose name or code contains `search`, in `category`, at the `status` level."""
+	"""Rows whose name or code contains `search`, in `category`, at the `status` level (or, for "check", with a warning)."""
 	needle = clean_text(search, 80).lower()
 	result = []
 	for row in rows or []:
@@ -391,7 +439,10 @@ def filter_stock_rows(rows, search=None, category=None, status=None) -> list[dic
 			continue
 		if category and row.get("category") != category:
 			continue
-		if status and row.get("level") != status:
+		if status == CHECK:
+			if not row.get("flags"):
+				continue
+		elif status and row.get("level") != status:
 			continue
 		result.append(row)
 	return result
@@ -425,12 +476,19 @@ def tiles(rows, show_value: bool) -> dict:
 	}
 	if show_value:
 		result["stock_value"] = money(sum(num(r.get("value")) for r in rows))
+		if any("flags" in r for r in rows):
+			priced = [r for r in rows if num(r.get("retail_value")) > 0]
+			retail = sum(num(r.get("retail_value")) for r in priced)
+			result["retail_value"] = money(retail)
+			result["potential_profit"] = money(retail - sum(num(r.get("value")) for r in priced))
+			result["check"] = sum(1 for r in rows if r.get("flags"))
 	return result
 
 
 def strip_costs(rows) -> list[dict]:
 	"""The rows without any cost figure (for a cashier)."""
-	return [{k: v for k, v in row.items() if k not in ("value", "valuation_rate")} for row in rows or []]
+	hidden = ("value", "valuation_rate", "retail_value", "margin_pct", "flags")
+	return [{k: v for k, v in row.items() if k not in hidden} for row in rows or []]
 
 
 def categories(rows) -> list[str]:
