@@ -62,6 +62,25 @@ class TestEveryCostReportChecksTheRole(unittest.TestCase):
 				self.assertNotIn("require_access", ast.unparse(first_statement(node)))
 
 
+class TestTheCopiesInTheStockModule(unittest.TestCase):
+	"""stock.py carries its own copies of four of these reports; they are open to the same callers, so they check the same."""
+
+	def test_each_copy_starts_with_the_check(self):
+		tree = ast.parse(open(os.path.join(API, "stock.py")).read())
+		wanted = {
+			"inventory_summary_report",
+			"inventory_movement_report",
+			"inventory_value_report",
+			"stock_aging_report",
+		}
+		found = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in wanted}
+		self.assertEqual(set(found), wanted)
+		for name, node in found.items():
+			with self.subTest(report=name):
+				actual = ast.unparse(first_statement(node).value).replace("'", '"')
+				self.assertEqual(actual, 'role_tiers.require_access("cost_of_goods")')
+
+
 class TestWhoPasses(unittest.TestCase):
 	def as_roles(self, roles, capability):
 		with (
