@@ -847,6 +847,7 @@ class StockCase(unittest.TestCase):
 			"_low_rows", lambda company, store: [r for r in LOW if not store or r["warehouse"] == store]
 		)
 		self.stub("_sold_items", lambda company, store: list(SOLD))
+		self.stub("_selling_prices", lambda codes: None)  # the selling figures have their own tests
 		self.stub("_item_info", lambda codes: {})
 		self.stub("_locations", lambda company: list(locations))
 		self.stub("_features", lambda company: {"expiry": False, "locations": len(locations)})

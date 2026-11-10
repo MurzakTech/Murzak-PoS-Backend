@@ -225,6 +225,8 @@ def get_stock_levels(
 		if not show_value:
 			data["rows"] = calc.strip_costs(data["rows"])
 	else:
+		if status == calc.CHECK and not show_value:
+			status = None  # the warnings are about cost, which this person may not see
 		answer, cached = _kept(company, store, tab, None, lambda: {"rows": _stock_rows(company, store)})
 		scoped = calc.filter_stock_rows(answer["rows"], search, category)
 		listed = calc.low_stock_rows(scoped) if tab == "low" else scoped
@@ -284,8 +286,35 @@ def _stock_rows(company, store) -> list[dict]:
 	from murzak_pos.api.stock_catalogue import tracked_items
 
 	return calc.build_stock_rows(
-		bins, _low_rows(company, store), sold, _item_info(missing), tracked_items=tracked_items(company)
+		bins,
+		_low_rows(company, store),
+		sold,
+		_item_info(missing),
+		tracked_items=tracked_items(company),
+		prices=_selling_prices({row["item_code"] for row in bins}),
 	)
+
+
+def _selling_prices(codes) -> dict:
+	"""item_code -> the selling price per stock unit: the price list's, else the product's standard rate."""
+	from murzak_pos.api import products_list_api as products
+	from murzak_pos.api.products_list_calc import pick_price
+
+	codes = sorted(codes)
+	if not codes:
+		return {}
+	price_list = products._selling_price_list()
+	found = {}
+	for start in range(0, len(codes), 500):
+		chunk = codes[start : start + 500]
+		prices = products._prices(chunk, price_list)
+		items = frappe.get_all(
+			"Item", filters={"name": ["in", chunk]}, fields=["name", "stock_uom", "standard_rate"]
+		)
+		for item in items:
+			price, _source = pick_price(prices.get(item["name"]), item["stock_uom"], item["standard_rate"])
+			found[item["name"]] = price
+	return found
 
 
 def _bin_rows(company, store) -> list[dict]:
