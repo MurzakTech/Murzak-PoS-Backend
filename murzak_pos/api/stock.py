@@ -15,6 +15,7 @@ from frappe.model.workflow import get_workflow_name, apply_workflow
 from murzak_pos.api.api_response import pos_response
 from murzak_pos.api.error_handler import handle_pos_exception
 from murzak_pos.api.constants import POSErrorCode
+from murzak_pos.api import role_tiers
 from murzak_pos.api.access_control import ensure_record_access, require_stock_count_role, require_stock_role, require_transfer_role
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.error_handler import safe_error_message
@@ -2123,6 +2124,7 @@ def inventory_summary_report(company: str | None = None):
     Returns an inventory summary report for the caller's business.
     """
     # Only this business's stores: Bin has no company, its warehouse does
+    role_tiers.require_access("cost_of_goods")
     company = resolve_company(company)
     data = frappe.db.sql("""
         SELECT
@@ -2149,6 +2151,7 @@ def inventory_movement_report(start_date: str, end_date: str, company: str | Non
     """
     Returns a movement report for the caller's business between the start and end date.
     """
+    role_tiers.require_access("cost_of_goods")
     company = resolve_company(company)
     # The item and quantity are on the entry's lines; only submitted entries moved stock
     data = frappe.db.sql("""
@@ -2176,6 +2179,7 @@ def inventory_value_report(company: str | None = None):
     """
     Returns the total inventory value by warehouse for the caller's business.
     """
+    role_tiers.require_access("cost_of_goods")
     company = resolve_company(company)
     data = frappe.db.sql("""
         SELECT
@@ -2202,6 +2206,7 @@ def stock_aging_report(company: str | None = None):
     """
     Returns a stock aging report for the caller's business based on the stock's age.
     """
+    role_tiers.require_access("cost_of_goods")
     company = resolve_company(company)
     data = frappe.db.sql("""
         SELECT

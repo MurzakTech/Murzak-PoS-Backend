@@ -26,6 +26,7 @@ class ScopeCase(unittest.TestCase):
 			patch.object(frappe, "db", self.db, create=True),
 			patch.object(frappe, "get_all", return_value=[], create=True),
 			patch("frappe.translate.get_all_translations", return_value={}),
+			patch.object(stock.role_tiers, "require_access"),  # who may open them is tested in test_reports_cost_gate
 		):
 			p.start()
 			self.addCleanup(p.stop)

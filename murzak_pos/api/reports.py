@@ -9,6 +9,7 @@ from frappe.query_builder import DocType, functions as fn
 from erpnext.accounts.utils import get_balance_on
 
 from erpnext.accounts.report.profit_and_loss_statement.profit_and_loss_statement import execute
+from murzak_pos.api import role_tiers
 from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.error_handler import safe_error_message
@@ -31,6 +32,7 @@ def inventory_summary_report(
         dict: Inventory summary data by warehouse
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -111,6 +113,7 @@ def inventory_movement_report(
         dict: Inventory movement data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -195,6 +198,7 @@ def stock_aging_report(
         dict: Stock aging data with movement rates
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -350,6 +354,7 @@ def inventory_value_report(
         dict: Inventory value data by warehouse
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -721,6 +726,7 @@ def inventory_value_by_category_report(
         dict: Inventory value by category data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -846,6 +852,7 @@ def inventory_cost_method_comparison_report(
         dict: Comparison data for different cost methods
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -958,6 +965,7 @@ def inventory_value_trends_report(
         dict: Inventory value trends data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -1105,6 +1113,7 @@ def inventory_turnover_report(
         dict: Inventory turnover data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -1258,6 +1267,7 @@ def inventory_days_on_hand_report(
         dict: Days on hand data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -1438,6 +1448,7 @@ def inventory_movement_patterns_report(
         dict: Movement patterns data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -1603,6 +1614,7 @@ def inventory_obsolescence_risk_report(
         dict: Obsolescence risk data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -1773,6 +1785,7 @@ def inventory_aging_recommendations_report(
         dict: Aging recommendations data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -1914,6 +1927,7 @@ def inventory_accuracy_report(
         dict: Inventory accuracy data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -2035,6 +2049,7 @@ def inventory_variance_report(
         dict: Variance analysis data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -2163,6 +2178,7 @@ def inventory_adjustment_trends_report(
         dict: Adjustment trends data
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -2296,6 +2312,7 @@ def inventory_transfer_efficiency_report(
         dict: Transfer efficiency metrics
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", from_warehouse)
@@ -2448,6 +2465,7 @@ def grn_list_report(
         dict: List of GRNs with pagination metadata
     """
     # Refuse a company the caller does not belong to
+    role_tiers.require_access("cost_of_goods")
     if company:
         company = resolve_company(company)
     ensure_record_access("Warehouse", warehouse)
@@ -2597,6 +2615,7 @@ def grn_detail_report(grn_no: str) -> Dict:
     Returns:
         dict: Detailed GRN information including items, PO linkage, and stock status
     """
+    role_tiers.require_access("cost_of_goods")
     ensure_record_access("Purchase Receipt", grn_no)
     try:
         if not grn_no:
@@ -2721,6 +2740,7 @@ def get_profit_and_loss(**kwargs):
     - cost_center, finance_book, accumulated_values, etc.
     """
     
+    role_tiers.require_access("profit")
     frappe.log_error(
         title="P&L API - Incoming Request",
         message=f"Incoming kwargs:\n{frappe.as_json(kwargs, indent=2)}"
