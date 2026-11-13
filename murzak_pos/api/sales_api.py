@@ -844,6 +844,8 @@ def _create_invoice_document(
     extra_remark: str | None = None,
     sales_person: str | None = None,
     dispensing_fields: dict | None = None,
+    order_channel: str | None = None,
+    channel_ref: str | None = None,
 ) -> "frappe.model.document.Document":
     if not company:
         company = _get_default_company()
@@ -924,6 +926,11 @@ def _create_invoice_document(
         doc.remarks = add_to_remarks(doc.get("remarks"), extra_remark)
     # The same record as separate fields, for the dispensing register
     write_dispensing_fields(doc, dispensing_fields or {})
+    # Restaurants: an order taken through a delivery platform (Glovo, Uber Eats, Bolt Food) and its order number
+    channel = " ".join(str(order_channel or "").split())[:60]
+    if channel and doc.meta.has_field("custom_order_channel"):
+        doc.set("custom_order_channel", channel)
+        doc.set("custom_channel_ref", " ".join(str(channel_ref or "").split())[:60])
 
     # Credit the sale to the named sales person, or to the cashier's own when their login is linked to one
     sales_person_api.attach(doc, sales_person)
@@ -988,6 +995,8 @@ def create_sales_invoice(
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
     sales_person: str | None = None,
+    order_channel: str | None = None,
+    channel_ref: str | None = None,
 ) -> Dict:
     """
     Create a Sales Invoice for standard or POS sales.
@@ -1061,6 +1070,8 @@ def create_sales_invoice(
             client_reference=client_reference,
             offline_sold_at=offline_sold_at,
             sales_person=sales_person,
+            order_channel=order_channel,
+            channel_ref=channel_ref,
         )
 
         # Set update_stock flag - CRITICAL for inventory reduction
@@ -1178,6 +1189,8 @@ def create_pos_invoice(
     offline_sold_at: Optional[str] = None,
     dispensing: str | dict | None = None,
     sales_person: str | None = None,
+    order_channel: str | None = None,
+    channel_ref: str | None = None,
 ) -> Dict:
     """
     Create a POS Invoice (used for walk-in POS sales).
@@ -1315,6 +1328,8 @@ def create_pos_invoice(
                 extra_remark=prescription_note,
                 dispensing_fields=prescription["fields"],
                 sales_person=sales_person,
+                order_channel=order_channel,
+                channel_ref=channel_ref,
             )
 
             if receivable_account and hasattr(si, "debit_to"):
@@ -1395,6 +1410,8 @@ def create_pos_invoice(
             extra_remark=prescription_note,
             dispensing_fields=prescription["fields"],
             sales_person=sales_person,
+            order_channel=order_channel,
+            channel_ref=channel_ref,
         )
 
         if receivable_account and hasattr(pi, "debit_to"):

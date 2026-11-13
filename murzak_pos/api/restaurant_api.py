@@ -9,6 +9,8 @@ deleted, and shows on the waiter cash-up.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import frappe
 from frappe import _
 from frappe.rate_limiter import rate_limit
@@ -21,6 +23,7 @@ from murzak_pos.api.access_control import ensure_record_access
 from murzak_pos.api.payment_gateway_common import get_user_companies, resolve_company
 
 VOID = "Till Void"
+TIP = "Till Tip"
 
 
 def _has_void_doctype() -> bool:
@@ -243,7 +246,123 @@ def get_waiter_cashup(
 		if user and user not in waiter_of_user:
 			waiter_of_user[user] = _full_name(user)
 
+	tips = []
+	if frappe.db.table_exists(TIP):
+		filters = {
+			"company": company,
+			"recorded_at": ["between", [get_datetime(day), get_datetime(add_days(day, 1))]],
+		}
+		if warehouse:
+			filters["warehouse"] = warehouse
+		for t in frappe.get_all(
+			TIP,
+			filters=filters,
+			fields=["sales_person", "recorded_by", "amount", "mode_of_payment"],
+			limit_page_length=0,
+		):
+			tips.append(
+				{
+					"waiter": frappe.db.get_value("Sales Person", t.sales_person, "sales_person_name")
+					if t.sales_person
+					else None,
+					"recorded_by": t.recorded_by,
+					"amount": t.amount,
+					"mode": t.mode_of_payment,
+				}
+			)
+			if t.recorded_by and t.recorded_by not in waiter_of_user:
+				waiter_of_user[t.recorded_by] = _full_name(t.recorded_by)
+
 	cash_modes = set(frappe.get_all("Mode of Payment", filters={"type": "Cash"}, pluck="name"))
-	result = rules.cashup(invoices, waiter_of, payments, cash_modes, voids, waiter_of_user)
+	result = rules.cashup(invoices, waiter_of, payments, cash_modes, voids, waiter_of_user, tips)
 	result.update({"company": company, "date": str(day), "outlet": warehouse or None})
 	return {"success": True, "data": result}
+
+
+# --- tips ----------------------------------------------------------------------------------------------------
+
+
+@frappe.whitelist(methods=["POST"])
+@rate_limit(limit=300, seconds=60 * 60)
+def record_tip(
+	amount,
+	mode_of_payment: str,
+	sales_person: str | None = None,
+	invoice: str | None = None,
+	warehouse: str | None = None,
+	company: str | None = None,
+) -> dict:
+	"""
+	Keep a tip a guest left, apart from the sale: it is the staff's money, not the business's takings. It shows on the
+	waiter cash-up under the waiter named (else the person who recorded it).
+	"""
+	company = resolve_company(company)
+	if not frappe.db.table_exists(TIP):
+		frappe.throw(_("Tips cannot be recorded on this site yet. Please ask for the server to be updated."))
+	if warehouse:
+		ensure_record_access("Warehouse", warehouse)
+	tip = round(flt(amount), 2)
+	if tip <= 0 or tip > 1_000_000:
+		frappe.throw(_("Enter the tip as an amount above 0."), frappe.ValidationError)
+	if not mode_of_payment or not frappe.db.exists("Mode of Payment", mode_of_payment):
+		frappe.throw(_("Choose how the tip was paid."), frappe.ValidationError)
+	if sales_person:
+		owner = frappe.db.get_value("Sales Person", sales_person, "custom_company")
+		if owner != company:
+			frappe.throw(_("That waiter does not work for this business."), frappe.PermissionError)
+	doc = frappe.get_doc(
+		{
+			"doctype": TIP,
+			"company": company,
+			"warehouse": warehouse or None,
+			"invoice": str(invoice or "")[:140],
+			"amount": tip,
+			"mode_of_payment": mode_of_payment,
+			"sales_person": sales_person or None,
+			"recorded_by": frappe.session.user,
+			"recorded_at": now_datetime(),
+		}
+	)
+	doc.insert(ignore_permissions=True)
+	return {"success": True, "message": _("Tip recorded."), "data": {"tip": doc.name, "amount": tip}}
+
+
+# --- delivery platforms --------------------------------------------------------------------------------------
+
+_CHANNEL_SQL = """
+	select inv.custom_order_channel as channel, count(*) as orders, sum(inv.base_grand_total) as sales
+	from `tab{doctype}` inv
+	where inv.company = %(company)s and inv.docstatus = 1 and inv.posting_date between %(start)s and %(end)s
+		and ifnull(inv.custom_order_channel, '') != '' {extra}
+	group by inv.custom_order_channel
+"""
+
+
+@frappe.whitelist()
+def get_platform_sales(company: str | None = None, month: str | None = None) -> dict:
+	"""A month's sales through each delivery platform, its commission and the payout to expect. Owner and managers."""
+	from murzak_pos.api import levy_rules
+	from murzak_pos.api.overview_calc import nairobi_today
+	from murzak_pos.api.restaurant_settings_api import read_settings
+
+	role_tiers.require_access("profit")
+	company = resolve_company(company)
+	try:
+		start, end, label = levy_rules.month_range(month, nairobi_today(datetime.now(timezone.utc)))
+	except ValueError:
+		frappe.throw(_("Choose a month that has started, such as 2026-10."), frappe.ValidationError)
+	rows = {}
+	for doctype, extra in (("POS Invoice", ""), ("Sales Invoice", "and inv.is_consolidated = 0")):
+		if not frappe.get_meta(doctype).has_field("custom_order_channel"):
+			continue
+		for r in frappe.db.sql(
+			_CHANNEL_SQL.format(doctype=doctype, extra=extra),
+			{"company": company, "start": start, "end": end},
+			as_dict=True,
+		):
+			entry = rows.setdefault(r.channel, {"channel": r.channel, "orders": 0, "sales": 0.0})
+			entry["orders"] += int(r.orders or 0)
+			entry["sales"] += flt(r.sales)
+	data = rules.platform_report(list(rows.values()), read_settings(company)["platforms"])
+	data.update({"company": company, "month": label, "from_date": str(start), "to_date": str(end)})
+	return {"success": True, "data": data}

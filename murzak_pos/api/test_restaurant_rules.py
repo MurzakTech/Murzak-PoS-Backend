@@ -114,3 +114,39 @@ class TestCashup(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestTipsAndPlatforms(unittest.TestCase):
+	def test_tips_go_to_the_waiter_named_else_who_recorded_them_and_are_kept_apart_from_sales(self):
+		result = rules.cashup(
+			[{"name": "S1", "grand_total": 1000, "change_amount": 0, "owner": "amina@bar.test"}],
+			{},
+			[{"parent": "S1", "mode_of_payment": "Cash", "amount": 1000}],
+			{"Cash"},
+			[],
+			{"amina@bar.test": "Amina"},
+			[
+				{"waiter": "Brian", "recorded_by": "amina@bar.test", "amount": 100, "mode": "M-Pesa"},
+				{"waiter": None, "recorded_by": "amina@bar.test", "amount": 50, "mode": "Cash"},
+			],
+		)
+		by = {w["waiter"]: w for w in result["waiters"]}
+		self.assertEqual((by["Amina"]["tips"], by["Amina"]["sales"]), (50.0, 1000.0))
+		self.assertEqual(by["Amina"]["cash_to_hand_over"], 1000.0)  # the tip is the staff's, not the takings
+		self.assertEqual(by["Brian"]["tips_by_mode"], {"M-Pesa": 100.0})
+		self.assertEqual(result["totals"]["tips"], 150.0)
+
+	def test_the_platform_report_estimates_commission_and_payout(self):
+		report = rules.platform_report(
+			[
+				{"channel": "Glovo", "orders": 3, "sales": 6000},
+				{"channel": "Bolt Food", "orders": 1, "sales": 1000},
+			],
+			[{"name": "glovo", "commission_percent": 25}, {"name": "Uber Eats", "commission_percent": 30}],
+		)
+		glovo, bolt = report["platforms"]
+		self.assertEqual((glovo["commission"], glovo["expected_payout"]), (1500.0, 4500.0))
+		self.assertEqual((bolt["commission_percent"], bolt["expected_payout"]), (0.0, 1000.0))
+		self.assertEqual(
+			report["totals"], {"sales": 7000.0, "commission": 1500.0, "expected_payout": 5500.0, "orders": 4}
+		)

@@ -118,3 +118,42 @@ class TestApproveVoid(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestRecordTip(unittest.TestCase):
+	def tip(self, **kw):
+		db = MagicMock()
+		db.table_exists.return_value = True
+		db.exists.return_value = True
+		db.get_value.return_value = kw.pop("owner", "Bar Ltd")
+		doc = MagicMock()
+		doc.name = "TIP-1"
+		args = {"amount": "150", "mode_of_payment": "M-Pesa", "sales_person": "Brian"}
+		args.update(kw)
+		with (
+			patch.object(frappe, "db", db, create=True),
+			patch.object(frappe, "session", frappe._dict(user="till@bar.test"), create=True),
+			patch("frappe.translate.get_all_translations", return_value={}),
+			patch.object(api, "resolve_company", return_value="Bar Ltd"),
+			patch.object(api, "ensure_record_access"),
+			patch.object(api, "now_datetime", return_value="2026-11-13 21:00:00"),
+			patch.object(api.frappe, "get_doc", return_value=doc) as get_doc,
+		):
+			record = getattr(api.record_tip, "__wrapped__", api.record_tip)
+			return record(**args), get_doc
+
+	def test_a_tip_is_kept_with_its_waiter_and_how_it_was_paid(self):
+		result, get_doc = self.tip()
+		kept = get_doc.call_args.args[0]
+		self.assertEqual(
+			(kept["amount"], kept["mode_of_payment"], kept["sales_person"]), (150.0, "M-Pesa", "Brian")
+		)
+		self.assertEqual(result["data"]["amount"], 150.0)
+
+	def test_a_bad_amount_or_another_business_waiter_is_refused(self):
+		for kw, error in (
+			({"amount": "0"}, frappe.ValidationError),
+			({"owner": "Other Ltd"}, frappe.PermissionError),
+		):
+			with self.assertRaises(error, msg=kw):
+				self.tip(**kw)

@@ -87,6 +87,7 @@ EXPECTED_GUARDS = {
 	"restaurant_api": {
 		"approve_void": ("Item item_code", "Warehouse warehouse"),
 		"get_waiter_cashup": ("Warehouse warehouse",),
+		"record_tip": ("Warehouse warehouse",),
 	},
 	"stock_levels_api": {
 		"get_stock_levels": ("Warehouse warehouse",),
