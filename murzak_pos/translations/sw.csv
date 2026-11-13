@@ -1526,3 +1526,4 @@
 "{0} has already been sold or received, so batch tracking cannot be changed on it. Ask Murzak support to move its stock to a batch-tracked copy.","{0} tayari imeuzwa au kupokelewa, kwa hivyo ufuatiliaji wa makundi hauwezi kubadilishwa. Omba msaada wa Murzak kuhamisha hisa yake kwenye nakala inayofuatilia makundi."
 "{0} has already expired. Do not put expired stock on the shelf; return it to the supplier.","{0} tayari imeisha muda wake. Usiweke hisa iliyoisha muda kwenye rafu; irudishe kwa msambazaji."
 "{0} is not kept in stock, so it has no batches.","{0} haiwekwi kwenye hisa, kwa hivyo haina makundi."
+"Menu options cannot be kept on this site yet.","Chaguo za menyu bado haziwezi kuhifadhiwa kwenye tovuti hii."

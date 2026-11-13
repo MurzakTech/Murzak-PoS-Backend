@@ -707,6 +707,11 @@ def _build_invoice_items(items: List[Dict], company: str, auto_discount: bool = 
                 "serial_no": row.get("serial_no"),
             }
         )
+        # Restaurants: the options chosen for a dish ("Well done; Extra cheese (+50)") go on the invoice line, so the
+        # receipt and the tax invoice say what the kitchen was told
+        options_text = " ".join(str(row.get("options_text") or "").split())[:500]
+        if options_text:
+            built_items[-1]["description"] = options_text
     return built_items
 
 

@@ -77,6 +77,9 @@ EXPECTED_GUARDS = {
 	"batches": {
 		"set_batch_tracking": ("Item item_code",),
 	},
+	"menu_options_api": {
+		"set_menu_options": ("Item item_code",),
+	},
 	"pharmacy": {
 		"get_dispensing_register": ("Warehouse warehouse",),
 	},
