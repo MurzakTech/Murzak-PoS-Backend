@@ -30,9 +30,34 @@ from murzak_pos.api.business_lists import (
 from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.error_handler import safe_error_message
+from murzak_pos.api.pharmacy_rules import looks_like_antibiotic, prescription_default
 
 
 PRESCRIPTION_FIELD = "custom_prescription_only"
+
+
+def _chosen_flag(value) -> bool | None:
+    """A yes or no sent by the till (True, 1, "1", "true"...), or None when nothing was chosen."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
+
+
+def _starts_prescription_only(chosen, company, *names) -> bool:
+    """
+    Whether a new product is prescription-only: what the person chose, else (in a pharmacy) yes for a product named
+    after a common antibiotic. The business is only asked about when the name looks like an antibiotic.
+    """
+    chosen = _chosen_flag(chosen)
+    if chosen is not None:
+        return chosen
+    if not looks_like_antibiotic(*names):
+        return False
+    from murzak_pos.api.industry_profile_api import business_has
+
+    return prescription_default(None, business_has(company, "antibiotics_prescription_only"), *names)
 
 
 def _has_prescription_field() -> bool:
@@ -70,7 +95,7 @@ def create_product(
     unit_of_quantity_code: str = None,
     item_classification: str = None,
     taxation_type: str = None,
-    prescription_only: bool = False,
+    prescription_only: bool | None = None,
     vat_class: str = None
 ) -> Dict:
     """Create a new product/item
@@ -183,7 +208,7 @@ def create_product(
         item.is_stock_item = 1 if is_stock_item else 0
         item.is_sales_item = 1 if is_sales_item else 0
         item.is_purchase_item = 1 if is_purchase_item else 0
-        if prescription_only and _has_prescription_field():
+        if _has_prescription_field() and _starts_prescription_only(prescription_only, company, item_code, item_name, description):
             item.set(PRESCRIPTION_FIELD, 1)
         
         if brand:
@@ -1091,8 +1116,8 @@ def update_product(
         item.weight_uom = weight_uom
     if disabled is not None:
         item.disabled = 1 if disabled else 0
-    if prescription_only is not None and _has_prescription_field():
-        item.set(PRESCRIPTION_FIELD, 1 if prescription_only else 0)
+    if _chosen_flag(prescription_only) is not None and _has_prescription_field():
+        item.set(PRESCRIPTION_FIELD, 1 if _chosen_flag(prescription_only) else 0)
     
     relax_etims_mandatory(item, company_uses_etims)
     item.save(ignore_permissions=True)

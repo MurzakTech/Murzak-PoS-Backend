@@ -18,6 +18,23 @@ from murzak_pos.api.vat_setup import item_tax_template_for
 from murzak_pos.api.seed_results import readable_seed_error, seed_result_status
 from murzak_pos.api.seed_rules import resolve_uom, starter_product, stock_flag
 from murzak_pos.api.error_handler import safe_error_message
+from murzak_pos.api.industry_profile import PHARMACY, key_for_industry
+from murzak_pos.api.pharmacy_rules import looks_like_antibiotic
+
+
+def _antibiotics_need_a_prescription(item_doc, industry) -> None:
+    """A pharmacy's starter product named after an antibiotic is loaded as prescription-only (pharmacy_rules)."""
+    try:
+        code = frappe.db.get_value("POS Industry", industry, "industry_code") if industry else None
+        if key_for_industry(code or industry) != PHARMACY:
+            return
+        if not looks_like_antibiotic(item_doc.item_name, item_doc.item_code):
+            return
+        if item_doc.meta.has_field("custom_prescription_only"):
+            item_doc.set("custom_prescription_only", 1)
+    except Exception:
+        # The flag is a safety default, never a reason for a starter product to fail
+        frappe.log_error("Starter products: prescription flag", frappe.get_traceback())
 
 
 def ensure_fiscal_year_exists(company: str, posting_date: str = None) -> str:
@@ -619,6 +636,7 @@ def create_seed_item(company: str = None):
             
             # Set POS industry (from payload, user's industry, or NULL for global)
             item_doc.custom_pos_industry = product_industry
+            _antibiotics_need_a_prescription(item_doc, product_industry)
             
             # Prevent eTIMS registration by default
             item_doc.custom_prevent_etims_registration = 1
@@ -999,6 +1017,7 @@ def create_seed_item(company: str = None):
                     "custom_pos_industry": product_industry,
                     "custom_prevent_etims_registration": 1
                 })
+                _antibiotics_need_a_prescription(item_doc, product_industry)
 
                 # How the product is taxed, when the till says (standard, zero_rated or exempt)
                 vat_template = item_tax_template_for(company, row.get("vat_class"))

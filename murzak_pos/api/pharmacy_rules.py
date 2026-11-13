@@ -74,6 +74,113 @@ def remark(prescription_items: list[str], record, dispensed_by: str, status: str
 	return f"Prescription-only medicines ({items}): " + "; ".join(parts) + "."
 
 
+def dispensing_fields(prescription_items: list[str], record, dispensed_by: str, status: str) -> dict:
+	"""
+	The dispensing record as separate fields on the invoice, so the dispensing register can list it without reading
+	the remarks. Empty when the sale has no prescription-only medicines.
+	"""
+	if not prescription_items:
+		return {}
+	record = record or {}
+	complete = status != "flag"
+	return {
+		"custom_rx_status": "Complete" if complete else "Missing",
+		"custom_rx_items": ", ".join(prescription_items)[:MAX_ITEMS_TEXT],
+		"custom_rx_patient": record.get("patient", "") if complete else "",
+		"custom_rx_prescriber": record.get("prescriber", "") if complete else "",
+		"custom_rx_reference": record.get("reference", "") if complete else "",
+		"custom_rx_dispensed_by": _clean(dispensed_by, MAX_NAME),
+	}
+
+
+MAX_ITEMS_TEXT = 1000
+
+
+# --- antibiotics --------------------------------------------------------------------------------------------
+#
+# Kenyan law already sells antibiotics only on prescription, and the Ministry of Health is clamping down on sales
+# without one. A pharmacy that adds a product named after a common antibiotic gets it as prescription-only unless
+# the pharmacist deliberately says otherwise. Names are compared as letters only, so "Co-Trimoxazole 480mg" and
+# "cotrimoxazole" match alike.
+
+ANTIBIOTIC_NAMES = (
+	"antibiotic",
+	"amoxicillin",
+	"amoxycillin",
+	"amoxiclav",
+	"coamoxiclav",
+	"augmentin",
+	"ampicillin",
+	"ampiclox",
+	"cloxacillin",
+	"flucloxacillin",
+	"penicillin",
+	"benzathine",
+	"piperacillin",
+	"azithromycin",
+	"erythromycin",
+	"clarithromycin",
+	"ciprofloxacin",
+	"levofloxacin",
+	"norfloxacin",
+	"ofloxacin",
+	"moxifloxacin",
+	"doxycycline",
+	"tetracycline",
+	"metronidazole",
+	"flagyl",
+	"tinidazole",
+	"secnidazole",
+	"cotrimoxazole",
+	"septrin",
+	"sulfamethoxazole",
+	"trimethoprim",
+	"nitrofurantoin",
+	"cefalexin",
+	"cephalexin",
+	"cefadroxil",
+	"cefuroxime",
+	"cefixime",
+	"cefpodoxime",
+	"ceftriaxone",
+	"cefotaxime",
+	"ceftazidime",
+	"cefazolin",
+	"gentamicin",
+	"amikacin",
+	"clindamycin",
+	"linezolid",
+	"vancomycin",
+	"chloramphenicol",
+	"fusidic",
+	"mupirocin",
+	"neomycin",
+	"rifampicin",
+	"meropenem",
+	"imipenem",
+)
+
+
+def _letters(text) -> str:
+	return "".join(ch for ch in str(text or "").lower() if ch.isalpha())
+
+
+def looks_like_antibiotic(*names) -> bool:
+	"""Whether any of these names (a product name, its code, its description) names a common antibiotic."""
+	letters = " ".join(_letters(name) for name in names if name)
+	return bool(letters) and any(word in letters for word in ANTIBIOTIC_NAMES)
+
+
+def prescription_default(chosen, is_pharmacy: bool, *names) -> bool:
+	"""
+	Whether a new product starts as prescription-only. What the person chose always wins (True or False); with no
+	choice, a pharmacy's product named after a common antibiotic starts as prescription-only and anything else does not.
+	"""
+	if chosen is not None:
+		return bool(chosen)
+	return bool(is_pharmacy) and looks_like_antibiotic(*names)
+
+
 def add_to_remarks(existing, note) -> str | None:
 	"""The note added to what the invoice already says, without writing it twice."""
 	if not note:
@@ -81,3 +188,59 @@ def add_to_remarks(existing, note) -> str | None:
 	if existing and note in existing:
 		return existing
 	return f"{existing}\n{note}" if existing else note
+
+
+# --- the dispensing register --------------------------------------------------------------------------------
+
+REGISTER_MAX_DAYS = 366
+
+
+def rx_codes(items_text) -> list[str]:
+	"""The prescription-only item codes kept on an invoice (custom_rx_items), in order and once each."""
+	codes = [code.strip() for code in str(items_text or "").split(", ")]
+	return list(dict.fromkeys(code for code in codes if code))
+
+
+def register_rows(invoices: list[dict], lines: list[dict], warehouse: str | None = None) -> list[dict]:
+	"""
+	One row per prescription-only medicine sold: when, what, how many, for whom, prescribed by whom and dispensed by
+	whom. `invoices` carry the dispensing fields; `lines` are their item rows (parent, item_code, ...). Only the lines of
+	the invoice's own prescription-only items are listed; newest first. With a warehouse, only lines sold from it.
+	"""
+	by_name = {inv["name"]: inv for inv in invoices}
+	rows = []
+	for line in lines:
+		inv = by_name.get(line.get("parent"))
+		if not inv or line.get("item_code") not in rx_codes(inv.get("custom_rx_items")):
+			continue
+		if warehouse and line.get("warehouse") != warehouse:
+			continue
+		rows.append(
+			{
+				"date": str(inv.get("posting_date") or ""),
+				"time": str(inv.get("posting_time") or "")[:8],
+				"invoice": inv["name"],
+				"is_return": bool(inv.get("is_return")),
+				"item_code": line.get("item_code"),
+				"item_name": line.get("item_name") or line.get("item_code"),
+				"qty": line.get("qty") or 0,
+				"uom": line.get("uom") or "",
+				"batch_no": line.get("batch_no") or "",
+				"patient": inv.get("custom_rx_patient") or "",
+				"prescriber": inv.get("custom_rx_prescriber") or "",
+				"reference": inv.get("custom_rx_reference") or "",
+				"dispensed_by": inv.get("custom_rx_dispensed_by") or "",
+				"status": inv.get("custom_rx_status") or "",
+			}
+		)
+	rows.sort(key=lambda r: (r["date"], r["time"], r["invoice"]), reverse=True)
+	return rows
+
+
+def register_summary(rows: list[dict]) -> dict:
+	"""How many sales and lines the register holds, and how many still miss their prescription details."""
+	return {
+		"sales": len({r["invoice"] for r in rows}),
+		"lines": len(rows),
+		"missing": len({r["invoice"] for r in rows if r["status"] == "Missing"}),
+	}

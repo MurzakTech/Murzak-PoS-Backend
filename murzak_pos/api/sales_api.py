@@ -18,7 +18,8 @@ from murzak_pos.api.offline_sales import (
     offline_remark,
     parse_sold_at,
 )
-from murzak_pos.api.pharmacy import sale_remark as prescription_sale_remark
+from murzak_pos.api.pharmacy import review_sale as review_prescription_sale
+from murzak_pos.api.pharmacy import write_dispensing_fields
 from murzak_pos.api.pharmacy_rules import add_to_remarks
 from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
@@ -837,6 +838,7 @@ def _create_invoice_document(
     offline_sold_at: Optional[str] = None,
     extra_remark: str | None = None,
     sales_person: str | None = None,
+    dispensing_fields: dict | None = None,
 ) -> "frappe.model.document.Document":
     if not company:
         company = _get_default_company()
@@ -915,6 +917,8 @@ def _create_invoice_document(
     # The dispensing record of prescription-only medicines, so it can be read back from the sale
     if extra_remark:
         doc.remarks = add_to_remarks(doc.get("remarks"), extra_remark)
+    # The same record as separate fields, for the dispensing register
+    write_dispensing_fields(doc, dispensing_fields or {})
 
     # Credit the sale to the named sales person, or to the cashier's own when their login is linked to one
     sales_person_api.attach(doc, sales_person)
@@ -1240,7 +1244,8 @@ def create_pos_invoice(
             return _recorded_sale_response(*recorded)
         # Prescription-only medicines need a patient and a prescriber on the sale (checked before any
         # payment is used up, so a refused sale costs the customer nothing)
-        prescription_note = prescription_sale_remark(parsed_items, dispensing, parse_sold_at(offline_sold_at))
+        prescription = review_prescription_sale(parsed_items, dispensing, parse_sold_at(offline_sold_at))
+        prescription_note = prescription["note"]
         gateway_claims = validate_gateway_payments(parsed_payments, company)
 
         # Ensure every payment row has an account; allow opt-in mapping to receivables
@@ -1303,6 +1308,7 @@ def create_pos_invoice(
                 client_reference=client_reference,
                 offline_sold_at=offline_sold_at,
                 extra_remark=prescription_note,
+                dispensing_fields=prescription["fields"],
                 sales_person=sales_person,
             )
 
@@ -1382,6 +1388,7 @@ def create_pos_invoice(
             client_reference=client_reference,
             offline_sold_at=offline_sold_at,
             extra_remark=prescription_note,
+            dispensing_fields=prescription["fields"],
             sales_person=sales_person,
         )
 

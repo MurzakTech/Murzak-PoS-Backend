@@ -98,6 +98,19 @@ class TestOnlineCatalogue(unittest.TestCase):
 				online_catalogue.online_filters("Duka Ltd", visibility)["custom_company"], "Duka Ltd"
 			)
 
+	def test_prescription_only_medicines_are_never_shown_to_customers(self):
+		with patch.object(online_catalogue, "_has_prescription_field", return_value=True):
+			self.assertEqual(
+				online_catalogue.online_filters("Duka Ltd")["custom_prescription_only"], ["!=", 1]
+			)
+			# The owner's own lists still show them, so they can be found and edited
+			self.assertNotIn("custom_prescription_only", online_catalogue.online_filters("Duka Ltd", "all"))
+			self.assertNotIn(
+				"custom_prescription_only", online_catalogue.online_filters("Duka Ltd", "hidden")
+			)
+		with patch.object(online_catalogue, "_has_prescription_field", return_value=False):
+			self.assertNotIn("custom_prescription_only", online_catalogue.online_filters("Duka Ltd"))
+
 	def test_a_row_says_whether_it_is_shown_and_an_old_product_counts_as_shown(self):
 		items = [
 			row(
