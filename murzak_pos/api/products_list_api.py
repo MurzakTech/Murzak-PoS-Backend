@@ -178,6 +178,22 @@ def _check_store(warehouse, company):
 		frappe.throw(_("That store belongs to another business."), frappe.PermissionError)
 
 
+def _prescription_only(codes) -> set:
+	"""The codes among these marked prescription-only (none on a site without the flag)."""
+	if not codes:
+		return set()
+	try:
+		if not frappe.get_meta("Item").has_field("custom_prescription_only"):
+			return set()
+		return set(
+			frappe.get_all(
+				"Item", filters={"name": ["in", codes], "custom_prescription_only": 1}, pluck="name"
+			)
+		)
+	except Exception:
+		return set()
+
+
 # --- the list ---------------------------------------------------------------------------------------
 
 
@@ -231,6 +247,10 @@ def list_products(
 			)
 			for row in raw_rows
 		]
+		# Pharmacies: which of these are prescription-only, so the Edit form shows and keeps the setting
+		flagged = _prescription_only(codes)
+		for row in rows:
+			row["prescription_only"] = 1 if row["item_code"] in flagged else 0
 		summary = _summary(parts)
 	except Exception:
 		frappe.log_error("Products list error", frappe.get_traceback())
@@ -407,6 +427,7 @@ def create_product_simple(
 	low_stock_warning=None,
 	warehouse=None,
 	company=None,
+	prescription_only=None,
 ):
 	"""
 	Save a new product from the one-screen form. Only the name and the price are needed.
@@ -468,6 +489,8 @@ def create_product_simple(
 			barcode=clean["barcode"] or None,
 			company=company,
 			is_purchase_item=True,
+			# Pharmacies: chosen on the form; with no choice, a common antibiotic starts as prescription-only
+			prescription_only=prescription_only,
 		)
 	except frappe.ValidationError as error:
 		# The existing call refuses in words; show them beside the field they are about when that can be told
