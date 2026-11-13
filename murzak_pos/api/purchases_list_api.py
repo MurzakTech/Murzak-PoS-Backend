@@ -663,10 +663,14 @@ def _panel(doc) -> dict:
 			return_against = doc.name
 
 	# Medicines that track batches: the Receive goods screen asks for their batch and expiry
-	tracked = _tracks_batches([line.get("item_code") for line in lines if isinstance(line, dict)])
+	codes = [line.get("item_code") for line in lines if isinstance(line, dict)]
+	tracked = _tracks_batches(codes)
+	# and its barcodes, so scanning a pack's GS1 code finds its line and fills the batch and expiry
+	barcodes = _barcodes_of(codes)
 	for line in lines:
 		if isinstance(line, dict):
 			line["tracks_batches"] = line.get("item_code") in tracked
+			line["barcodes"] = barcodes.get(line.get("item_code"), [])
 
 	data = {
 		"id": doc.name,
@@ -796,6 +800,21 @@ def _tracks_batches(codes) -> set:
 	except Exception:
 		# Only a hint for the screen: never a reason for the purchase not to open
 		return set()
+
+
+def _barcodes_of(codes) -> dict:
+	"""{item code: [barcodes]} for these products; empty when they cannot be read (a hint for the screen only)."""
+	codes = [c for c in dict.fromkeys(codes) if c]
+	if not codes:
+		return {}
+	try:
+		found = {}
+		for row in frappe.get_all("Item Barcode", filters={"parent": ["in", codes]}, fields=["parent", "barcode"]):
+			if isinstance(row, dict) and row.get("barcode"):
+				found.setdefault(row["parent"], []).append(row["barcode"])
+		return found
+	except Exception:
+		return {}
 
 
 def _batch_refusal(items, codes):
