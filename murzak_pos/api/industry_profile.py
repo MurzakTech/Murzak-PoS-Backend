@@ -38,6 +38,7 @@ FEATURE_NAMES = (
 	"dispensing_register",  # the list of every prescription sale, for inspections
 	"antibiotics_prescription_only",  # a new product named after a common antibiotic starts as prescription-only
 	"controlled_register",  # the controlled medicines register, with a running balance
+	"insurance",  # a bill split between a medical insurer and the patient's co-payment, and the claims that follow
 	# Restaurant and bar
 	"tables",  # bills held by table or tab name
 	"kitchen_tickets",  # orders sent to the kitchen and bar
@@ -45,6 +46,7 @@ FEATURE_NAMES = (
 	"waiter_on_sale",  # each bill is credited to a waiter
 	"waiter_cashup",  # the end-of-shift cash-up by waiter
 	"tourism_levy",  # the monthly 2% tourism levy report
+	"delivery_platforms",  # orders from Glovo, Uber Eats or Bolt Food, and matching each payout against them
 )
 
 _FEATURES_ON = {
@@ -54,6 +56,7 @@ _FEATURES_ON = {
 		"dispensing_register",
 		"antibiotics_prescription_only",
 		"controlled_register",
+		"insurance",
 	),
 	RESTAURANT: (
 		"tables",
@@ -62,6 +65,7 @@ _FEATURES_ON = {
 		"waiter_on_sale",
 		"waiter_cashup",
 		"tourism_levy",
+		"delivery_platforms",
 	),
 	GENERAL: (),
 }

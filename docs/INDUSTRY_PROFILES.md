@@ -1,4 +1,4 @@
-# Industry profiles, pharmacy and restaurant (Phases 1 to 3)
+# Industry profiles, pharmacy and restaurant (Phases 1 to 4)
 
 ## In plain words
 
@@ -116,10 +116,91 @@ the merged Sales Invoice, so each dispensing line is kept and nothing is counted
 **Till Tip** (doctype): company, store, sale, amount, how paid, waiter, recorded by, when. Written once, never changed.
 POS Invoice and Sales Invoice: `custom_order_channel`, `custom_channel_ref`.
 
+## Phase 4
+
+### Pharmacy: a bill split between a medical insurer and the patient
+
+A patient covered by a private insurer (AAR, Jubilee, CIC, Britam, Madison and so on) pays only a **co-payment** at the
+counter; the insurer owes the rest and the pharmacy claims it later. How it works:
+
+- **Insurers** are kept per business under Settings, Business, Medical insurers, each with its co-payment rule: a
+  percentage, a fixed amount, or both (the patient pays the larger, never more than the bill). Saving an insurer makes
+  a **Customer** for it (on first use), because the insurer is who the sale is billed to.
+- **At the till** the cashier chooses Insurance, the insurer, and types the patient's name and member number (scheme and
+  pre-authorisation number optional). The pay screen opens split in two: the co-payment by the patient's payment
+  method, and the rest on **Credit** to the insurer. The till's credit limit check does not apply to an insurer.
+- **The server** (`create_pos_invoice(..., insurance={insurer, patient, member_no, scheme?, preauth?})`) refuses an
+  insurer that is not one of the business's, a sale billed to any customer other than that insurer, and a claim with
+  no member number or patient name. The co-payment it keeps is what the patient actually paid (the payment rows that are
+  not left owing), never a figure the till sends.
+- **Claims** (Reports, Insurance claims) list every such sale with what the insurer owes. Choose claims to mark them as
+  sent (with the claim or batch number), as rejected (with the reason), or to record the insurer's payment.
+- **An insurer's payment** is shared over the chosen claims from the top, each taking what it is owed; a payment larger
+  than they owe together is refused. Each part becomes a submitted **Payment Entry** on the sale's Sales Invoice (for a
+  POS sale, the Sales Invoice its shift was merged into), so what the insurer owes goes down in the books. A sale whose
+  till shift is still open cannot take a payment yet, and says so.
+
+| Call | Who | What it does |
+| --- | --- | --- |
+| `insurance_api.get_insurers(company?)` | anyone in the business | The insurers, their co-payment rules and customer records. |
+| `insurance_api.save_insurers(insurers, company?)` | owner, manager | Keeps them; makes each insurer's Customer on first use. |
+| `insurance_api.get_claims(company?, insurer?, status?)` | owner, manager | Claims, newest first, with the total owed by status. |
+| `insurance_api.mark_claimed(invoices, claim_ref?, company?)` | owner, manager | Marks claims as sent. |
+| `insurance_api.set_claim_rejected(invoice, reason?, company?)` | owner, manager | Marks a claim as rejected. |
+| `insurance_api.record_insurer_payment(invoices, amount, mode_of_payment, reference?, company?)` | owner, manager | Shares the payment over the claims and records a Payment Entry for each. |
+
+A claim's status is one of To claim, Claimed, Part paid, Paid, Rejected.
+
+### Restaurant: matching a delivery platform's payout against its orders
+
+Glovo, Uber Eats and Bolt Food pay the restaurant every week or so: the sales of the orders they carried less their
+commission. On the Delivery platforms report the owner pastes the order numbers from the platform's statement and the
+amount paid. **Check** shows, without saving, the orders matched, the numbers found nowhere in the POS, the orders an
+earlier payout already settled, and the commission the platform actually kept against the commission agreed in the
+settings. **Record payout** keeps a **Platform Payout** and marks each matched order (`custom_channel_payout`), so no
+order is paid out twice.
+
+This is a check, not bookkeeping: no journal entry is made. The money received is recorded in the books the way the
+business already records it. Orders match on the order number the cashier typed at the till, so an order without one
+cannot be matched; the report says how many there are.
+
+| Call | Who | What it does |
+| --- | --- | --- |
+| `payout_api.list_unsettled_orders(platform, company?, from_date?, to_date?)` | owner, manager | The platform's orders no payout has settled, and how many have no order number. |
+| `payout_api.check_payout(platform, order_refs, amount, company?)` | owner, manager | What recording would do, without saving. |
+| `payout_api.record_payout(platform, order_refs, amount, payout_date?, statement_ref?, mode_of_payment?, company?)` | owner, manager | Keeps the payout and marks its orders. |
+| `payout_api.list_payouts(company?, platform?)` | owner, manager | The last 200 payouts recorded. |
+
+### New features in the profiles
+
+`insurance` (pharmacy) and `delivery_platforms` (restaurant and bar). A store whose server has not been updated simply
+does not show the new screens.
+
+### New records and fields
+
+- **Platform Payout** (doctype): company, platform, payout day, statement reference, amount received, orders matched,
+  their sales, commission expected and taken, the difference, the order numbers not found, who recorded it and when.
+  Written once, never changed or deleted.
+- **POS Invoice** and **Sales Invoice**: `custom_channel_payout` (Platform Payout), and an Insurance Claim section:
+  `custom_insurer`, `custom_insured_patient`, `custom_member_no`, `custom_scheme`, `custom_preauth_no`,
+  `custom_copay`, `custom_claim_status`, `custom_claim_ref`. None is copied when a shift's sales are merged, and merged
+  invoices are left out of the claims and payout lists, so nothing is counted twice.
+
+### Points to confirm before a pilot
+
+- **Credit sales must be on.** The insurer's share is a Credit payment line, so the Credit payment method must be
+  switched on in Settings. The till says so if it is not.
+- **Co-payment rules differ by scheme.** The rule kept per insurer is a simple percent or amount; check each contract.
+  Insurers that need claims sent through their own portal or a switch (such as Smart or Slade360) still need that done
+  outside the POS; the claim list gives the details to send.
+- **Rejected claims stay owed in the books** until the business collects them from the patient or writes them off.
+- **The till's "Sales Invoice" mode** (POS Settings set to create Sales Invoices) does not take receivable payment
+  lines, so insurance sales need the default POS Invoice mode.
+
 ## Not done yet
 
 - Moving the stock of a medicine that already has sales or deliveries to a batch-tracked copy (it is refused, with a
   message to ask for help).
-- The private-insurance split for pharmacies, and settling a delivery platform's payout against its orders.
+- Sending claims electronically to insurers or to Smart/Slade360; posting a platform payout's commission to the books.
 - A happy hour is decided when the item is added; a bill kept open past the end of happy hour keeps those prices.
 - Two of the same dish with different options on one bill: the options apply to the whole line, as notes already do.
