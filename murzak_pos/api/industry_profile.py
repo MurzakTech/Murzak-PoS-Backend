@@ -48,7 +48,14 @@ FEATURE_NAMES = (
 
 _FEATURES_ON = {
 	PHARMACY: ("prescription_only", "expiry", "dispensing_register", "antibiotics_prescription_only"),
-	RESTAURANT: ("tables", "kitchen_tickets", "void_approval", "waiter_on_sale", "waiter_cashup", "tourism_levy"),
+	RESTAURANT: (
+		"tables",
+		"kitchen_tickets",
+		"void_approval",
+		"waiter_on_sale",
+		"waiter_cashup",
+		"tourism_levy",
+	),
 	GENERAL: (),
 }
 
