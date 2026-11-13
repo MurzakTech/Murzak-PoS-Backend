@@ -74,6 +74,9 @@ EXPECTED_GUARDS = {
 	"expiry_api": {
 		"get_expiry_alerts": ("Warehouse warehouse",),
 	},
+	"batches": {
+		"set_batch_tracking": ("Item item_code",),
+	},
 	"pharmacy": {
 		"get_dispensing_register": ("Warehouse warehouse",),
 	},

@@ -19,14 +19,18 @@ How it is built
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import frappe
 from frappe import _
 from frappe.utils import cint
 
+from murzak_pos.api import batch_rules, batches, role_tiers
 from murzak_pos.api import products_list_calc as rules
-from murzak_pos.api import role_tiers
 from murzak_pos.api.access_control import ensure_record_access, require_catalogue_role
+from murzak_pos.api.overview_calc import nairobi_today
 from murzak_pos.api.payment_gateway_common import resolve_company
+from murzak_pos.api.product_api import _chosen_flag
 
 STANDARD_SELLING = "Standard Selling"
 
@@ -178,6 +182,16 @@ def _check_store(warehouse, company):
 		frappe.throw(_("That store belongs to another business."), frappe.PermissionError)
 
 
+def _batch_tracked(codes) -> set:
+	"""The codes among these that are received batch by batch, with an expiry date."""
+	if not codes:
+		return set()
+	try:
+		return set(frappe.get_all("Item", filters={"name": ["in", codes], "has_batch_no": 1}, pluck="name"))
+	except Exception:
+		return set()
+
+
 def _prescription_only(codes) -> set:
 	"""The codes among these marked prescription-only (none on a site without the flag)."""
 	if not codes:
@@ -249,8 +263,10 @@ def list_products(
 		]
 		# Pharmacies: which of these are prescription-only, so the Edit form shows and keeps the setting
 		flagged = _prescription_only(codes)
+		tracked = _batch_tracked(codes)
 		for row in rows:
 			row["prescription_only"] = 1 if row["item_code"] in flagged else 0
+			row["tracks_batches"] = 1 if row["item_code"] in tracked else 0
 		summary = _summary(parts)
 	except Exception:
 		frappe.log_error("Products list error", frappe.get_traceback())
@@ -339,6 +355,9 @@ def _field_messages():
 		"category_missing": _("That category does not exist. Choose one from the list."),
 		"unit_missing": _("That unit does not exist. Choose one from the list."),
 		"no_store": _("Add a store before you enter opening stock or a low-stock warning."),
+		"expiry_missing": _("Enter the expiry date of the opening stock, as printed on the pack."),
+		"expiry_bad": _("The expiry date is not a real date."),
+		"expiry_past": _("This stock has already expired. Do not put it on the shelf."),
 		"save_failed": _("The product could not be saved. Please check the details and try again."),
 	}
 
@@ -402,9 +421,11 @@ def _add_cost(code, store, company, cost):
 		_save_buying_price(code, store, company, rules.money(cost))
 
 
-def _add_stock(code, store, company, qty, cost):
+def _add_stock(code, store, company, qty, cost, batch=None):
 	"""The opening stock, as a Material Receipt through the existing stock entry. Raises if it is refused."""
 	line = rules.opening_stock_item(code, qty, store, cost)
+	if batch:
+		line.update({"batch_no": batch, "use_serial_batch_fields": 1})
 	reply = _stock_entry(
 		stock_entry_type="Material Receipt", items=[line], company=company, to_warehouse=store
 	)
@@ -428,6 +449,9 @@ def create_product_simple(
 	warehouse=None,
 	company=None,
 	prescription_only=None,
+	track_batches=None,
+	opening_batch_no=None,
+	opening_expiry=None,
 ):
 	"""
 	Save a new product from the one-screen form. Only the name and the price are needed.
@@ -469,6 +493,15 @@ def create_product_simple(
 			problems.append({"field": "category", "code": "category_missing"})
 		if clean["unit"] and not frappe.db.exists("UOM", clean["unit"]):
 			problems.append({"field": "unit", "code": "unit_missing"})
+	# A medicine that tracks batches: its opening stock goes into a batch with the expiry printed on the pack
+	tracks = bool(_chosen_flag(track_batches))
+	opening_expiry_day = None
+	if tracks and clean["opening_stock"] and not problems:
+		opening_expiry_day, why = batch_rules.check_expiry(
+			opening_expiry, nairobi_today(datetime.now(timezone.utc))
+		)
+		if why:
+			problems.append({"field": "opening_expiry", "code": f"expiry_{why}"})
 	wants_store = bool(clean["opening_stock"] or clean["low_stock_warning"])
 	store = _store_for(company, warehouse) if not problems and (wants_store or clean["cost_price"]) else None
 	if not problems and wants_store and not store:
@@ -491,6 +524,7 @@ def create_product_simple(
 			is_purchase_item=True,
 			# Pharmacies: chosen on the form; with no choice, a common antibiotic starts as prescription-only
 			prescription_only=prescription_only,
+			track_batches=1 if tracks else None,
 		)
 	except frappe.ValidationError as error:
 		# The existing call refuses in words; show them beside the field they are about when that can be told
@@ -516,7 +550,16 @@ def create_product_simple(
 	opening = None
 	if clean["opening_stock"]:
 		saved, reply = _step(
-			notes, "opening_stock", lambda: _add_stock(code, store, company, clean["opening_stock"], cost)
+			notes,
+			"opening_stock",
+			lambda: _add_stock(
+				code,
+				store,
+				company,
+				clean["opening_stock"],
+				cost,
+				batch=batches.ensure_batch(code, opening_batch_no, opening_expiry_day) if tracks else None,
+			),
 		)
 		opening = {"saved": saved, "qty": rules.quantity(clean["opening_stock"]), "store": store}
 		if saved and isinstance(reply, dict):

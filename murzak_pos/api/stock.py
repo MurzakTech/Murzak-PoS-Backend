@@ -743,6 +743,9 @@ def create_pr_from_po(purchase_order, items=None, submit=1, external_ref=None):
                     row.warehouse = item_map[row.item_code].get(
                         "warehouse", row.warehouse
                     )
+                    # A medicine that tracks batches is received into the batch typed for it
+                    from murzak_pos.api.batches import apply_to_row
+                    apply_to_row(row, row.item_code, item_map[row.item_code], row.item_name)
                 else:
                     row.qty = 0
 

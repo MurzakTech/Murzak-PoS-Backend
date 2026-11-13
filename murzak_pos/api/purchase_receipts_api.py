@@ -14,6 +14,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate
 
+from murzak_pos.api import batch_rules, batches
 from murzak_pos.api.access_control import ensure_record_access, require_stock_role
 from murzak_pos.api.payment_gateway_common import resolve_company
 
@@ -120,9 +121,10 @@ def create_purchase_receipt(
 			frappe.throw(
 				_("Warehouse {0} does not belong to {1}.").format(target, company), frappe.PermissionError
 			)
-		rows.append(
-			{"item_code": code, "qty": flt(line["qty"]), "rate": flt(line.get("rate")), "warehouse": target}
-		)
+		row = {"item_code": code, "qty": flt(line["qty"]), "rate": flt(line.get("rate")), "warehouse": target}
+		# A medicine that tracks batches needs the batch and expiry printed on the pack
+		batches.apply_to_row(row, code, batch_rules.batch_lines([line]).get(code))
+		rows.append(row)
 
 	doc = frappe.get_doc(
 		{

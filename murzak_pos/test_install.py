@@ -18,6 +18,7 @@ class TestAfterInstall(unittest.TestCase):
 			patch.object(install, "install_print_formats") as formats,
 			patch.object(install, "enable_languages") as languages,
 			patch.object(install, "pick_earliest_expiry_first") as batch_order,
+			patch.object(install, "keep_auto_batch_pick_on") as batch_pick,
 			patch.object(install, "use_kenya_time") as kenya_time,
 			patch.object(install, "use_kes_symbol") as kes_symbol,
 		):
@@ -26,6 +27,7 @@ class TestAfterInstall(unittest.TestCase):
 		formats.assert_called_once_with()
 		languages.assert_called_once_with()
 		batch_order.assert_called_once_with()
+		batch_pick.assert_called_once_with()
 		kenya_time.assert_called_once_with()
 		kes_symbol.assert_called_once_with()
 

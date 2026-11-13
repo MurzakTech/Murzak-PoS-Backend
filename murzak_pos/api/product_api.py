@@ -96,7 +96,8 @@ def create_product(
     item_classification: str = None,
     taxation_type: str = None,
     prescription_only: bool | None = None,
-    vat_class: str = None
+    vat_class: str = None,
+    track_batches: bool | None = None,
 ) -> Dict:
     """Create a new product/item
     
@@ -210,6 +211,11 @@ def create_product(
         item.is_purchase_item = 1 if is_purchase_item else 0
         if _has_prescription_field() and _starts_prescription_only(prescription_only, company, item_code, item_name, description):
             item.set(PRESCRIPTION_FIELD, 1)
+        # Medicines: received batch by batch with the expiry printed on the pack (batches.py); batches are never numbered automatically
+        if _chosen_flag(track_batches) and item.is_stock_item:
+            item.has_batch_no = 1
+            item.has_expiry_date = 1
+            item.create_new_batch = 0
         
         if brand:
             item.brand = brand

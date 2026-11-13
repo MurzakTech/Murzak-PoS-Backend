@@ -1130,6 +1130,7 @@ class TestNewProductWithOnlyANameAndAPrice(NewProductCase):
 					"company": "Shop A",
 					"is_purchase_item": True,
 					"prescription_only": None,
+					"track_batches": None,
 				}
 			],
 		)
