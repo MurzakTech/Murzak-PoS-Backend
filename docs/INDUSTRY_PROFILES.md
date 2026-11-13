@@ -1,4 +1,4 @@
-# Industry profiles, pharmacy and restaurant (Phases 1 and 2)
+# Industry profiles, pharmacy and restaurant (Phases 1 to 3)
 
 ## In plain words
 
@@ -89,10 +89,37 @@ A POS Invoice moves no stock until the shift is closed and its sales are merged 
 the stock ledger would lose who each dose was for. The register therefore reads every POS sale itself and leaves out
 the merged Sales Invoice, so each dispensing line is kept and nothing is counted twice.
 
+## Phase 3
+
+### Calls added
+
+| Call | Who | What it does |
+| --- | --- | --- |
+| `restaurant_settings_api.get_restaurant_settings(company?)` | anyone in the business | Happy hours, service charge percent (and the business's Service charge item), delivery platforms with commission, each store's tables. |
+| `restaurant_settings_api.save_restaurant_settings(settings, company?)` | owner, manager | Keeps them, checked by `restaurant_settings_rules`. A service charge above 0 makes the Service charge item (a service, no stock) on first use. |
+| `restaurant_api.record_tip(amount, mode_of_payment, sales_person?, invoice?, warehouse?, company?)` | anyone in the business | Keeps a tip as a **Till Tip**, apart from the sale. |
+| `restaurant_api.get_platform_sales(company?, month?)` | owner, manager | A month's orders, sales, commission and expected payout per delivery platform. |
+
+### Changed behaviour
+
+- **Sales** take `order_channel` and `channel_ref` (kept in `custom_order_channel` and `custom_channel_ref` on the
+  invoice, under their own Order Channel section).
+- **The waiter cash-up** shows each waiter's tips and how they were paid. Tips never count as takings or as cash to
+  hand over.
+- **Purchase lines** carry their product's barcodes, so a scanned GS1 pack code finds its line at Receive goods.
+- The till (frontend) reads GS1 pack codes, applies happy hours, adds the service charge as its own sale line, splits
+  bills (by item, with the rest held under the same table name; or equally, with one payment each) and shows the table
+  map from the open bills.
+
+### New records
+
+**Till Tip** (doctype): company, store, sale, amount, how paid, waiter, recorded by, when. Written once, never changed.
+POS Invoice and Sales Invoice: `custom_order_channel`, `custom_channel_ref`.
+
 ## Not done yet
 
 - Moving the stock of a medicine that already has sales or deliveries to a batch-tracked copy (it is refused, with a
   message to ask for help).
-- Splitting a bill between guests, service charge and tips, the table map, happy-hour prices, delivery-platform orders,
-  GS1 2D barcode scanning, and the private-insurance split.
+- The private-insurance split for pharmacies, and settling a delivery platform's payout against its orders.
+- A happy hour is decided when the item is added; a bill kept open past the end of happy hour keeps those prices.
 - Two of the same dish with different options on one bill: the options apply to the whole line, as notes already do.
