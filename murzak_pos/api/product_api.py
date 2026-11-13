@@ -34,6 +34,23 @@ from murzak_pos.api.pharmacy_rules import looks_like_antibiotic, prescription_de
 
 
 PRESCRIPTION_FIELD = "custom_prescription_only"
+CONTROLLED_FIELD = "custom_controlled_drug"
+PPB_FIELD = "custom_ppb_registration_no"
+
+
+def _set_pharmacy_fields(item, controlled_drug=None, ppb_registration_no=None) -> None:
+    """
+    Pharmacies: the PPB registration number printed on the pack, and whether the medicine is controlled. A controlled
+    medicine is always prescription-only too. Only what was sent is changed; a site without the fields is left alone.
+    """
+    meta = item.meta
+    controlled = _chosen_flag(controlled_drug)
+    if controlled is not None and meta.has_field(CONTROLLED_FIELD):
+        item.set(CONTROLLED_FIELD, 1 if controlled else 0)
+        if controlled and meta.has_field(PRESCRIPTION_FIELD):
+            item.set(PRESCRIPTION_FIELD, 1)
+    if ppb_registration_no is not None and meta.has_field(PPB_FIELD):
+        item.set(PPB_FIELD, re.sub(r"[^A-Za-z0-9/\-. ]", "", str(ppb_registration_no)).strip().upper()[:40] or None)
 
 
 def _chosen_flag(value) -> bool | None:
@@ -98,6 +115,8 @@ def create_product(
     prescription_only: bool | None = None,
     vat_class: str = None,
     track_batches: bool | None = None,
+    controlled_drug: bool | None = None,
+    ppb_registration_no: str | None = None,
 ) -> Dict:
     """Create a new product/item
     
@@ -211,6 +230,7 @@ def create_product(
         item.is_purchase_item = 1 if is_purchase_item else 0
         if _has_prescription_field() and _starts_prescription_only(prescription_only, company, item_code, item_name, description):
             item.set(PRESCRIPTION_FIELD, 1)
+        _set_pharmacy_fields(item, controlled_drug, ppb_registration_no)
         # Medicines: received batch by batch with the expiry printed on the pack (batches.py); batches are never numbered automatically
         if _chosen_flag(track_batches) and item.is_stock_item:
             item.has_batch_no = 1
@@ -1047,7 +1067,9 @@ def update_product(
     buying_price: float = None,
     warehouse: str = None,
     company: str = None,
-    prescription_only: bool | None = None
+    prescription_only: bool | None = None,
+    controlled_drug: bool | None = None,
+    ppb_registration_no: str | None = None,
 ) -> Dict:
     """Update an existing product/item
     
@@ -1124,6 +1146,7 @@ def update_product(
         item.disabled = 1 if disabled else 0
     if _chosen_flag(prescription_only) is not None and _has_prescription_field():
         item.set(PRESCRIPTION_FIELD, 1 if _chosen_flag(prescription_only) else 0)
+    _set_pharmacy_fields(item, controlled_drug, ppb_registration_no)
     
     relax_etims_mandatory(item, company_uses_etims)
     item.save(ignore_permissions=True)
@@ -1168,6 +1191,9 @@ def update_product(
     }
     if _has_prescription_field():
         response_data["prescription_only"] = item.get(PRESCRIPTION_FIELD) or 0
+    for key, field in (("controlled_drug", CONTROLLED_FIELD), ("ppb_registration_no", PPB_FIELD)):
+        if item.meta.has_field(field):
+            response_data[key] = item.get(field) or (0 if key == "controlled_drug" else "")
     
     # Add buying_price info if it was updated
     if buying_price_updated:

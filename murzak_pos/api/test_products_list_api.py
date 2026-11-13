@@ -1131,6 +1131,8 @@ class TestNewProductWithOnlyANameAndAPrice(NewProductCase):
 					"is_purchase_item": True,
 					"prescription_only": None,
 					"track_batches": None,
+					"controlled_drug": None,
+					"ppb_registration_no": None,
 				}
 			],
 		)

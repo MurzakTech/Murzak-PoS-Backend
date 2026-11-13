@@ -182,6 +182,31 @@ def _check_store(warehouse, company):
 		frappe.throw(_("That store belongs to another business."), frappe.PermissionError)
 
 
+def _pharmacy_fields(codes) -> dict:
+	"""{code: {"controlled": 0 or 1, "ppb": text}} for products that have either set (none on a site without the fields)."""
+	if not codes:
+		return {}
+	try:
+		meta = frappe.get_meta("Item")
+		if not (meta.has_field("custom_controlled_drug") and meta.has_field("custom_ppb_registration_no")):
+			return {}
+		rows = frappe.get_all(
+			"Item",
+			filters={"name": ["in", codes]},
+			fields=["name", "custom_controlled_drug", "custom_ppb_registration_no"],
+		)
+		return {
+			r["name"]: {
+				"controlled": 1 if r.get("custom_controlled_drug") else 0,
+				"ppb": r.get("custom_ppb_registration_no") or "",
+			}
+			for r in rows
+			if isinstance(r, dict)
+		}
+	except Exception:
+		return {}
+
+
 def _batch_tracked(codes) -> set:
 	"""The codes among these that are received batch by batch, with an expiry date."""
 	if not codes:
@@ -264,9 +289,12 @@ def list_products(
 		# Pharmacies: which of these are prescription-only, so the Edit form shows and keeps the setting
 		flagged = _prescription_only(codes)
 		tracked = _batch_tracked(codes)
+		pharmacy = _pharmacy_fields(codes)
 		for row in rows:
 			row["prescription_only"] = 1 if row["item_code"] in flagged else 0
 			row["tracks_batches"] = 1 if row["item_code"] in tracked else 0
+			row["controlled_drug"] = pharmacy.get(row["item_code"], {}).get("controlled", 0)
+			row["ppb_registration_no"] = pharmacy.get(row["item_code"], {}).get("ppb", "")
 		summary = _summary(parts)
 	except Exception:
 		frappe.log_error("Products list error", frappe.get_traceback())
@@ -452,6 +480,8 @@ def create_product_simple(
 	track_batches=None,
 	opening_batch_no=None,
 	opening_expiry=None,
+	controlled_drug=None,
+	ppb_registration_no=None,
 ):
 	"""
 	Save a new product from the one-screen form. Only the name and the price are needed.
@@ -525,6 +555,8 @@ def create_product_simple(
 			# Pharmacies: chosen on the form; with no choice, a common antibiotic starts as prescription-only
 			prescription_only=prescription_only,
 			track_batches=1 if tracks else None,
+			controlled_drug=controlled_drug,
+			ppb_registration_no=ppb_registration_no,
 		)
 	except frappe.ValidationError as error:
 		# The existing call refuses in words; show them beside the field they are about when that can be told

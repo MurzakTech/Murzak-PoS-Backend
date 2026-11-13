@@ -244,3 +244,87 @@ def register_summary(rows: list[dict]) -> dict:
 		"lines": len(rows),
 		"missing": len({r["invoice"] for r in rows if r["status"] == "Missing"}),
 	}
+
+
+# --- the controlled medicines register ------------------------------------------------------------------------
+#
+# Like the paper register: for each controlled medicine, the balance at the start of the period, then every movement
+# in date order (received, dispensed, returned, adjusted, moved) with the balance after it, and the balance at the end.
+# A sale shows the patient, the prescriber and who dispensed it.
+
+MOVEMENT_KINDS = {
+	"Purchase Receipt": ("Received from supplier", "Returned to supplier"),
+	"Purchase Invoice": ("Received from supplier", "Returned to supplier"),
+	"POS Invoice": ("Returned by patient", "Dispensed"),
+	"Sales Invoice": ("Returned by patient", "Dispensed"),
+	"Delivery Note": ("Returned by patient", "Dispensed"),
+	"Stock Reconciliation": ("Count adjustment (more)", "Count adjustment (less)"),
+	"Stock Entry": ("Stock in", "Stock out"),
+}
+
+
+def movement_kind(voucher_type, qty) -> str:
+	"""What a movement was, in the register's words: by the document that made it and whether stock came in or went out."""
+	came_in, went_out = MOVEMENT_KINDS.get(voucher_type, ("Stock in", "Stock out"))
+	return came_in if (qty or 0) > 0 else went_out
+
+
+def controlled_register(items: dict, entries: list[dict], start) -> list[dict]:
+	"""
+	The register, one block per controlled medicine. `items` maps a code to its name; `entries` are every movement of
+	those medicines up to the end of the period ({item_code, date, time, voucher_type, reference, qty, warehouse,
+	patient, prescriber, dispensed_by}); those before `start` make the opening balance. Medicines are A to Z.
+	"""
+	start = str(start)
+	blocks = {
+		code: {
+			"item_code": code,
+			"item_name": name,
+			"opening": 0.0,
+			"received": 0.0,
+			"issued": 0.0,
+			"lines": [],
+		}
+		for code, name in items.items()
+	}
+	for e in sorted(
+		entries,
+		key=lambda e: (str(e.get("date") or ""), str(e.get("time") or ""), str(e.get("reference") or "")),
+	):
+		block = blocks.get(e.get("item_code"))
+		if block is None:
+			continue
+		qty = float(e.get("qty") or 0)
+		if str(e.get("date") or "") < start:
+			block["opening"] += qty
+			continue
+		if qty > 0:
+			block["received"] += qty
+		else:
+			block["issued"] += -qty
+		block["lines"].append(
+			{
+				"date": str(e.get("date") or ""),
+				"time": str(e.get("time") or "")[:5],
+				"kind": movement_kind(e.get("voucher_type"), qty),
+				"reference": e.get("reference") or "",
+				"warehouse": e.get("warehouse") or "",
+				"qty_in": round(qty, 3) if qty > 0 else 0,
+				"qty_out": round(-qty, 3) if qty < 0 else 0,
+				"patient": e.get("patient") or "",
+				"prescriber": e.get("prescriber") or "",
+				"dispensed_by": e.get("dispensed_by") or "",
+			}
+		)
+	result = []
+	for block in sorted(blocks.values(), key=lambda b: str(b["item_name"] or b["item_code"]).lower()):
+		balance = block["opening"]
+		for line in block["lines"]:
+			balance += line["qty_in"] - line["qty_out"]
+			line["balance"] = round(balance, 3)
+		block["opening"] = round(block["opening"], 3)
+		block["received"] = round(block["received"], 3)
+		block["issued"] = round(block["issued"], 3)
+		block["closing"] = round(balance, 3)
+		result.append(block)
+	return result

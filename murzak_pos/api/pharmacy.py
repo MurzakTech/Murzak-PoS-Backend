@@ -16,6 +16,7 @@ from murzak_pos.api.pharmacy_rules import (
 	REGISTER_MAX_DAYS,
 	check,
 	clean_dispensing,
+	controlled_register,
 	dispensing_fields,
 	register_rows,
 	register_summary,
@@ -168,5 +169,151 @@ def get_dispensing_register(
 			"rows": rows,
 			"summary": register_summary(rows),
 			"truncated": len(invoices) >= REGISTER_LIMIT,
+		},
+	}
+
+
+# --- the controlled medicines register ------------------------------------------------------------------------
+
+CONTROLLED_FIELD = "custom_controlled_drug"
+
+_POS_SALES_SQL = """
+	select item.item_code as item_code, item.warehouse as warehouse, -item.stock_qty as qty,
+		inv.posting_date as date, inv.posting_time as time, inv.name as reference, 'POS Invoice' as voucher_type
+		{rx_fields}
+	from `tabPOS Invoice Item` item
+	join `tabPOS Invoice` inv on inv.name = item.parent
+	where inv.company = %(company)s and inv.docstatus = 1 and inv.posting_date <= %(end)s
+		and item.item_code in %(codes)s {warehouse}
+"""
+
+
+def _controlled_items(company: str) -> dict:
+	if not frappe.get_meta("Item").has_field(CONTROLLED_FIELD):
+		return {}
+	rows = frappe.get_all(
+		"Item",
+		filters={"custom_company": company, CONTROLLED_FIELD: 1},
+		fields=["name", "item_name"],
+		limit_page_length=0,
+	)
+	return {r.name: r.item_name or r.name for r in rows}
+
+
+def _ledger_entries(company: str, codes: list, end, warehouse: str | None) -> list[dict]:
+	"""Stock movements from the ledger, without the merged shift invoices (their POS sales are read one by one instead)."""
+	filters = {"company": company, "item_code": ["in", codes], "is_cancelled": 0, "posting_date": ["<=", end]}
+	if warehouse:
+		filters["warehouse"] = warehouse
+	rows = frappe.get_all(
+		"Stock Ledger Entry",
+		filters=filters,
+		fields=[
+			"item_code",
+			"warehouse",
+			"actual_qty",
+			"posting_date",
+			"posting_time",
+			"voucher_type",
+			"voucher_no",
+		],
+		order_by="posting_date asc, posting_time asc, creation asc",
+		limit_page_length=0,
+	)
+	sales = {r.voucher_no for r in rows if r.voucher_type == "Sales Invoice"}
+	merged = (
+		set(
+			frappe.get_all(
+				"Sales Invoice", filters={"name": ["in", list(sales)], "is_consolidated": 1}, pluck="name"
+			)
+		)
+		if sales
+		else set()
+	)
+	rx = _rx_of("Sales Invoice", list(sales - merged))
+	return [
+		{
+			"item_code": r.item_code,
+			"warehouse": r.warehouse,
+			"qty": r.actual_qty,
+			"date": r.posting_date,
+			"time": r.posting_time,
+			"voucher_type": r.voucher_type,
+			"reference": r.voucher_no,
+			**rx.get(r.voucher_no, {}),
+		}
+		for r in rows
+		if not (r.voucher_type == "Sales Invoice" and r.voucher_no in merged)
+	]
+
+
+def _rx_of(doctype: str, names: list) -> dict:
+	if not names or not all(frappe.get_meta(doctype).has_field(f) for f in REGISTER_FIELDS):
+		return {}
+	rows = frappe.get_all(
+		doctype,
+		filters={"name": ["in", names]},
+		fields=["name", "custom_rx_patient", "custom_rx_prescriber", "custom_rx_dispensed_by"],
+		limit_page_length=0,
+	)
+	return {
+		r.name: {
+			"patient": r.custom_rx_patient,
+			"prescriber": r.custom_rx_prescriber,
+			"dispensed_by": r.custom_rx_dispensed_by,
+		}
+		for r in rows
+	}
+
+
+def _pos_sales(company: str, codes: list, end, warehouse: str | None) -> list[dict]:
+	"""Every POS sale of these medicines (they move stock only when the shift is merged, so they are read one by one)."""
+	has_rx = all(frappe.get_meta("POS Invoice").has_field(f) for f in REGISTER_FIELDS)
+	rx_fields = (
+		", inv.custom_rx_patient as patient, inv.custom_rx_prescriber as prescriber, inv.custom_rx_dispensed_by as dispensed_by"
+		if has_rx
+		else ""
+	)
+	params = {"company": company, "end": end, "codes": tuple(codes)}
+	where_store = ""
+	if warehouse:
+		where_store = "and item.warehouse = %(warehouse)s"
+		params["warehouse"] = warehouse
+	return frappe.db.sql(
+		_POS_SALES_SQL.format(rx_fields=rx_fields, warehouse=where_store), params, as_dict=True
+	)
+
+
+@frappe.whitelist()
+def get_controlled_register(
+	company: str | None = None,
+	from_date: str | None = None,
+	to_date: str | None = None,
+	warehouse: str | None = None,
+) -> dict:
+	"""
+	The controlled medicines register for the period (30 days to today unless said): for each medicine marked
+	Controlled, the opening balance, every movement with the balance after it, and the closing balance. Sales name the
+	patient, so only the owner and managers may read it.
+	"""
+	role_tiers.require_access("all_sales")
+	company = resolve_company(company)
+	if warehouse:
+		ensure_record_access("Warehouse", warehouse)
+	start, end = _register_dates(from_date, to_date)
+	items = _controlled_items(company)
+	entries = []
+	if items:
+		codes = list(items)
+		entries = _ledger_entries(company, codes, end, warehouse or None) + _pos_sales(
+			company, codes, end, warehouse or None
+		)
+	return {
+		"success": True,
+		"data": {
+			"company": company,
+			"from_date": str(start),
+			"to_date": str(end),
+			"medicines": controlled_register(items, entries, start),
 		},
 	}

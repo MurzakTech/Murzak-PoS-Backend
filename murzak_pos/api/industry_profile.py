@@ -37,6 +37,7 @@ FEATURE_NAMES = (
 	"expiry",  # expiry dates and the Expiry tab
 	"dispensing_register",  # the list of every prescription sale, for inspections
 	"antibiotics_prescription_only",  # a new product named after a common antibiotic starts as prescription-only
+	"controlled_register",  # the controlled medicines register, with a running balance
 	# Restaurant and bar
 	"tables",  # bills held by table or tab name
 	"kitchen_tickets",  # orders sent to the kitchen and bar
@@ -47,7 +48,13 @@ FEATURE_NAMES = (
 )
 
 _FEATURES_ON = {
-	PHARMACY: ("prescription_only", "expiry", "dispensing_register", "antibiotics_prescription_only"),
+	PHARMACY: (
+		"prescription_only",
+		"expiry",
+		"dispensing_register",
+		"antibiotics_prescription_only",
+		"controlled_register",
+	),
 	RESTAURANT: (
 		"tables",
 		"kitchen_tickets",

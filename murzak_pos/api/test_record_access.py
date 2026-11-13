@@ -82,6 +82,7 @@ EXPECTED_GUARDS = {
 	},
 	"pharmacy": {
 		"get_dispensing_register": ("Warehouse warehouse",),
+		"get_controlled_register": ("Warehouse warehouse",),
 	},
 	"restaurant_api": {
 		"approve_void": ("Item item_code", "Warehouse warehouse"),
