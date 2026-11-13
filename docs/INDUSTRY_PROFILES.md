@@ -1,4 +1,4 @@
-# Industry profiles, pharmacy and restaurant (Phase 1)
+# Industry profiles, pharmacy and restaurant (Phases 1 and 2)
 
 ## In plain words
 
@@ -51,7 +51,48 @@ sell?". Anything else is a general shop, which behaves exactly as before.
 All are created by `bench migrate` (and on a new site by `install-app`) from `murzak_pos/murzak_pos/custom/*.json` and
 the doctype folder. No patch is needed.
 
-## Not in this slice
+## Phase 2
 
-Batch and expiry switches on the product form and at goods receiving; menu modifiers on kitchen tickets; split bills;
-service charge and tips; the tourism levy report.
+### Calls added
+
+| Call | Who | What it does |
+| --- | --- | --- |
+| `batches.set_batch_tracking(item_code, on, company?)` | catalogue roles | Switches a product to tracking batches and expiry dates. Allowed only before its first sale or delivery (ERPNext's rule); a product with history is refused in plain words. |
+| `menu_options_api.list_menu_options(company?)` | anyone in the business | Every dish with options: `{item_code: [groups]}`. |
+| `menu_options_api.set_menu_options(item_code, groups, company?)` | catalogue roles | Keeps a dish's option groups (`{name, required, multiple, choices}`; a choice such as `"Extra cheese +50"` adds 50). |
+| `levy_api.get_tourism_levy(company?, month?)` | owner, manager | A month's sales of each restaurant-and-bar store and 2% of them, **both before and after VAT**. Confirm with the Tourism Fund which base your business files on. |
+| `pharmacy.get_controlled_register(company?, from_date?, to_date?, warehouse?)` | owner, manager | For each controlled medicine: opening balance, every movement with the balance after it (patient, prescriber and dispenser on a sale), closing balance. |
+
+### Changed behaviour
+
+- **Batches at receiving.** Receive goods (`receive_goods`), a bill already held (`create_direct_bill`) and
+  `create_purchase_receipt` take `batch_no` (optional: made from the code and expiry when blank) and `expiry_date`
+  (required) for each batch-tracked product. Stock that has already expired is refused before anything is saved.
+  One batch per product per delivery.
+- **New products** (`create_product_simple`) take `track_batches`, and with opening stock `opening_batch_no` and
+  `opening_expiry`; also `controlled_drug` and `ppb_registration_no`. `update_product` takes the last two.
+  A controlled medicine is always prescription-only too.
+- **Selling batches.** ERPNext picks the batch for a sale (earliest expiry first, never expired). The new after-migrate
+  step `batch_order.keep_auto_batch_pick_on` keeps that automatic pick switched on, because the till never names a batch.
+- **Menu options** chosen at the till go on the invoice line's description (`options_text` on a sale line).
+- **Product list rows** now carry `prescription_only`, `tracks_batches`, `controlled_drug` and `ppb_registration_no`;
+  purchase lines carry `tracks_batches`.
+
+### New fields
+
+`Item`: `custom_controlled_drug` (Controlled Medicine), `custom_ppb_registration_no` (PPB Registration Number),
+`custom_menu_options` (hidden, kept by the POS).
+
+### Why the controlled register reads POS sales one by one
+
+A POS Invoice moves no stock until the shift is closed and its sales are merged into one Sales Invoice. Reading only
+the stock ledger would lose who each dose was for. The register therefore reads every POS sale itself and leaves out
+the merged Sales Invoice, so each dispensing line is kept and nothing is counted twice.
+
+## Not done yet
+
+- Moving the stock of a medicine that already has sales or deliveries to a batch-tracked copy (it is refused, with a
+  message to ask for help).
+- Splitting a bill between guests, service charge and tips, the table map, happy-hour prices, delivery-platform orders,
+  GS1 2D barcode scanning, and the private-insurance split.
+- Two of the same dish with different options on one bill: the options apply to the whole line, as notes already do.
