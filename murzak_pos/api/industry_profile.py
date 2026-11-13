@@ -43,11 +43,12 @@ FEATURE_NAMES = (
 	"void_approval",  # removing an item the kitchen already has needs a manager and a reason
 	"waiter_on_sale",  # each bill is credited to a waiter
 	"waiter_cashup",  # the end-of-shift cash-up by waiter
+	"tourism_levy",  # the monthly 2% tourism levy report
 )
 
 _FEATURES_ON = {
 	PHARMACY: ("prescription_only", "expiry", "dispensing_register", "antibiotics_prescription_only"),
-	RESTAURANT: ("tables", "kitchen_tickets", "void_approval", "waiter_on_sale", "waiter_cashup"),
+	RESTAURANT: ("tables", "kitchen_tickets", "void_approval", "waiter_on_sale", "waiter_cashup", "tourism_levy"),
 	GENERAL: (),
 }
 
