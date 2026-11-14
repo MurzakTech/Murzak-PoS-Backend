@@ -102,6 +102,8 @@ after_migrate = [
 	"murzak_pos.api.language_api.enable_languages",
 	# A sale that does not choose a batch takes the one expiring first (api/batch_order.py)
 	"murzak_pos.api.batch_order.pick_earliest_expiry_first",
+	# The till never names a batch, so ERPNext must pick one for each sale (api/batch_order.py)
+	"murzak_pos.api.batch_order.keep_auto_batch_pick_on",
 	# Dates and times in Kenya's time, not Frappe's India default (api/shop_timezone.py)
 	"murzak_pos.api.shop_timezone.use_kenya_time",
 	# Kenyan shillings read "KES" in the ERP too, as in the POS, not ERPNext's "Sh" (api/currency_symbol.py)

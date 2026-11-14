@@ -8,8 +8,14 @@ from murzak_pos.api.pharmacy_rules import (
 	add_to_remarks,
 	check,
 	clean_dispensing,
+	dispensing_fields,
 	is_complete,
+	looks_like_antibiotic,
+	prescription_default,
+	register_rows,
+	register_summary,
 	remark,
+	rx_codes,
 )
 
 FULL = {"patient": "Jane Wanjiru", "prescriber": "Dr Otieno", "reference": "RX-1042"}
@@ -135,6 +141,205 @@ class TestSaleRemark(unittest.TestCase):
 	def test_a_site_without_the_flag_yet_sells_as_before_and_asks_nothing(self):
 		self.assertIsNone(self.sale(["AMOX"], has_field=False))
 		self.get_all.assert_not_called()
+
+	def test_review_gives_the_note_and_the_fields_together(self):
+		db = MagicMock()
+		db.get_value.return_value = "Amina"
+		meta = MagicMock()
+		meta.has_field.return_value = True
+		with (
+			patch("frappe.translate.get_all_translations", return_value={}),
+			patch.object(frappe, "db", db, create=True),
+			patch.object(frappe, "session", frappe._dict(user="amina@shop-a.test")),
+			patch.object(frappe, "get_meta", return_value=meta),
+			patch.object(frappe, "get_all", return_value=["AMOX"]),
+		):
+			review = pharmacy.review_sale([{"item_code": "AMOX"}], FULL, False)
+		self.assertIn("patient Jane Wanjiru", review["note"])
+		self.assertEqual(review["fields"]["custom_rx_status"], "Complete")
+		self.assertEqual(review["fields"]["custom_rx_dispensed_by"], "Amina")
+
+	def test_the_fields_are_written_only_where_the_invoice_has_them(self):
+		doc = MagicMock()
+		doc.meta.has_field.side_effect = lambda name: name != "custom_rx_reference"
+		pharmacy.write_dispensing_fields(doc, {"custom_rx_status": "Complete", "custom_rx_reference": "RX-1"})
+		doc.set.assert_called_once_with("custom_rx_status", "Complete")
+		pharmacy.write_dispensing_fields(doc, {})
+		self.assertEqual(doc.set.call_count, 1)
+
+
+class TestDispensingFields(unittest.TestCase):
+	def test_a_complete_sale_keeps_every_part_of_the_record(self):
+		fields = dispensing_fields(["AMOX", "DIAZ"], FULL, "Amina", "ok")
+		self.assertEqual(fields["custom_rx_status"], "Complete")
+		self.assertEqual(fields["custom_rx_items"], "AMOX, DIAZ")
+		self.assertEqual(fields["custom_rx_patient"], "Jane Wanjiru")
+		self.assertEqual(fields["custom_rx_prescriber"], "Dr Otieno")
+		self.assertEqual(fields["custom_rx_reference"], "RX-1042")
+		self.assertEqual(fields["custom_rx_dispensed_by"], "Amina")
+
+	def test_an_offline_sale_without_details_is_marked_missing(self):
+		fields = dispensing_fields(["AMOX"], None, "Amina", "flag")
+		self.assertEqual(fields["custom_rx_status"], "Missing")
+		self.assertEqual(fields["custom_rx_patient"], "")
+
+	def test_a_sale_with_no_prescription_items_gets_no_fields(self):
+		self.assertEqual(dispensing_fields([], FULL, "Amina", "ok"), {})
+
+
+class TestAntibiotics(unittest.TestCase):
+	def test_common_antibiotic_names_are_recognised_however_written(self):
+		for name in (
+			"Amoxicillin 500mg Capsules",
+			"AMOXYCILLIN SYRUP",
+			"Co-Trimoxazole 480mg",
+			"Augmentin 625",
+			"Cipro-floxacin",
+			"Metronidazole (Flagyl) 400mg",
+			"Antibiotic Ointment",
+		):
+			self.assertTrue(looks_like_antibiotic(name), name)
+
+	def test_everyday_products_are_not_flagged(self):
+		for name in (
+			"Paracetamol Tablet",
+			"Vitamin C Tablets",
+			"Cough Syrup",
+			"ORS Sachet",
+			"Hand Sanitizer",
+			"",
+			None,
+		):
+			self.assertFalse(looks_like_antibiotic(name), name)
+
+	def test_any_of_several_names_counts(self):
+		self.assertTrue(looks_like_antibiotic("Product 12", "AMOXICILLIN-500"))
+		self.assertFalse(looks_like_antibiotic(None, ""))
+
+	def test_what_the_person_chose_always_wins(self):
+		self.assertFalse(prescription_default(False, True, "Amoxicillin"))
+		self.assertTrue(prescription_default(True, False, "Paracetamol"))
+
+	def test_with_no_choice_only_a_pharmacys_antibiotic_starts_prescription_only(self):
+		self.assertTrue(prescription_default(None, True, "Amoxicillin"))
+		self.assertFalse(prescription_default(None, False, "Amoxicillin"))
+		self.assertFalse(prescription_default(None, True, "Paracetamol"))
+
+
+REGISTER_INVOICES = [
+	{
+		"name": "POS-1",
+		"posting_date": "2026-11-12",
+		"posting_time": "09:15:00.123",
+		"is_return": 0,
+		"custom_rx_status": "Complete",
+		"custom_rx_items": "AMOX, DIAZ",
+		"custom_rx_patient": "Jane",
+		"custom_rx_prescriber": "Dr O",
+		"custom_rx_reference": "RX-1",
+		"custom_rx_dispensed_by": "Amina",
+	},
+	{
+		"name": "POS-2",
+		"posting_date": "2026-11-13",
+		"posting_time": "08:00:00",
+		"is_return": 0,
+		"custom_rx_status": "Missing",
+		"custom_rx_items": "AMOX",
+	},
+]
+REGISTER_LINES = [
+	{
+		"parent": "POS-1",
+		"item_code": "AMOX",
+		"item_name": "Amoxicillin",
+		"qty": 21,
+		"uom": "Capsule",
+		"warehouse": "Main",
+	},
+	{"parent": "POS-1", "item_code": "DIAZ", "item_name": "Diazepam", "qty": 10, "warehouse": "Branch"},
+	{"parent": "POS-1", "item_code": "TEA", "item_name": "Tea", "qty": 1, "warehouse": "Main"},
+	{
+		"parent": "POS-2",
+		"item_code": "AMOX",
+		"item_name": "Amoxicillin",
+		"qty": 14,
+		"batch_no": "B7",
+		"warehouse": "Main",
+	},
+	{"parent": "POS-9", "item_code": "AMOX", "qty": 1},
+]
+
+
+class TestDispensingRegister(unittest.TestCase):
+	def test_only_prescription_items_of_listed_sales_are_shown_newest_first(self):
+		rows = register_rows(REGISTER_INVOICES, REGISTER_LINES)
+		self.assertEqual(
+			[(r["invoice"], r["item_code"]) for r in rows],
+			[("POS-2", "AMOX"), ("POS-1", "AMOX"), ("POS-1", "DIAZ")],
+		)
+		self.assertEqual(rows[0]["batch_no"], "B7")
+		self.assertEqual(rows[0]["status"], "Missing")
+		self.assertEqual(rows[1]["patient"], "Jane")
+		self.assertEqual(rows[1]["time"], "09:15:00")
+
+	def test_a_store_shows_only_what_it_dispensed(self):
+		rows = register_rows(REGISTER_INVOICES, REGISTER_LINES, "Branch")
+		self.assertEqual([r["item_code"] for r in rows], ["DIAZ"])
+
+	def test_the_summary_counts_sales_lines_and_missing_records(self):
+		self.assertEqual(
+			register_summary(register_rows(REGISTER_INVOICES, REGISTER_LINES)),
+			{"sales": 2, "lines": 3, "missing": 1},
+		)
+
+	def test_item_codes_are_read_back_once_each(self):
+		self.assertEqual(rx_codes("AMOX, DIAZ, AMOX, "), ["AMOX", "DIAZ"])
+		self.assertEqual(rx_codes(None), [])
+
+
+class TestGetDispensingRegister(unittest.TestCase):
+	def run_register(self, **kwargs):
+		meta = MagicMock()
+		meta.has_field.return_value = True
+		calls = []
+
+		def get_all(doctype, **kw):
+			calls.append((doctype, kw))
+			if doctype == "POS Invoice":
+				return [frappe._dict(REGISTER_INVOICES[0])]
+			if doctype == "POS Invoice Item":
+				return [frappe._dict(line) for line in REGISTER_LINES if line["parent"] == "POS-1"]
+			return []
+
+		with (
+			patch("frappe.translate.get_all_translations", return_value={}),
+			patch.object(pharmacy.role_tiers, "require_access") as require_access,
+			patch.object(pharmacy, "resolve_company", return_value="Duka Ltd"),
+			patch.object(pharmacy, "ensure_record_access"),
+			patch.object(frappe, "get_meta", return_value=meta),
+			patch.object(frappe, "get_all", side_effect=get_all),
+		):
+			result = pharmacy.get_dispensing_register(**kwargs)
+		return result, calls, require_access
+
+	def test_only_the_owner_and_managers_may_read_it_because_it_names_patients(self):
+		_result, _calls, require_access = self.run_register(from_date="2026-11-01", to_date="2026-11-13")
+		require_access.assert_called_once_with("all_sales")
+
+	def test_merged_shift_invoices_are_left_out_so_nothing_is_counted_twice(self):
+		result, calls, _ = self.run_register(from_date="2026-11-01", to_date="2026-11-13")
+		filters = {
+			doctype: kw["filters"] for doctype, kw in calls if doctype in ("POS Invoice", "Sales Invoice")
+		}
+		self.assertEqual(filters["Sales Invoice"]["is_consolidated"], 0)
+		self.assertNotIn("is_consolidated", filters["POS Invoice"])
+		self.assertEqual(result["data"]["summary"], {"sales": 1, "lines": 2, "missing": 0})
+
+	def test_a_backwards_or_overlong_period_is_refused(self):
+		for dates in (("2026-11-13", "2026-11-01"), ("2025-01-01", "2026-11-13")):
+			with self.assertRaises(frappe.ValidationError, msg=dates):
+				self.run_register(from_date=dates[0], to_date=dates[1])
 
 
 if __name__ == "__main__":

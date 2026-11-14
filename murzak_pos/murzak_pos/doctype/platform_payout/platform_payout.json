@@ -1,0 +1,198 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-11-13 12:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "modified": "2026-11-13 12:00:00.000000",
+ "field_order": [
+  "payout_section",
+  "company",
+  "platform",
+  "payout_date",
+  "statement_ref",
+  "column_break_1",
+  "amount_received",
+  "mode_of_payment",
+  "orders_section",
+  "orders_matched",
+  "sales_matched",
+  "expected_commission",
+  "column_break_2",
+  "actual_commission",
+  "difference",
+  "unmatched_section",
+  "unmatched_refs",
+  "who_section",
+  "recorded_by",
+  "column_break_3",
+  "recorded_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "payout_section",
+   "fieldtype": "Section Break",
+   "label": "Platform Payout"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "search_index": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "platform",
+   "fieldtype": "Data",
+   "label": "Platform",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "payout_date",
+   "fieldtype": "Date",
+   "label": "Payout Date",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_ref",
+   "fieldtype": "Data",
+   "label": "Statement Reference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amount_received",
+   "fieldtype": "Currency",
+   "label": "Amount Received",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Link",
+   "label": "Received Into",
+   "options": "Mode of Payment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "orders_section",
+   "fieldtype": "Section Break",
+   "label": "Orders Settled"
+  },
+  {
+   "fieldname": "orders_matched",
+   "fieldtype": "Int",
+   "label": "Orders Matched",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_matched",
+   "fieldtype": "Currency",
+   "label": "Sales of Those Orders",
+   "read_only": 1
+  },
+  {
+   "fieldname": "expected_commission",
+   "fieldtype": "Currency",
+   "label": "Commission Expected",
+   "read_only": 1,
+   "description": "At the commission percent set for the platform in Settings."
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_commission",
+   "fieldtype": "Currency",
+   "label": "Commission Taken",
+   "read_only": 1,
+   "description": "Sales of the matched orders less the amount received."
+  },
+  {
+   "fieldname": "difference",
+   "fieldtype": "Currency",
+   "label": "Difference",
+   "read_only": 1,
+   "description": "Commission taken less commission expected. Above 0 means the platform kept more than agreed."
+  },
+  {
+   "fieldname": "unmatched_section",
+   "fieldtype": "Section Break",
+   "label": "Not Matched"
+  },
+  {
+   "fieldname": "unmatched_refs",
+   "fieldtype": "Small Text",
+   "label": "Order Numbers Not Found",
+   "read_only": 1,
+   "description": "Order numbers on the statement that match no order in the POS."
+  },
+  {
+   "fieldname": "who_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "recorded_by",
+   "fieldtype": "Link",
+   "label": "Recorded By",
+   "options": "User",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "recorded_at",
+   "fieldtype": "Datetime",
+   "label": "Recorded At",
+   "reqd": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "module": "Murzak POS",
+ "name": "Platform Payout",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

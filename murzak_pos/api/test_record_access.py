@@ -74,6 +74,21 @@ EXPECTED_GUARDS = {
 	"expiry_api": {
 		"get_expiry_alerts": ("Warehouse warehouse",),
 	},
+	"batches": {
+		"set_batch_tracking": ("Item item_code",),
+	},
+	"menu_options_api": {
+		"set_menu_options": ("Item item_code",),
+	},
+	"pharmacy": {
+		"get_dispensing_register": ("Warehouse warehouse",),
+		"get_controlled_register": ("Warehouse warehouse",),
+	},
+	"restaurant_api": {
+		"approve_void": ("Item item_code", "Warehouse warehouse"),
+		"get_waiter_cashup": ("Warehouse warehouse",),
+		"record_tip": ("Warehouse warehouse",),
+	},
 	"stock_levels_api": {
 		"get_stock_levels": ("Warehouse warehouse",),
 		"find_products": ("Warehouse warehouse",),

@@ -20,3 +20,15 @@ def pick_earliest_expiry_first() -> None:
 	if frappe.db.get_single_value("Stock Settings", SETTING) != ERPNEXT_DEFAULT:
 		return
 	frappe.db.set_single_value("Stock Settings", SETTING, EARLIEST_EXPIRY)
+
+
+AUTO_PICK = "auto_create_serial_and_batch_bundle_for_outward"
+
+
+def keep_auto_batch_pick_on() -> None:
+	"""
+	Keep ERPNext choosing the batch for a sale by itself. The till never names a batch, so with this off every sale of a
+	medicine that tracks batches would fail. ERPNext has it on by default; this only puts it back. Safe to run again.
+	"""
+	if not frappe.db.get_single_value("Stock Settings", AUTO_PICK):
+		frappe.db.set_single_value("Stock Settings", AUTO_PICK, 1)

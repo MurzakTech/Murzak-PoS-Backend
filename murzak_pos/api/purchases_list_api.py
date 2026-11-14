@@ -25,7 +25,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
-from murzak_pos.api import business_lists, role_tiers
+from murzak_pos.api import batch_rules, batches, business_lists, role_tiers
 from murzak_pos.api import overview_calc as calc
 from murzak_pos.api import purchases_list_calc as rules
 from murzak_pos.api.access_control import ensure_record_access
@@ -662,6 +662,16 @@ def _panel(doc) -> dict:
 		else:
 			return_against = doc.name
 
+	# Medicines that track batches: the Receive goods screen asks for their batch and expiry
+	codes = [line.get("item_code") for line in lines if isinstance(line, dict)]
+	tracked = _tracks_batches(codes)
+	# and its barcodes, so scanning a pack's GS1 code finds its line and fills the batch and expiry
+	barcodes = _barcodes_of(codes)
+	for line in lines:
+		if isinstance(line, dict):
+			line["tracks_batches"] = line.get("item_code") in tracked
+			line["barcodes"] = barcodes.get(line.get("item_code"), [])
+
 	data = {
 		"id": doc.name,
 		"doctype": doc.doctype,
@@ -779,7 +789,48 @@ def _earlier(request, order, company):
 	return receipts[0], (invoices[0] if invoices else None)
 
 
-def _make_receipt(order, items, warehouse):
+def _tracks_batches(codes) -> set:
+	"""The products among these that are received batch by batch."""
+	codes = [c for c in dict.fromkeys(codes) if c]
+	if not codes:
+		return set()
+	try:
+		found = frappe.get_all("Item", filters={"name": ["in", codes], "has_batch_no": 1}, pluck="name")
+		return {c for c in found if isinstance(c, str)}
+	except Exception:
+		# Only a hint for the screen: never a reason for the purchase not to open
+		return set()
+
+
+def _barcodes_of(codes) -> dict:
+	"""{item code: [barcodes]} for these products; empty when they cannot be read (a hint for the screen only)."""
+	codes = [c for c in dict.fromkeys(codes) if c]
+	if not codes:
+		return {}
+	try:
+		found = {}
+		for row in frappe.get_all("Item Barcode", filters={"parent": ["in", codes]}, fields=["parent", "barcode"]):
+			if isinstance(row, dict) and row.get("barcode"):
+				found.setdefault(row["parent"], []).append(row["barcode"])
+		return found
+	except Exception:
+		return {}
+
+
+def _batch_refusal(items, codes):
+	"""
+	A refusal when a medicine that tracks batches is missing its expiry date (or has already expired), else None.
+	Checked before anything is saved, so a refusal changes nothing.
+	"""
+	try:
+		batches.check_lines(codes, batch_rules.batch_lines(items))
+	except frappe.ValidationError as error:
+		frappe.clear_messages()
+		return _refusal("batch", str(error))
+	return None
+
+
+def _make_receipt(order, items, warehouse, batch_of=None):
 	"""
 	The goods received note, made by the call that already makes one from an order. Returns (name, None) or
 	(None, the reason). That call rolls back by itself when it fails.
@@ -789,6 +840,8 @@ def _make_receipt(order, items, warehouse):
 	lines = []
 	for item in items:
 		line = {"item_code": item["item_code"], "qty": item["qty"]}
+		# Medicines that track batches: the batch number and expiry typed for this product
+		line.update((batch_of or {}).get(item["item_code"], {}))
 		if warehouse:
 			line["warehouse"] = warehouse
 		lines.append(line)
@@ -888,6 +941,9 @@ def receive_goods(
 	company = head.get("company")
 	if warehouse and frappe.db.get_value("Warehouse", warehouse, "company") not in (None, company):
 		return _refusal("bad_warehouse", _("That store belongs to another business."))
+	refused = _batch_refusal(items, [i.get("item_code") for i in items or [] if isinstance(i, dict)])
+	if refused:
+		return refused
 
 	try:
 		return _receive(order, items, head, company, request, bill_no, bill_day, due_day, warehouse)
@@ -954,7 +1010,7 @@ def _receive(order, items, head, company, request, bill_no, bill_day, due_day, w
 	pairs = [(c, where.get(c)) for c in codes if c in stock_items]
 	before = _stock_in_hand(pairs)
 
-	receipt, reason = _make_receipt(order, plan["items"], warehouse)
+	receipt, reason = _make_receipt(order, plan["items"], warehouse, batch_rules.batch_lines(items))
 	if not receipt:
 		# create_pr_from_po has already put everything back
 		frappe.db.rollback()
@@ -1057,6 +1113,12 @@ def create_direct_bill(
 			),
 		)
 
+	# Medicines that track batches need their expiry date: checked now, so a refusal saves nothing
+	batch_of = batch_rules.batch_lines(items)
+	refused = _batch_refusal(items, [i["item_code"] for i in plan["items"]])
+	if refused:
+		return refused
+
 	try:
 		return _direct(
 			company,
@@ -1071,6 +1133,7 @@ def create_direct_bill(
 			reference_no,
 			request,
 			rules.clean_note(notes),
+			batch_of=batch_of,
 		)
 	except Exception as error:
 		frappe.db.rollback()
@@ -1113,6 +1176,7 @@ def _direct(
 	reference_no,
 	request,
 	note=None,
+	batch_of=None,
 ):
 	"""The work of create_direct_bill, inside its try."""
 	frappe.db.get_value("Supplier", supplier, "name", for_update=True)
@@ -1140,6 +1204,10 @@ def _direct(
 		today,
 	)
 	invoice_rows = [{k: v for k, v in row.items() if k != "schedule_date"} for row in rows]
+	for row in invoice_rows:
+		batches.apply_to_row(
+			row, row["item_code"], (batch_of or {}).get(row["item_code"]), row.get("item_name")
+		)
 	values = {
 		"doctype": "Purchase Invoice",
 		"company": company,

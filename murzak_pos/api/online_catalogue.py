@@ -5,7 +5,8 @@ The WooCommerce connector and the hosted store both read the catalogue from here
 three rules:
 
 - a business shows only its own products (never another business's, which the old sync did not check);
-- a product is shown only when it is for sale, switched on and the owner has not hidden it ("Show Online");
+- a product is shown only when it is for sale, switched on and the owner has not hidden it ("Show Online"), and never
+  when it is a prescription-only medicine;
 - the stock a customer sees is what is really on the shelf, with what other orders have already claimed taken off.
 
 Nothing here needs a signed-in user, so the public store can use it. The callers decide who may ask.
@@ -35,9 +36,24 @@ def online_filters(company: str, visibility: str = "shown") -> dict:
 	}
 	if visibility == "shown":
 		filters["custom_show_online"] = 1
+		# Prescription-only medicines are never sold online or for delivery, whatever "Show Online" says: they need a
+		# pharmacist to see the prescription, and the Ministry of Health has banned online and boda boda antibiotic sales
+		if _has_prescription_field():
+			filters[PRESCRIPTION_FIELD] = ["!=", 1]
 	elif visibility == "hidden":
 		filters["custom_show_online"] = 0
 	return filters
+
+
+PRESCRIPTION_FIELD = "custom_prescription_only"
+
+
+def _has_prescription_field() -> bool:
+	"""False on a site that has not been migrated to the prescription-only flag yet (or with no database to ask)."""
+	try:
+		return bool(frappe.get_meta("Item").has_field(PRESCRIPTION_FIELD))
+	except Exception:
+		return False
 
 
 def default_warehouse(company: str, preferred: str | None = None) -> str:

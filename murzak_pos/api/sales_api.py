@@ -18,7 +18,8 @@ from murzak_pos.api.offline_sales import (
     offline_remark,
     parse_sold_at,
 )
-from murzak_pos.api.pharmacy import sale_remark as prescription_sale_remark
+from murzak_pos.api.pharmacy import review_sale as review_prescription_sale
+from murzak_pos.api.pharmacy import write_dispensing_fields
 from murzak_pos.api.pharmacy_rules import add_to_remarks
 from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_rule import (
     get_applicable_inventory_discount,
@@ -706,6 +707,11 @@ def _build_invoice_items(items: List[Dict], company: str, auto_discount: bool = 
                 "serial_no": row.get("serial_no"),
             }
         )
+        # Restaurants: the options chosen for a dish ("Well done; Extra cheese (+50)") go on the invoice line, so the
+        # receipt and the tax invoice say what the kitchen was told
+        options_text = " ".join(str(row.get("options_text") or "").split())[:500]
+        if options_text:
+            built_items[-1]["description"] = options_text
     return built_items
 
 
@@ -820,6 +826,22 @@ def _sell_in_company_currency(doc, company, pos_profile=None) -> None:
             return
 
 
+def _insurance_claim(company: str, customer: str, insurance, payments: list | None) -> dict:
+    """
+    The claim fields for a sale billed to a medical insurer, or {} for any other sale. The co-payment is what the
+    patient paid now (the payment rows that are not left owing), never what the till said it was.
+    """
+    if not insurance:
+        return {}
+    from murzak_pos.api.insurance_api import claim_for_sale
+
+    claim = claim_for_sale(company, customer, insurance)
+    if claim:
+        paid_now = sum(flt(p.get("amount")) for p in payments or [] if not p.get("use_receivable_account"))
+        claim["custom_copay"] = round(paid_now, 2)
+    return claim
+
+
 def _create_invoice_document(
     doctype: str,
     customer: str,
@@ -837,6 +859,10 @@ def _create_invoice_document(
     offline_sold_at: Optional[str] = None,
     extra_remark: str | None = None,
     sales_person: str | None = None,
+    dispensing_fields: dict | None = None,
+    order_channel: str | None = None,
+    channel_ref: str | None = None,
+    claim: dict | None = None,
 ) -> "frappe.model.document.Document":
     if not company:
         company = _get_default_company()
@@ -915,6 +941,17 @@ def _create_invoice_document(
     # The dispensing record of prescription-only medicines, so it can be read back from the sale
     if extra_remark:
         doc.remarks = add_to_remarks(doc.get("remarks"), extra_remark)
+    # The same record as separate fields, for the dispensing register
+    write_dispensing_fields(doc, dispensing_fields or {})
+    # Restaurants: an order taken through a delivery platform (Glovo, Uber Eats, Bolt Food) and its order number
+    channel = " ".join(str(order_channel or "").split())[:60]
+    if channel and doc.meta.has_field("custom_order_channel"):
+        doc.set("custom_order_channel", channel)
+        doc.set("custom_channel_ref", " ".join(str(channel_ref or "").split())[:60])
+    # Pharmacies: a sale billed to a medical insurer keeps its claim (member number, scheme, co-payment...)
+    for field, value in (claim or {}).items():
+        if doc.meta.has_field(field):
+            doc.set(field, value)
 
     # Credit the sale to the named sales person, or to the cashier's own when their login is linked to one
     sales_person_api.attach(doc, sales_person)
@@ -979,6 +1016,8 @@ def create_sales_invoice(
     client_reference: Optional[str] = None,
     offline_sold_at: Optional[str] = None,
     sales_person: str | None = None,
+    order_channel: str | None = None,
+    channel_ref: str | None = None,
 ) -> Dict:
     """
     Create a Sales Invoice for standard or POS sales.
@@ -1052,6 +1091,8 @@ def create_sales_invoice(
             client_reference=client_reference,
             offline_sold_at=offline_sold_at,
             sales_person=sales_person,
+            order_channel=order_channel,
+            channel_ref=channel_ref,
         )
 
         # Set update_stock flag - CRITICAL for inventory reduction
@@ -1169,6 +1210,9 @@ def create_pos_invoice(
     offline_sold_at: Optional[str] = None,
     dispensing: str | dict | None = None,
     sales_person: str | None = None,
+    order_channel: str | None = None,
+    channel_ref: str | None = None,
+    insurance: str | dict | None = None,
 ) -> Dict:
     """
     Create a POS Invoice (used for walk-in POS sales).
@@ -1196,6 +1240,9 @@ def create_pos_invoice(
         dispensing: For a sale that includes prescription-only medicines: {patient, prescriber,
             reference}. A sale of such medicines without a patient and a prescriber is refused (unless
             it was made offline); the record is written on the invoice's remarks.
+        insurance: For a pharmacy sale billed to a medical insurer (the customer is the insurer):
+            {insurer, patient, member_no, scheme?, preauth?}. The patient's co-payment is what the
+            payment rows pay now; the rest (a row with use_receivable_account) is the insurer's to pay.
 
     Returns:
         dict: Created POS Invoice details
@@ -1240,7 +1287,9 @@ def create_pos_invoice(
             return _recorded_sale_response(*recorded)
         # Prescription-only medicines need a patient and a prescriber on the sale (checked before any
         # payment is used up, so a refused sale costs the customer nothing)
-        prescription_note = prescription_sale_remark(parsed_items, dispensing, parse_sold_at(offline_sold_at))
+        prescription = review_prescription_sale(parsed_items, dispensing, parse_sold_at(offline_sold_at))
+        prescription_note = prescription["note"]
+        claim = _insurance_claim(company, customer, insurance, parsed_payments)
         gateway_claims = validate_gateway_payments(parsed_payments, company)
 
         # Ensure every payment row has an account; allow opt-in mapping to receivables
@@ -1303,7 +1352,11 @@ def create_pos_invoice(
                 client_reference=client_reference,
                 offline_sold_at=offline_sold_at,
                 extra_remark=prescription_note,
+                dispensing_fields=prescription["fields"],
+                claim=claim,
                 sales_person=sales_person,
+                order_channel=order_channel,
+                channel_ref=channel_ref,
             )
 
             if receivable_account and hasattr(si, "debit_to"):
@@ -1382,7 +1435,11 @@ def create_pos_invoice(
             client_reference=client_reference,
             offline_sold_at=offline_sold_at,
             extra_remark=prescription_note,
+            dispensing_fields=prescription["fields"],
+            claim=claim,
             sales_person=sales_person,
+            order_channel=order_channel,
+            channel_ref=channel_ref,
         )
 
         if receivable_account and hasattr(pi, "debit_to"):

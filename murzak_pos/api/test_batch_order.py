@@ -27,3 +27,20 @@ class PickEarliestExpiryFirstCase(unittest.TestCase):
 
 	def test_a_shop_already_on_earliest_expiry_is_left_alone(self):
 		self.run_with("Expiry").set_single_value.assert_not_called()
+
+
+class KeepAutoBatchPickOnCase(unittest.TestCase):
+	def run_with(self, current):
+		db = MagicMock()
+		db.get_single_value.return_value = current
+		with patch.object(batch_order.frappe, "db", db, create=True):
+			batch_order.keep_auto_batch_pick_on()
+		return db
+
+	def test_a_site_that_switched_it_off_gets_it_back_because_the_till_never_names_a_batch(self):
+		self.run_with(0).set_single_value.assert_called_once_with(
+			"Stock Settings", "auto_create_serial_and_batch_bundle_for_outward", 1
+		)
+
+	def test_a_site_already_on_is_left_alone(self):
+		self.run_with(1).set_single_value.assert_not_called()

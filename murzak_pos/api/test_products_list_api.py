@@ -1129,9 +1129,17 @@ class TestNewProductWithOnlyANameAndAPrice(NewProductCase):
 					"barcode": None,
 					"company": "Shop A",
 					"is_purchase_item": True,
+					"prescription_only": None,
+					"track_batches": None,
+					"controlled_drug": None,
+					"ppb_registration_no": None,
 				}
 			],
 		)
+
+	def test_a_pharmacys_prescription_choice_is_passed_on(self):
+		self.save(item_name="Amoxicillin 500mg", price="300", prescription_only="0")
+		self.assertEqual(self.created[0]["prescription_only"], "0")
 
 	def test_nothing_extra_happens_without_stock_warning_or_cost(self):
 		result = self.save(item_name="Soap bar", price="120")
