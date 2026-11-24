@@ -1,0 +1,22 @@
+# Dependabot opens the update pull requests; .github/workflows/night-dependency-updates.yml merges the safe
+# ones at night. This backend has no Python packages of its own (bench installs Frappe and ERPNext), so the
+# only thing to keep current here is the versions of the actions the workflows use.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "01:00"
+      timezone: Africa/Nairobi
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
