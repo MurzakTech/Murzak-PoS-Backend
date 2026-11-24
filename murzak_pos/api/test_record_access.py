@@ -171,6 +171,9 @@ EXPECTED_GUARDS = {
 		"send_tickets": ("Warehouse warehouse",),
 		"list_tickets": ("Warehouse warehouse",),
 	},
+	"product_seeding": {
+		"create_seed_item": ("Price List buying_price_list", "Price List price_list", "Warehouse warehouse"),
+	},
 	"onboarding_api": {
 		"update_company": ("Warehouse default_warehouse",),
 		"create_pos_profile": ("Price List selling_price_list", "Warehouse warehouse"),

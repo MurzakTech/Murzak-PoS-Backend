@@ -8,7 +8,7 @@ from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils import now, today
 from erpnext.setup.setup_wizard import setup_wizard
-from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.access_control import ensure_record_access, require_manager
 from murzak_pos.api.error_handler import safe_error_message
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.shop_timezone import use_kenya_time
@@ -623,6 +623,12 @@ def update_company(
     Returns:
         Updated company details
     """
+    # Business settings belong to the owner, and this call saves with permissions bypassed, so nothing else would
+    # stop a signed-in user naming another business here and changing its tax ID, e-mail, logo or default
+    # accounts. Say who may ask, and that the company is theirs, before anything is read or written. (The
+    # Settings > Business page and the setup wizards that call this are the owner's, so nothing legitimate changes.)
+    require_manager()
+    company_name = resolve_company(company_name)
     ensure_record_access("Warehouse", default_warehouse)
     try:
         # Validate user permissions

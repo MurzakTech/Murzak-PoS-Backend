@@ -789,6 +789,7 @@
 "Transaction not found: {0}","Muamala haukupatikana: {0}"
 "Two stations have the same name.","Vituo viwili vina jina moja."
 "Two tickets have the same id.","Tiketi mbili zina kitambulisho kimoja."
+"Two-step sign-in is already on. To change the app, enter a current code from the old one.","Kuingia kwa hatua mbili tayari kumewashwa. Ili kubadilisha programu, weka msimbo wa sasa kutoka kwenye ile ya zamani."
 "Two-step sign-in is off.","Kuingia kwa hatua mbili kumezimwa."
 "Two-step sign-in is on.","Kuingia kwa hatua mbili kumewashwa."
 "Two-step sign-in was already off.","Kuingia kwa hatua mbili kulikuwa tayari kumezimwa."
