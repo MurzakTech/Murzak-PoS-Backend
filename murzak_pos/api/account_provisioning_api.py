@@ -23,6 +23,7 @@ import frappe
 from frappe import _
 from typing import Optional, Dict, List, Tuple
 from frappe.utils import cint
+from murzak_pos.api.access_control import require_accounts_setup_role
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.error_handler import safe_error_message
 
@@ -113,6 +114,8 @@ def set_default_provisional_account(
     Returns:
         dict: Operation result
     """
+    # Only the owner and the accountant set up the accounts the books use
+    require_accounts_setup_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
@@ -377,6 +380,8 @@ def auto_configure_provisional_account(
         >>> if result["success"]:
         ...     print(f"Account: {result['data']['account']}")
     """
+    # Only the owner and the accountant set up the accounts the books use
+    require_accounts_setup_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)

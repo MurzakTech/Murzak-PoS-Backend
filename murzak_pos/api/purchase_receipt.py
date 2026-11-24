@@ -3,7 +3,7 @@ from erpnext.controllers.sales_and_purchase_return import make_return_doc
 from frappe import _
 from frappe.utils import flt
 
-from murzak_pos.api.access_control import ensure_record_access
+from murzak_pos.api.access_control import ensure_record_access, require_stock_role
 from murzak_pos.api.error_handler import safe_error_message
 
 
@@ -38,6 +38,8 @@ def reject_return_items(purchase_receipt, items, reason=None):
 		dict: {"success": bool, "message": str, "data": {...}, "errors": [...]}
 			On success, data holds "purchase_receipt", "return_document" and "returned_items".
 	"""
+	# Sending goods back changes stock, so only the stock roles may do it
+	require_stock_role()
 	ensure_record_access("Purchase Receipt", purchase_receipt)
 
 	response = {"success": False, "message": "", "data": {}, "errors": []}

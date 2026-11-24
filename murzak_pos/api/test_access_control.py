@@ -394,6 +394,10 @@ SENSITIVE_CALLS = {
 			"update_price_list",
 			"delete_price_list",
 			"create_product_variant",
+			"enable_product",
+			"add_barcode",
+			"remove_barcode",
+			"set_product_warranty",
 		],
 		"ecommerce_api": [
 			"get_ecommerce_settings",
@@ -422,6 +426,8 @@ SENSITIVE_CALLS = {
 		],
 		# applying a goods-received note to stock
 		"purchase": ["create_stock_receipt"],
+		# sending goods back to the supplier
+		"purchase_receipt": ["reject_return_items"],
 	},
 	"require_stock_count_role": {
 		"inventory_api": ["create_multi_level_stock_reconciliation"],
@@ -441,8 +447,18 @@ SENSITIVE_CALLS = {
 		],
 	},
 	"require_credit_role": {"customer_api": ["set_customer_credit_limit", "remove_customer_credit_limit"]},
-	"require_loyalty_role": {"loyalty": ["create_loyalty_program", "assign_loyalty_program"]},
+	"require_loyalty_role": {
+		"loyalty": ["create_loyalty_program", "assign_loyalty_program", "earn_loyalty_points"]
+	},
+	# setting up the accounts the books use
+	"require_accounts_setup_role": {
+		"account_provisioning_api": ["set_default_provisional_account", "auto_configure_provisional_account"],
+		"sales_api": ["create_credit_mode_of_payment"],
+	},
+	# the quality check step of a multi-level stock count (a cashier is not the quality manager)
+	"require_stock_take_second_step_role": {"inventory_api": ["add_stock_controller_stock_take"]},
 	"require_manager": {
+		"onboarding_api": ["create_pos_profile", "update_pos_profile", "create_etims_settings"],
 		"inventory_api": [
 			"create_inventory_discount_rule",
 			"update_inventory_discount_rule",

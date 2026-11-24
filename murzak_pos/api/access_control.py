@@ -69,6 +69,37 @@ LOYALTY_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager
 TRANSFER_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager", "Stock User"})
 
 
+# Who may add or change customers: the people who work with customers (the frontend's Customers screens) and the
+# people who ring up sales, who add a customer at the till. A stock clerk, an auditor or a viewer may not.
+CUSTOMER_ROLES = frozenset(
+	{
+		"Business Owner",
+		"System Manager",
+		"Sales Manager",
+		"Sales User",
+		"Accounts Manager",
+		"Accounts User",
+		"Delivery Manager",
+		"Agent Manager",
+		"Agent",
+		"Desk User",
+		"Employee",
+		"Academics User",
+	}
+)
+# Who may change someone else's draft invoice: the roles that reach the invoice edit page. Anyone may still change
+# a draft they made themselves.
+SALES_EDIT_ROLES = frozenset(
+	{"Business Owner", "System Manager", "Sales Manager", "Delivery Manager", "Agent Manager"}
+)
+# Who may set up how the books are kept (provisional accounts, the Credit way of paying): the owner and the accountant
+ACCOUNTS_SETUP_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager"})
+# The steps of a multi-level stock count. The first is the counter on the shop floor, the second the quality check, the
+# third the stock manager (who also submits it). The owner and the stock manager may do any step.
+STOCK_TAKE_FIRST_STEP_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager", "Sales User"})
+STOCK_TAKE_SECOND_STEP_ROLES = frozenset({"Business Owner", "System Manager", "Stock Manager", "Quality Manager"})
+
+
 # Who may handle supplier bills and pay suppliers: the owner, the accountants and the purchase manager (the same people who
 # may cancel a supplier invoice)
 BILLING_ROLES = frozenset({"Business Owner", "System Manager", "Accounts Manager", "Purchase Manager"})
@@ -246,6 +277,45 @@ def require_loyalty_role() -> None:
 def require_transfer_role() -> None:
 	"""Moving stock between stores: requesting, approving, dispatching and receiving a transfer."""
 	require_any_role(TRANSFER_ROLES, _("move stock between stores"))
+
+
+def require_customer_role() -> None:
+	"""Adding a customer or changing a customer's details."""
+	require_any_role(CUSTOMER_ROLES, _("change customers"))
+
+
+def require_accounts_setup_role() -> None:
+	"""Setting up the accounts the books use: provisional accounts and the Credit way of paying."""
+	require_any_role(ACCOUNTS_SETUP_ROLES, _("set up the accounts"))
+
+
+def require_stock_take_first_step_role() -> None:
+	"""Adding the first count of a multi-level stock count."""
+	require_any_role(STOCK_TAKE_FIRST_STEP_ROLES, _("add the first count of a stock count"))
+
+
+def require_stock_take_second_step_role() -> None:
+	"""Adding the quality check count of a multi-level stock count."""
+	require_any_role(STOCK_TAKE_SECOND_STEP_ROLES, _("add the quality check count of a stock count"))
+
+
+def require_invoice_editor(doctype: str, name) -> None:
+	"""
+	Changing a draft invoice: a sales manager or the owner may change any, and anyone may change the drafts they made.
+
+	Without this a cashier could rewrite a draft that a colleague started, such as its prices and discounts.
+	"""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Please sign in first."), frappe.AuthenticationError)
+	if user == "Administrator" or SALES_EDIT_ROLES & set(frappe.get_roles(user)):
+		return
+	if name and frappe.db.get_value(doctype, name, "owner") == user:
+		return
+	frappe.throw(
+		_("Only the person who made this invoice, or a sales manager, can change it."),
+		frappe.PermissionError,
+	)
 
 
 def ensure_record_access(doctype: str, name) -> None:

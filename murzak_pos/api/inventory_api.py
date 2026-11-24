@@ -16,7 +16,14 @@ from erpnext.stock.get_item_details import get_bin_details
 from frappe.model.workflow import get_transitions
 from murzak_pos.api import discount_rules
 from murzak_pos.api.product_seeding import ensure_fiscal_year_exists
-from murzak_pos.api.access_control import ensure_record_access, require_manager, require_stock_count_role, require_stock_role
+from murzak_pos.api.access_control import (
+    ensure_record_access,
+    require_manager,
+    require_stock_count_role,
+    require_stock_role,
+    require_stock_take_first_step_role,
+    require_stock_take_second_step_role,
+)
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.error_handler import safe_error_message
 
@@ -3425,6 +3432,8 @@ def add_sales_person_stock_take(
     Returns:
         dict: Result of adding sales user stock take
     """
+    # Only the counter, the stock manager or the owner may add the first count
+    require_stock_take_first_step_role()
     ensure_record_access("Stock Reconciliation", reconciliation_name)
     try:
         if not frappe.db.exists("Stock Reconciliation", reconciliation_name):
@@ -3557,6 +3566,8 @@ def add_stock_controller_stock_take(
     Returns:
         dict: Result of adding quality manager stock take
     """
+    # Only the quality manager, the stock manager or the owner may add the quality check count
+    require_stock_take_second_step_role()
     ensure_record_access("Stock Reconciliation", reconciliation_name)
     try:
         if not frappe.db.exists("Stock Reconciliation", reconciliation_name):
