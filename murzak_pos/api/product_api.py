@@ -1249,6 +1249,8 @@ def enable_product(item_code: str) -> Dict:
     Returns:
         Success message
     """
+    # Only the people who manage the product catalogue may change a product
+    require_catalogue_role()
     # Validate user permissions
     ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
@@ -1281,6 +1283,8 @@ def add_barcode(item_code: str, barcode: str) -> Dict:
     Returns:
         Success message
     """
+    # Only the people who manage the product catalogue may change a product
+    require_catalogue_role()
     # Validate user permissions
     ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
@@ -1323,6 +1327,8 @@ def remove_barcode(item_code: str, barcode: str) -> Dict:
     Returns:
         Success message
     """
+    # Only the people who manage the product catalogue may change a product
+    require_catalogue_role()
     # Validate user permissions
     ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
@@ -3907,6 +3913,8 @@ def set_product_warranty(item_code: str, warranty_period: int, warranty_period_u
     Returns:
         Success message with warranty information
     """
+    # Only the people who manage the product catalogue may change a product
+    require_catalogue_role()
     ensure_record_access("Item", item_code)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not authenticated"), frappe.AuthenticationError)

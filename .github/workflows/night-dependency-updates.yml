@@ -1,0 +1,42 @@
+name: Night dependency updates
+
+# Dependabot opens the update pull requests (see .github/dependabot.yml). This is the part that ships them,
+# and it runs at 02:00 in Nairobi (23:00 UTC) so the deploy that follows lands when the shops are closed.
+# What it will and will not merge is explained in docs/DEPENDENCY_UPDATES.md.
+on:
+  schedule:
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only report what would be merged, change nothing"
+        type: boolean
+        default: true
+
+# Needed to merge a pull request and to start the deploy workflow afterwards
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+# Two runs at once could merge two updates in one night
+concurrency:
+  group: night-dependency-updates
+  cancel-in-progress: false
+
+jobs:
+  ship:
+    name: Merge safe updates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Merge at most one safe update
+        run: python .github/scripts/merge_dependency_updates.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          # Set the repository variable DEPENDENCY_AUTOMERGE to "false" to switch merging off
+          DEPENDENCY_AUTOMERGE: ${{ vars.DEPENDENCY_AUTOMERGE }}
+          # A manual run defaults to a dry run; the night-time schedule has no input, so it is a real run
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}

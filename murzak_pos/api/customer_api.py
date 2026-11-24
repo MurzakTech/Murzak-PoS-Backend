@@ -10,7 +10,7 @@ from frappe.utils import flt
 from murzak_pos.api.party_names import name_for_new_record
 from murzak_pos.api.payment_gateway_common import resolve_company
 from typing import Optional, Dict, List
-from murzak_pos.api.access_control import require_credit_role
+from murzak_pos.api.access_control import require_credit_role, require_customer_role
 from murzak_pos.api.error_handler import safe_error_message
 
 
@@ -64,6 +64,8 @@ def create_customer(
     Returns:
         dict: Created customer details
     """
+    # Only people who work with customers or ring up sales may add or change customers
+    require_customer_role()
     try:
         # Validate customer type
         valid_types = ["Company", "Individual", "Partnership"]
@@ -634,6 +636,8 @@ def update_customer(
     Returns:
         dict: Update result
     """
+    # Only people who work with customers or ring up sales may add or change customers
+    require_customer_role()
     try:
         if not frappe.db.exists("Customer", name):
             return {

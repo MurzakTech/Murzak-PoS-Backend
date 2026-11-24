@@ -25,7 +25,12 @@ from murzak_pos.murzak_pos.doctype.inventory_discount_rule.inventory_discount_ru
     get_applicable_inventory_discount,
 )
 from murzak_pos.api import return_rules, sales_person_api
-from murzak_pos.api.access_control import ensure_record_access, require_any_role
+from murzak_pos.api.access_control import (
+    ensure_record_access,
+    require_accounts_setup_role,
+    require_any_role,
+    require_invoice_editor,
+)
 from murzak_pos.api.business_lists import (
     caller_company,
     first_mode_of_payment,
@@ -1964,6 +1969,8 @@ def create_credit_mode_of_payment(
     Create or enable a 'Credit' Mode of Payment and add its company account row.
     Safe to call multiple times (idempotent).
     """
+    # Only the owner and the accountant set up the accounts the books use
+    require_accounts_setup_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
@@ -2143,6 +2150,8 @@ def update_sales_invoice(
     Returns:
         dict: Updated Sales Invoice details
     """
+    # A draft invoice may be changed by a sales manager or by the person who made it, not by any signed-in colleague
+    require_invoice_editor("Sales Invoice", name)
     # Refuse a company the caller does not belong to, and an invoice of another business
     if company:
         company = resolve_company(company)
@@ -2277,6 +2286,8 @@ def update_pos_invoice(
     Returns:
         dict: Updated POS Invoice details
     """
+    # A draft invoice may be changed by a sales manager or by the person who made it, not by any signed-in colleague
+    require_invoice_editor("POS Invoice", name)
     # Refuse a company the caller does not belong to, and an invoice of another business
     if company:
         company = resolve_company(company)

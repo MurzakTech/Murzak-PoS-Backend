@@ -500,6 +500,8 @@ def earn_loyalty_points(customer_id, purchase_amount, company=None):
     :param company: Company name (optional, defaults to logged-in user's company)
     :return: Success or failure message with points earned
     """
+    # Points are given by sales, not by whoever asks. Only the loyalty managers may add them by hand
+    require_loyalty_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)

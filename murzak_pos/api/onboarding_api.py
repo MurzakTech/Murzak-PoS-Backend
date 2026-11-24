@@ -918,6 +918,8 @@ def create_pos_profile(
     Returns:
         Created POS profile details
     """
+    # Till options, the till profile and tax settings are the owner's
+    require_manager()
     # Validate user permissions
     # Refuse a company the caller does not belong to
     if company:
@@ -1140,6 +1142,8 @@ def update_pos_profile(
     Returns:
         Updated POS profile details
     """
+    # Till options, the till profile and tax settings are the owner's
+    require_manager()
     # Validate user permissions
     ensure_record_access("POS Profile", name)
     ensure_record_access("POS Profile", profile_name)
@@ -1421,6 +1425,8 @@ def create_etims_settings(
     Returns:
         Created eTIMS settings details
     """
+    # Till options, the till profile and tax settings are the owner's
+    require_manager()
     # Validate user permissions
     # Refuse a company the caller does not belong to
     if company:

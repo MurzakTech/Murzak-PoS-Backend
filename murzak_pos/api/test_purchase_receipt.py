@@ -77,6 +77,7 @@ class ReturnCase(unittest.TestCase):
 		db.exists.return_value = True
 		with (
 			patch.object(purchase_receipt, "ensure_record_access"),
+			patch.object(purchase_receipt, "require_stock_role"),
 			patch.object(purchase_receipt, "make_return_doc", return_value=made),
 			patch.object(purchase_receipt.frappe, "get_doc", return_value=receipt),
 			patch.object(purchase_receipt.frappe, "db", db),
@@ -199,6 +200,7 @@ class ReturnCase(unittest.TestCase):
 		db.exists.return_value = False
 		with (
 			patch.object(purchase_receipt, "ensure_record_access"),
+			patch.object(purchase_receipt, "require_stock_role"),
 			patch.object(purchase_receipt.frappe, "db", db),
 		):
 			response = purchase_receipt.reject_return_items("NOPE", [{"item_code": "PEN", "qty": 1}])
@@ -213,6 +215,7 @@ class ReturnCase(unittest.TestCase):
 		db.exists.return_value = True
 		with (
 			patch.object(purchase_receipt, "ensure_record_access"),
+			patch.object(purchase_receipt, "require_stock_role"),
 			patch.object(purchase_receipt, "make_return_doc", side_effect=RuntimeError("boom")),
 			patch.object(purchase_receipt.frappe, "get_doc", return_value=receipt),
 			patch.object(purchase_receipt.frappe, "db", db),

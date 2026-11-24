@@ -2,6 +2,9 @@ name: Deploy Backend
 on:
   push:
     branches: [main]
+  # Also startable by hand, and by the night-time dependency workflow (a merge made with a workflow's own
+  # token does not trigger the push above, on purpose)
+  workflow_dispatch:
 
 # Never run two deploys at the same time: the second waits for the first
 concurrency:
