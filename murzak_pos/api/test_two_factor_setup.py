@@ -14,7 +14,8 @@ from unittest.mock import MagicMock, patch
 
 import frappe
 
-from murzak_pos.api import login_guard, two_factor_api as api
+from murzak_pos.api import login_guard
+from murzak_pos.api import two_factor_api as api
 
 OWNER = "owner@shop.test"
 OWNERS_APP = login_guard.new_secret()  # the secret in the owner's authenticator app
@@ -48,7 +49,9 @@ class TwoStepSetupCase(unittest.TestCase):
 		patches = [
 			patch.object(frappe, "session", MagicMock(user=OWNER), create=True),
 			patch.object(frappe, "cache", lambda: self.cache),
-			patch.object(api, "_get_secret", side_effect=lambda user, key=api.SECRET_KEY: self.secrets.get((user, key))),
+			patch.object(
+				api, "_get_secret", side_effect=lambda user, key=api.SECRET_KEY: self.secrets.get((user, key))
+			),
 			patch.object(api, "_set_secret", side_effect=self._set),
 			patch.object(api, "_address", return_value="10.0.0.9"),
 		]
@@ -128,7 +131,9 @@ class TestReplacingTheApp(TwoStepSetupCase):
 		for _attempt in range(login_guard.MAX_FAILURES):
 			api.start_two_factor_setup(otp="000000")
 		with self.assertRaises(frappe.AuthenticationError):
-			api.start_two_factor_setup(otp=code_now(OWNERS_APP))  # even the right code is refused while locked
+			api.start_two_factor_setup(
+				otp=code_now(OWNERS_APP)
+			)  # even the right code is refused while locked
 		self.assertIsNone(self.pending_secret())
 
 	def test_a_right_code_does_not_leave_a_failure_behind(self):

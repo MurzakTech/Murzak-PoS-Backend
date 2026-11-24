@@ -38,7 +38,10 @@ class SeedCompanyCase(unittest.TestCase):
 			patch.object(frappe, "new_doc", self.new_doc),
 			patch.object(frappe, "request", MagicMock(), create=True),
 			patch.object(frappe, "form_dict", frappe._dict(), create=True),
-			patch("murzak_pos.api.payment_gateway_common.get_user_companies", lambda *a, **k: set(self.my_companies)),
+			patch(
+				"murzak_pos.api.payment_gateway_common.get_user_companies",
+				lambda *a, **k: set(self.my_companies),
+			),
 			patch("murzak_pos.api.access_control.get_user_companies", lambda *a, **k: set(self.my_companies)),
 		):
 			p.start()
