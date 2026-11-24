@@ -41,6 +41,7 @@ class CompanyDetailsCase(unittest.TestCase):
 		company = make_company()
 		company.name = "Acme"
 		with (
+			patch.object(api, "require_manager"),
 			patch.object(api, "resolve_company", return_value="Acme"),
 			patch.object(api, "ensure_record_access"),
 			patch.object(api.frappe, "db", MagicMock(), create=True) as db,
@@ -53,3 +54,57 @@ class CompanyDetailsCase(unittest.TestCase):
 		self.assertTrue(result["success"], result)
 		setter.assert_called_once_with("Acme", "Stores - A")
 		self.assertFalse(hasattr(company, "default_warehouse"))
+
+
+class TestOnlyTheOwnerOfACompanyMayChangeIt(unittest.TestCase):
+	"""update_company saves with permissions bypassed, so who may ask has to be checked first. Needs no database."""
+
+	def setUp(self):
+		self.roles = ["Business Owner"]
+		self.my_companies = {"Own Co"}
+		self.company = make_company()
+		self.get_doc = MagicMock(return_value=self.company)
+		self.user = MagicMock(user="owner@own.test")
+		for p in (
+			patch.object(api.frappe, "session", self.user, create=True),
+			patch.object(api.frappe, "db", MagicMock(), create=True),
+			patch.object(api.frappe, "get_roles", lambda user=None: list(self.roles)),
+			patch.object(api.frappe, "get_doc", self.get_doc),
+			patch("murzak_pos.api.payment_gateway_common.get_user_companies", lambda *a, **k: set(self.my_companies)),
+			patch("murzak_pos.api.access_control.get_user_companies", lambda *a, **k: set(self.my_companies)),
+		):
+			p.start()
+			self.addCleanup(p.stop)
+		api.frappe.db.exists.return_value = True
+
+	def test_an_owner_cannot_change_another_businesss_company(self):
+		"""The attack: any signed-in user names another business and changes its tax ID, e-mail and accounts."""
+		with self.assertRaises(api.frappe.PermissionError):
+			api.update_company("Victim Co", tax_id="P000000000X", email="thief@evil.test")
+		self.get_doc.assert_not_called()
+		self.company.save.assert_not_called()
+
+	def test_a_cashier_cannot_change_even_their_own_company(self):
+		self.roles = ["Sales User"]
+		with self.assertRaises(api.frappe.PermissionError):
+			api.update_company("Own Co", phone_no="0700000000")
+		self.get_doc.assert_not_called()
+		self.company.save.assert_not_called()
+
+	def test_a_manager_who_is_not_the_owner_cannot_either(self):
+		self.roles = ["Accounts Manager"]  # the frontend keeps business settings from this role too
+		with self.assertRaises(api.frappe.PermissionError):
+			api.update_company("Own Co", phone_no="0700000000")
+		self.company.save.assert_not_called()
+
+	def test_a_signed_out_caller_is_refused(self):
+		self.user.user = "Guest"
+		with self.assertRaises(api.frappe.AuthenticationError):
+			api.update_company("Own Co", phone_no="0700000000")
+		self.get_doc.assert_not_called()
+
+	def test_the_owner_can_change_their_own_company(self):
+		result = api.update_company("Own Co", phone_no="0700000000")
+		self.assertTrue(result["success"], result)
+		self.assertEqual(self.company.phone_no, "0700000000")
+		self.company.save.assert_called()
