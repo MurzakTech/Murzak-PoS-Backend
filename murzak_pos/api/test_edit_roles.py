@@ -13,6 +13,7 @@ import importlib
 import inspect
 import os
 import unittest
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import frappe
@@ -167,7 +168,7 @@ class TestTheChecksAreNotForgotten(unittest.TestCase):
 	"""Reads the source, so a check that is removed later fails here."""
 
 	# call -> the check that must come first, straight after the docstring
-	EXPECTED: dict[str, dict[str, str]] = {
+	EXPECTED: ClassVar[dict[str, dict[str, str]]] = {
 		"customer_api.py": {
 			"create_customer": "require_customer_role",
 			"update_customer": "require_customer_role",
