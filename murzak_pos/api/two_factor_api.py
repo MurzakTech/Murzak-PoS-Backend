@@ -135,10 +135,44 @@ def get_two_factor_status() -> dict:
 	return {"success": True, "data": {"enabled": is_enabled(user)}}
 
 
+def _wrong_code_reply(user: str, secret: str, otp) -> dict | None:
+	"""
+	None when `otp` is a right current code for `secret`; otherwise the reply to send back.
+
+	A wrong code counts toward the same lockout as sign-in. Without that, someone on a borrowed signed-in screen
+	could try the six digits as many times as they liked here, which would make the check below pointless.
+	"""
+	check_not_locked(user)
+	if verify_code(secret, otp):
+		clear_failures(user)
+		return None
+	note_failure(user)
+	return {
+		"success": False,
+		"message": _("That code is not correct. Try the newest code from your app."),
+	}
+
+
 @frappe.whitelist(methods=["POST"])
-def start_two_factor_setup() -> dict:
-	"""Create a new secret for the user's app. It only takes effect after confirm_two_factor_setup."""
+def start_two_factor_setup(otp: str | None = None) -> dict:
+	"""
+	Create a new secret for the user's app. It only takes effect after confirm_two_factor_setup.
+
+	When two-step sign-in is already on, this is a request to REPLACE the authenticator, so it needs a current code
+	from the one in use, exactly as turning it off does. Without that, anyone on a borrowed signed-in screen could
+	start a setup, put the secret in their own app, confirm it, and take the second step away from its owner.
+	"""
 	user = _signed_in_user()
+	existing = _get_secret(user)
+	if existing:
+		if not otp:
+			return {
+				"success": False,
+				"message": _("Two-step sign-in is already on. To change the app, enter a current code from the old one."),
+			}
+		refusal = _wrong_code_reply(user, existing, otp)
+		if refusal:
+			return refusal
 	secret = new_secret()
 	_set_secret(user, secret, PENDING_KEY)
 	return {
@@ -173,11 +207,9 @@ def disable_two_factor(otp: str | None = None) -> dict:
 	secret = _get_secret(user)
 	if not secret:
 		return {"success": True, "message": _("Two-step sign-in was already off.")}
-	if not verify_code(secret, otp):
-		return {
-			"success": False,
-			"message": _("That code is not correct. Try the newest code from your app."),
-		}
+	refusal = _wrong_code_reply(user, secret, otp)
+	if refusal:
+		return refusal
 	_set_secret(user, None)
 	return {"success": True, "message": _("Two-step sign-in is off.")}
 
