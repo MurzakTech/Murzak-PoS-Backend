@@ -11,7 +11,12 @@ from frappe import _
 from typing import Dict, List, Optional
 from frappe.utils import flt, nowdate, getdate, get_first_day, get_last_day
 
-from murzak_pos.api.access_control import require_system_manager
+from murzak_pos.api.access_control import (
+	ensure_record_access,
+	require_catalogue_role,
+	require_stock_role,
+	require_system_manager,
+)
 from murzak_pos.api.etims_optional import relax_etims_mandatory
 from murzak_pos.api.payment_gateway_common import resolve_company
 from murzak_pos.api.vat_setup import item_tax_template_for
@@ -379,452 +384,6 @@ def bulk_upload_products():
 
 
 
-@frappe.whitelist(methods=["POST"])
-def create_seed_item(company: str = None):
-    """
-    Create Items, Item Prices, and optionally update inventory from seed data.
-    
-    This function creates Item master records, Item Price records (selling and/or buying),
-    and optionally creates Material Receipt Stock Entry to add inventory quantities.
-    All records are scoped to the authenticated user's company.
-    
-    **Authentication Required**: This endpoint requires user authentication. Items will be scoped to the user's company.
-    
-    **Item Code Prefixing**: Item codes are automatically prefixed with the company abbreviation (e.g., "ABC-BURG001")
-    to ensure uniqueness across different companies. If an item code already starts with the company abbreviation,
-    it will be used as-is. This prevents conflicts when multiple companies seed the same product codes.
-
-    Expected JSON payload:
-    {
-        "price_list": "Standard Selling",  // Required - Selling price list
-        "buying_price_list": "Standard Buying",  // Optional - Buying price list
-        "company": "Your Company Name",  // Optional - defaults to user's default company
-        "industry": "REST",  // Optional - POS Industry code. If not provided, uses user's industry or NULL for global products
-        "warehouse": "Main Warehouse",  // Optional - default warehouse for all items
-        "items": [
-            {
-                "item_code": "BURG001",
-                "item_name": "Cheese Burger",
-                "item_price": 5.99,  // Required - Selling price
-                "buying_price": 3.50,  // Optional - Buying/cost price (requires buying_price_list)
-                "item_group": "All Item Groups",
-                "uom": "Nos",
-                "qty": 100,  // Optional - Quantity to add to inventory (requires warehouse)
-                "warehouse": "Main Warehouse",  // Optional - Per-item warehouse (overrides default)
-                "basic_rate": 3.50  // Optional - Cost per unit for inventory valuation (defaults to buying_price or 0)
-            }
-        ]
-    }
-    
-    Returns:
-        Dictionary with status, created count, skipped count, failed items, stock entries created, and total received
-    """
-    # Read & parse JSON safely
-    # Refuse a company the caller does not belong to
-    if company:
-        company = resolve_company(company)
-    payload = {}
-    try:
-        raw_data = frappe.request.data
-        if isinstance(raw_data, bytes):
-            raw_data = raw_data.decode("utf-8")
-        if raw_data:
-            payload = json.loads(raw_data)
-    except Exception:
-        payload = {}
-
-    if not payload:
-        payload = frappe.form_dict or {}
-
-    if not isinstance(payload, dict):
-        frappe.throw(_("Invalid payload"))
-
-    # Validate user authentication
-    if frappe.session.user == "Guest":
-        frappe.throw(
-            _("Please log in to create items. Your session has expired or you are not authenticated."),
-            frappe.AuthenticationError
-        )
-
-    price_list = payload.get("price_list")
-    buying_price_list = payload.get("buying_price_list")  # Optional
-    items = payload.get("items")
-    industry_code = payload.get("industry")  # Optional - industry code from payload
-    default_warehouse = payload.get("warehouse")  # Optional - default warehouse for all items
-    # Get company from payload or use parameter, fallback to user default
-    company = payload.get("company") or company
-
-    if not price_list:
-        frappe.throw(_("Price List is required"))
-
-    if not items or not isinstance(items, list):
-        frappe.throw(_("Items must be a non-empty list"))
-    
-    # Validate buying price list if provided
-    if buying_price_list:
-        if not frappe.db.exists("Price List", buying_price_list):
-            frappe.throw(_("Buying Price List '{0}' does not exist").format(buying_price_list))
-        # Verify it's a buying price list
-        price_list_details = frappe.db.get_value(
-            "Price List",
-            buying_price_list,
-            ["buying", "selling", "enabled"],
-            as_dict=True
-        )
-        if not price_list_details or not price_list_details.get("enabled"):
-            frappe.throw(_("Buying Price List '{0}' is disabled or does not exist").format(buying_price_list))
-        if not price_list_details.get("buying"):
-            frappe.throw(_("Price List '{0}' is not a buying price list").format(buying_price_list))
-
-    for doctype in ("Item", "Item Price"):
-        if not frappe.db.exists("DocType", doctype):
-            frappe.throw(_("{0} DocType is missing").format(doctype))
-
-    # Get company - from parameter, payload, or user default
-    if not company:
-        company = frappe.defaults.get_user_default("Company")
-        if not company:
-            frappe.throw(
-                _("Company is required. Please set a default company in your profile settings or provide the company parameter when creating items."),
-                frappe.ValidationError
-            )
-
-    # Validate company exists
-    if not frappe.db.exists("Company", company):
-        frappe.throw(
-            _("The company '{0}' does not exist. Please check the company name and try again.").format(company),
-            frappe.ValidationError
-        )
-
-    # Get company abbreviation for item code prefixing
-    company_abbr = frappe.db.get_value("Company", company, "abbr")
-    if not company_abbr:
-        frappe.throw(
-            _("Company '{0}' does not have an abbreviation set. Please set the company abbreviation in Company settings.").format(company),
-            frappe.ValidationError
-        )
-    company_abbr = company_abbr.strip().upper()
-
-    # Determine industry for products:
-    # 1. Use industry from payload if provided
-    # 2. Otherwise use user's industry if available
-    # 3. Otherwise NULL (global products available to all industries)
-    product_industry = None
-    
-    if industry_code:
-        # Validate industry exists
-        industry_doc = frappe.db.get_value(
-            "POS Industry",
-            {"name": industry_code, "is_active": 1},
-            "name"
-        )
-        if not industry_doc:
-            # Try by industry_code field
-            industry_doc = frappe.db.get_value(
-                "POS Industry",
-                {"industry_code": industry_code, "is_active": 1},
-                "name"
-            )
-        if industry_doc:
-            product_industry = industry_doc
-        else:
-            frappe.throw(
-                _("The industry '{0}' does not exist or is not active. Please provide a valid industry code.").format(industry_code),
-                frappe.ValidationError
-            )
-    else:
-        # Use user's industry if available
-        try:
-            user_industry = frappe.db.get_value("User", frappe.session.user, "custom_pos_industry")
-        except Exception as e:
-            # Handle case where custom_pos_industry column doesn't exist in database
-            # Log short error message to avoid CharacterLengthExceededError
-            error_msg = str(e)[:100] if len(str(e)) > 100 else str(e)
-            frappe.log_error(
-                "Seed Products - POS Industry",
-                f"POS industry field missing: {error_msg}"
-            )
-            user_industry = None
-        if user_industry:
-            product_industry = user_industry
-        # If no user industry, product_industry remains None (global product)
-
-    created = 0
-    skipped = 0
-    failed = []
-    stock_entries_created = 0
-    stock_entry_items = []  # Collect items for stock entry if qty is provided
-
-    for row in items:
-        try:
-            if not isinstance(row, dict):
-                raise ValueError(_("Each item must be an object"))
-
-            original_item_code = row.get("item_code")
-            item_name = row.get("item_name")
-            item_price = flt(row.get("item_price"))
-            buying_price = flt(row.get("buying_price")) if row.get("buying_price") is not None else None
-            item_group = row.get("item_group") or "All Item Groups"
-            item_uom = row.get("uom")
-            qty = flt(row.get("qty")) if row.get("qty") is not None else None
-            item_warehouse = row.get("warehouse") or default_warehouse
-            basic_rate = flt(row.get("basic_rate")) if row.get("basic_rate") is not None else None
-            
-            if not original_item_code or not item_name:
-                raise ValueError(_("Item Code and Item Name are required"))
-
-            # Prefix item code with company abbreviation to ensure uniqueness across companies
-            # Format: {ABBR}-{original_code}
-            # Only prefix if not already prefixed with this company's abbreviation
-            if original_item_code.upper().startswith(f"{company_abbr}-"):
-                # Already prefixed with this company's abbreviation, use as-is
-                item_code = original_item_code
-            else:
-                # Add company abbreviation prefix
-                item_code = f"{company_abbr}-{original_item_code}"
-
-            if item_price < 0:
-                raise ValueError(_("Item Price must be >= 0"))
-            
-            if buying_price is not None and buying_price < 0:
-                raise ValueError(_("Buying Price must be >= 0"))
-            
-            if buying_price is not None and buying_price > 0 and not buying_price_list:
-                raise ValueError(_("Buying Price List is required when providing buying_price"))
-            
-            if qty is not None:
-                if qty <= 0:
-                    raise ValueError(_("Quantity must be greater than 0 for item '{0}'").format(original_item_code))
-                if not item_warehouse:
-                    raise ValueError(_("Warehouse is required when providing qty for item '{0}'").format(original_item_code))
-
-            # Check if item_code exists globally (item_code is PRIMARY KEY, so it must be unique)
-            existing_item_global = frappe.db.exists("Item", item_code)
-            
-            if existing_item_global:
-                # Item exists - check which company it belongs to
-                existing_company = frappe.db.get_value("Item", item_code, "custom_company")
-                
-                # If item exists for THIS company, skip it
-                if existing_company == company:
-                    skipped += 1
-                    continue
-                else:
-                    # Item exists but for a different company (or no company) - can't create due to PRIMARY KEY constraint
-                    company_msg = existing_company if existing_company else _("no company (global)")
-                    failed.append({
-                        "item_code": original_item_code,
-                        "prefixed_item_code": item_code,
-                        "error": _("Item code '{0}' (prefixed as '{1}') already exists and belongs to company '{2}'. Item codes must be unique globally across all companies.").format(
-                            original_item_code, item_code, company_msg
-                        )
-                    })
-                    continue
-
-            # Create Item
-            item_doc = frappe.get_doc({
-                "doctype": "Item",
-                "item_code": item_code,
-                "item_name": item_name,
-                "item_group": item_group,
-                "stock_uom": item_uom or "Nos",
-                "is_stock_item": 1
-            })
-            
-            # Set company for product isolation (multi-tenant)
-            item_doc.custom_company = company
-            
-            # Set POS industry (from payload, user's industry, or NULL for global)
-            item_doc.custom_pos_industry = product_industry
-            _antibiotics_need_a_prescription(item_doc, product_industry)
-            
-            # Prevent eTIMS registration by default
-            item_doc.custom_prevent_etims_registration = 1
-            
-            try:
-                item_doc.insert(ignore_permissions=True)
-            except (frappe.DuplicateEntryError, frappe.UniqueValidationError) as e:
-                # Handle duplicate entry errors gracefully (fallback in case check above missed it)
-                skipped += 1
-                continue
-            except Exception as e:
-                # Check if it's an IntegrityError (database-level duplicate)
-                error_str = str(e)
-                if "Duplicate entry" in error_str or "IntegrityError" in error_str or "1062" in error_str:
-                    # Item was created between our check and insert - skip it
-                    skipped += 1
-                    continue
-                # Re-raise other exceptions
-                raise
-
-            # Create Selling Item Price
-            try:
-                item_price_doc = frappe.get_doc({
-                    "doctype": "Item Price",
-                    "item_code": item_code,
-                    "uom": item_uom or "Nos",
-                    "price_list": price_list,
-                    "price_list_rate": item_price
-                })
-                
-                # Set company if Item Price has company field (for multi-tenant isolation)
-                if hasattr(item_price_doc, "company"):
-                    item_price_doc.company = company
-                
-                item_price_doc.insert(ignore_permissions=True)
-            except (frappe.DuplicateEntryError, frappe.UniqueValidationError) as e:
-                # Item Price already exists for this item_code, price_list, and uom - skip silently
-                pass
-            except Exception as e:
-                # Check if it's an IntegrityError (database-level duplicate)
-                error_str = str(e)
-                if "Duplicate entry" in error_str or "IntegrityError" in error_str or "1062" in error_str:
-                    # Item Price already exists - skip silently
-                    pass
-                else:
-                    # Re-raise other exceptions
-                    raise
-            
-            # Create Buying Item Price if buying_price_list and buying_price are provided
-            if buying_price_list and buying_price is not None and buying_price > 0:
-                try:
-                    buying_item_price_doc = frappe.get_doc({
-                        "doctype": "Item Price",
-                        "item_code": item_code,
-                        "uom": item_uom or "Nos",
-                        "price_list": buying_price_list,
-                        "price_list_rate": buying_price
-                    })
-                    
-                    # Set company if Item Price has company field
-                    if hasattr(buying_item_price_doc, "company"):
-                        buying_item_price_doc.company = company
-                    
-                    buying_item_price_doc.insert(ignore_permissions=True)
-                except (frappe.DuplicateEntryError, frappe.UniqueValidationError) as e:
-                    # Item Price already exists for this item_code, price_list, and uom - skip silently
-                    pass
-                except Exception as e:
-                    # Check if it's an IntegrityError (database-level duplicate)
-                    error_str = str(e)
-                    if "Duplicate entry" in error_str or "IntegrityError" in error_str or "1062" in error_str:
-                        # Item Price already exists - skip silently
-                        pass
-                    else:
-                        # Re-raise other exceptions
-                        raise
-            
-            # Collect item for stock entry if qty is provided
-            if qty is not None and qty > 0 and item_warehouse:
-                # Use basic_rate if provided, otherwise use buying_price, otherwise 0
-                valuation_rate = basic_rate if basic_rate is not None and basic_rate > 0 else (buying_price if buying_price is not None and buying_price > 0 else 0)
-                
-                stock_entry_items.append({
-                    "item_code": item_code,
-                    "qty": qty,
-                    "t_warehouse": item_warehouse,
-                    "basic_rate": valuation_rate,
-                    "uom": item_uom or "Nos"
-                })
-
-            created += 1
-
-        except Exception as e:
-            # Get original_item_code if available, otherwise use row.get
-            original_code = original_item_code if 'original_item_code' in locals() else row.get("item_code")
-            prefixed_code = item_code if 'item_code' in locals() else None
-            failed.append({
-                "item_code": original_code,
-                "prefixed_item_code": prefixed_code,
-                "error": safe_error_message(e)
-            })
-
-    # Create Material Receipt Stock Entry if there are items with qty
-    stock_entry_name = None
-    if stock_entry_items:
-        try:
-            # Validate warehouses exist and are not group warehouses
-            warehouses_to_check = set()
-            for item in stock_entry_items:
-                warehouses_to_check.add(item["t_warehouse"])
-            
-            for warehouse in warehouses_to_check:
-                if not frappe.db.exists("Warehouse", warehouse):
-                    raise ValueError(_("Warehouse '{0}' does not exist").format(warehouse))
-                
-                # Check if warehouse is a group warehouse (group warehouses cannot be used in transactions)
-                is_group = frappe.db.get_value("Warehouse", warehouse, "is_group")
-                if is_group:
-                    raise ValueError(_("Warehouse '{0}' is a group warehouse and cannot be used for transactions. Please select a non-group warehouse.").format(warehouse))
-            
-            # Ensure fiscal year exists for the company (auto-create if needed)
-            try:
-                fiscal_year = ensure_fiscal_year_exists(company)
-            except Exception as fy_error:
-                frappe.log_error(
-                    "Fiscal Year Auto-Creation Error",
-                    f"Could not create fiscal year for {company}: {str(fy_error)}"
-                )
-                # Continue anyway - ERPNext might still work if there's a global fiscal year
-            
-            # Create Stock Entry
-            stock_entry = frappe.new_doc("Stock Entry")
-            stock_entry.stock_entry_type = "Material Receipt"
-            stock_entry.company = company
-            stock_entry.purpose = "Material Receipt"
-            
-            # Add items to stock entry
-            for item in stock_entry_items:
-                stock_entry.append("items", {
-                    "item_code": item["item_code"],
-                    "qty": item["qty"],
-                    "t_warehouse": item["t_warehouse"],
-                    "basic_rate": item["basic_rate"],
-                    "uom": item["uom"],
-                    "conversion_factor": 1.0
-                })
-            
-            # Validate and save stock entry
-            stock_entry.validate()
-            stock_entry.insert(ignore_permissions=True)
-            stock_entry.submit()
-            stock_entry_name = stock_entry.name
-            stock_entries_created = 1
-            
-        except Exception as e:
-            frappe.log_error(
-                "Create Seed Item - Stock Entry Error",
-                f"Error creating stock entry for items: {str(e)}"
-            )
-            # Add to failed items but don't fail the entire operation
-            failed.append({
-                "item_code": "STOCK_ENTRY",
-                "error": _("Failed to create stock entry: {0}").format(safe_error_message(e))
-            })
-
-    # frappe.db.commit()
-
-    # Response
-    return {
-        "status": (
-            "success"
-            if created == len(items) and not failed
-            else "partial_success"
-            if created > 0
-            else "failed"
-        ),
-        "company": company,
-        "company_abbr": company_abbr,
-        "industry": product_industry,
-        "created": created,
-        "skipped": skipped,
-        "failed": failed,
-        "total_received": len(items),
-        "stock_entry_created": stock_entries_created > 0,
-        "stock_entry_name": stock_entry_name,
-        "inventory_items_count": len(stock_entry_items) if stock_entry_items else 0,
-        "note": _("Item codes are automatically prefixed with company abbreviation '{0}' to ensure uniqueness across companies. Format: {0}-{{original_code}}").format(company_abbr)
-    }
 
 
 
@@ -856,6 +415,8 @@ def create_seed_item(company: str = None):
     Response separates items created/skipped/failed and stock entry status.
     Failed and skipped items include short readable messages.
     """
+    # Adding products is the catalogue's job. Say who may ask before anything is read.
+    require_catalogue_role()
     # Refuse a company the caller does not belong to
     if company:
         company = resolve_company(company)
@@ -907,8 +468,22 @@ def create_seed_item(company: str = None):
         # ----------------------
         # Company & industry setup
         # ----------------------
-        if not frappe.db.exists("Company", company):
-            frappe.throw(_("The company '{0}' does not exist").format(company))
+        # The company used from here on is the one in the request body, which is not the same value as the
+        # `company` argument checked at the top: Frappe fills that argument from the query string when the
+        # request is not sent as JSON, while this function reads the raw body itself. So the company in use
+        # is checked here, after it is chosen, and every record it will write into must belong to it.
+        company = resolve_company(company)
+        ensure_record_access("Price List", price_list)
+        if buying_price_list:
+            ensure_record_access("Price List", buying_price_list)
+        warehouses = {default_warehouse} | {
+            row.get("warehouse") for row in items if isinstance(row, dict) and row.get("warehouse")
+        }
+        for warehouse in sorted(w for w in warehouses if w):
+            ensure_record_access("Warehouse", warehouse)
+        # Receiving opening stock is a stock job, on top of adding the products
+        if any(isinstance(row, dict) and flt(row.get("qty")) > 0 for row in items):
+            require_stock_role()
 
         company_abbr = frappe.db.get_value("Company", company, "abbr")
         if not company_abbr:
